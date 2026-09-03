@@ -1,0 +1,45 @@
+name: chronos_pulse_app
+description: "Chronos Pulse - Front-end Flutter para Gestão de Ponto"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI e Ícones
+  cupertino_icons: ^1.0.8
+
+  # Cliente HTTP (similar ao Axios)
+  dio: ^5.7.0
+
+  # Hardware, Biometria e GPS
+  local_auth: ^2.3.0
+  geolocator: ^13.0.0
+  camera: ^0.12.0+2
+
+  # Persistência Offline
+  path: ^1.9.0
+  sqflite: ^2.4.0
+  sqflite_common_ffi_web: ^0.4.0
+
+  # Gerenciamento de Estado
+  provider: ^6.1.2
+
+  # Formatação de Datas
+  intl: ^0.20.0
+
+  # UUID
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

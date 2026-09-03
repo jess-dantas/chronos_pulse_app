@@ -1,0 +1,32 @@
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+
+class ApiConstants {
+  static String get baseUrl {
+    // 1. Se estiver rodando na WEB
+    if (kIsWeb) {
+      return 'http://localhost:8080/api/v1';
+    }
+
+    // 2. Se estiver rodando no Android (Emulador usa 10.0.2.2, dispositivo físico usa IP da máquina)
+    if (Platform.isAndroid) {
+      const bool isEmulator = bool.fromEnvironment('EMULATOR', defaultValue: false);
+      return isEmulator
+          ? 'http://10.0.2.2:8080/api/v1'
+          : 'http://192.168.1.14:8080/api/v1';
+    }
+
+    // 3. iOS — dispositivo físico precisa do IP da máquina (simulador usa localhost)
+    if (Platform.isIOS) {
+      const bool isSimulator = bool.fromEnvironment('SIMULATOR', defaultValue: false);
+      return isSimulator
+          ? 'http://localhost:8080/api/v1'
+          : 'http://192.168.1.14:8080/api/v1';
+    }
+
+    // 4. Desktop
+    return 'http://localhost:8080/api/v1';
+  }
+
+  static const String pontosEndpoint = '/pontos/sincronizar';
+}
