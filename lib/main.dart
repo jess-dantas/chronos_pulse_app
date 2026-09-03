@@ -6,9 +6,16 @@ import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/colaborador/data/datasources/colaborador_remote_datasource.dart';
+import 'features/colaborador/data/repositories/colaborador_repository.dart';
+import 'features/colaborador/presentation/providers/colaborador_provider.dart';
 import 'features/estoque/data/datasources/estoque_remote_datasource.dart';
 import 'features/estoque/data/repositories/estoque_repository.dart';
 import 'features/estoque/presentation/providers/estoque_provider.dart';
+import 'features/ponto/data/datasources/ponto_local_datasource.dart';
+import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
+import 'features/ponto/data/repositories/ponto_repository.dart';
+import 'features/ponto/presentation/providers/ponto_provider.dart';
 import 'features/navigation/presentation/screens/main_navigation_screen.dart';
 
 void main() async {
@@ -23,14 +30,28 @@ void main() async {
     dioClient: dioClient,
   );
 
+  final colaboradorRemoteDataSource = ColaboradorRemoteDataSource(dioClient);
+  final colaboradorRepository =
+      ColaboradorRepository(remoteDataSource: colaboradorRemoteDataSource);
+
   final estoqueRemoteDataSource = EstoqueRemoteDataSource(dioClient);
-  final estoqueRepository = EstoqueRepository(remoteDataSource: estoqueRemoteDataSource);
+  final estoqueRepository =
+      EstoqueRepository(remoteDataSource: estoqueRemoteDataSource);
+
+  final pontoLocalDataSource = PontoLocalDataSource();
+  final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
+  final pontoRepository = PontoRepository(
+    localDataSource: pontoLocalDataSource,
+    remoteDataSource: pontoRemoteDataSource,
+  );
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
+        ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
         ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
+        ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
       ],
       child: const ChronosPulseApp(),
     ),

@@ -49,7 +49,7 @@ O projeto segue arquitetura modular baseada em **Features** com separação clar
 ```
 lib/
 ├── core/
-│   ├── constants/       # Endpoints de Ponto e Estoque/Almoxarifado
+│   ├── constants/       # Endpoints de Ponto, Estoque/Almoxarifado e Ping
 │   ├── database/        # DatabaseHelper (SQLite nativo e Web Storage)
 │   ├── hardware/        # HardwareService (Biometria local_auth e GPS)
 │   └── network/         # DioClient com interceptor Bearer Token JWT
@@ -58,13 +58,13 @@ lib/
 │   │   ├── data/
 │   │   └── presentation/
 │   ├── ponto/           # Módulo CP Ponto
-│   │   ├── data/
-│   │   └── presentation/
+│   │   ├── data/        # DataSources, Modelos e Repositório
+│   │   └── presentation/# Telas de Batida, Histórico e PontoProvider (Sensor & Auto-Sync)
 │   ├── estoque/         # Módulo CP Estoque & Almoxarifado
 │   │   ├── data/        # Modelos, DTOs, DataSource e Repositório
 │   │   └── presentation/# Saldos, Métricas, Entradas NFe, Saídas e Requisições
 │   └── navigation/      # Shell de Navegação Adaptativa (Web NavigationRail / Mobile Bar)
-└── main.dart            # Inicialização com MultiProvider (Auth + Estoque)
+└── main.dart            # Inicialização com MultiProvider (Auth + Estoque + Ponto)
 ```
 
 ---
