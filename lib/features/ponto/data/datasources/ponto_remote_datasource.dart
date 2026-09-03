@@ -8,6 +8,22 @@ class PontoRemoteDataSource {
 
   PontoRemoteDataSource(this._dioClient);
 
+  /// Verifica se o backend está respondendo (Heartbeat / Ping)
+  Future<bool> verificarConexao() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.pingEndpoint,
+        options: Options(
+          sendTimeout: const Duration(seconds: 3),
+          receiveTimeout: const Duration(seconds: 3),
+        ),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<List<String>> sincronizarPontos(List<RegistroPontoModel> registros) async {
     if (registros.isEmpty) return [];
 

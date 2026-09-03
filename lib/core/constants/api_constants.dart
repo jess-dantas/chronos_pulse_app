@@ -33,6 +33,7 @@ class ApiConstants {
     return 'http://localhost:8080/api/v1';
   }
 
+  static const String pingEndpoint = '/auth/ping';
   static const String loginEndpoint = '/auth/login';
   static const String pontosEndpoint = '/pontos/sincronizar';
 

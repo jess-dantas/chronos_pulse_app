@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../colaborador/presentation/screens/colaboradores_screen.dart';
 import '../../../estoque/presentation/screens/estoque_home_screen.dart';
 import '../../../ponto/presentation/screens/home_ponto_screen.dart';
+
+class _NavigationItem {
+  final Widget screen;
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+
+  const _NavigationItem({
+    required this.screen,
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+  });
+}
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -14,15 +29,49 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomePontoScreen(),
-    EstoqueHomeScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final usuario = authProvider.usuario;
+
+    final List<_NavigationItem> items = [];
+
+    // 1. Módulo de Ponto Eletrônico (todos os usuários autenticados)
+    items.add(
+      const _NavigationItem(
+        screen: HomePontoScreen(),
+        label: 'Ponto',
+        icon: Icons.fingerprint,
+        selectedIcon: Icons.fingerprint,
+      ),
+    );
+
+    // 2. Gestão de Colaboradores (Admin Plataforma, Admin Empresa e Gestor de RH)
+    if (usuario != null && usuario.isAdminOrRh) {
+      items.add(
+        const _NavigationItem(
+          screen: ColaboradoresScreen(),
+          label: 'Colaboradores',
+          icon: Icons.people_outline,
+          selectedIcon: Icons.people,
+        ),
+      );
+    }
+
+    // 3. Módulo de Estoque e Almoxarifado (Admin Plataforma, Admin Empresa, Gestor RH ou Colaborador autorizado)
+    if (usuario != null && usuario.temAcessoEstoque) {
+      items.add(
+        const _NavigationItem(
+          screen: EstoqueHomeScreen(),
+          label: 'Estoque',
+          icon: Icons.inventory_2_outlined,
+          selectedIcon: Icons.inventory_2,
+        ),
+      );
+    }
+
+    final safeIndex = (_currentIndex < items.length) ? _currentIndex : 0;
+    final screens = items.map((e) => e.screen).toList();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -55,7 +104,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 if (usuario != null) ...[
                   Chip(
                     avatar: const Icon(Icons.account_circle, size: 18),
-                    label: Text('${usuario.nome} (${usuario.role})'),
+                    label: Text('${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})'),
                     backgroundColor: Colors.deepPurple.withOpacity(0.08),
                   ),
                   const SizedBox(width: 12),
@@ -70,34 +119,33 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             ),
             body: Row(
               children: [
-                NavigationRail(
-                  selectedIndex: _currentIndex,
-                  onDestinationSelected: (index) {
-                    setState(() => _currentIndex = index);
-                  },
-                  labelType: NavigationRailLabelType.all,
-                  leading: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Icon(Icons.menu_open, color: Colors.deepPurple),
+                if (items.length > 1) ...[
+                  NavigationRail(
+                    selectedIndex: safeIndex,
+                    onDestinationSelected: (index) {
+                      setState(() => _currentIndex = index);
+                    },
+                    labelType: NavigationRailLabelType.all,
+                    leading: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Icon(Icons.menu_open, color: Colors.deepPurple),
+                    ),
+                    destinations: items
+                        .map(
+                          (item) => NavigationRailDestination(
+                            icon: Icon(item.icon),
+                            selectedIcon: Icon(item.selectedIcon, color: Colors.deepPurple),
+                            label: Text(item.label),
+                          ),
+                        )
+                        .toList(),
                   ),
-                  destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.fingerprint),
-                      selectedIcon: Icon(Icons.fingerprint, color: Colors.deepPurple),
-                      label: Text('Ponto'),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.inventory_2_outlined),
-                      selectedIcon: Icon(Icons.inventory_2, color: Colors.deepPurple),
-                      label: Text('Estoque'),
-                    ),
-                  ],
-                ),
-                const VerticalDivider(thickness: 1, width: 1),
+                  const VerticalDivider(thickness: 1, width: 1),
+                ],
                 Expanded(
                   child: IndexedStack(
-                    index: _currentIndex,
-                    children: _screens,
+                    index: safeIndex,
+                    children: screens,
                   ),
                 ),
               ],
@@ -108,25 +156,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         // Layout Mobile com BottomNavigationBar
         return Scaffold(
           body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
+            index: safeIndex,
+            children: screens,
           ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentIndex,
-            onDestinationSelected: (index) {
-              setState(() => _currentIndex = index);
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.fingerprint),
-                label: 'Ponto',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.inventory_2),
-                label: 'Estoque',
-              ),
-            ],
-          ),
+          bottomNavigationBar: items.length > 1
+              ? NavigationBar(
+                  selectedIndex: safeIndex,
+                  onDestinationSelected: (index) {
+                    setState(() => _currentIndex = index);
+                  },
+                  destinations: items
+                      .map(
+                        (item) => NavigationDestination(
+                          icon: Icon(item.icon),
+                          selectedIcon: Icon(item.selectedIcon, color: Colors.deepPurple),
+                          label: item.label,
+                        ),
+                      )
+                      .toList(),
+                )
+              : null,
         );
       },
     );

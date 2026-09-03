@@ -16,29 +16,49 @@ class PontoLocalDataSource {
     await db.insert('pontos', registro.toJson());
   }
 
-  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados() async {
+  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados({String? colaboradorId}) async {
     if (kIsWeb) {
-      return _webStorage.where((p) => !p.sincronizadoOffline).toList();
+      return _webStorage
+          .where((p) =>
+              !p.sincronizadoOffline &&
+              (colaboradorId == null || p.colaboradorId == colaboradorId))
+          .toList();
     }
 
     final db = await DatabaseHelper.instance.database;
+    final whereClause = colaboradorId != null
+        ? 'sincronizadoOffline = ? AND colaboradorId = ?'
+        : 'sincronizadoOffline = ?';
+    final whereArgs =
+        colaboradorId != null ? [0, colaboradorId] : [0];
+
     final result = await db.query(
       'pontos',
-      where: 'sincronizadoOffline = ?',
-      whereArgs: [0],
+      where: whereClause,
+      whereArgs: whereArgs,
     );
 
     return result.map((json) => RegistroPontoModel.fromJson(json)).toList();
   }
 
-  Future<List<RegistroPontoModel>> obterHistoricoHoje() async {
+  Future<List<RegistroPontoModel>> obterHistoricoHoje({String? colaboradorId}) async {
     if (kIsWeb) {
-      return List.from(_webStorage.reversed);
+      final filtrados = (colaboradorId == null)
+          ? _webStorage
+          : _webStorage.where((p) => p.colaboradorId == colaboradorId).toList();
+      return List.from(filtrados.reversed);
     }
 
     final db = await DatabaseHelper.instance.database;
-    final result =
-        await db.query('pontos', orderBy: 'dataHoraDispositivo DESC');
+    final whereClause = colaboradorId != null ? 'colaboradorId = ?' : null;
+    final whereArgs = colaboradorId != null ? [colaboradorId] : null;
+
+    final result = await db.query(
+      'pontos',
+      where: whereClause,
+      whereArgs: whereArgs,
+      orderBy: 'dataHoraDispositivo DESC',
+    );
 
     return result.map((json) => RegistroPontoModel.fromJson(json)).toList();
   }

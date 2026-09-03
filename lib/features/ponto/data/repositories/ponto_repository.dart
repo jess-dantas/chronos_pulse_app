@@ -34,8 +34,9 @@ class PontoRepository {
   }
 
   /// Sincroniza em lote todos os registros pendentes acumulados offline
-  Future<int> sincronizarPendentes() async {
-    final pendentes = await localDataSource.obterPontosNaoSincronizados();
+  Future<int> sincronizarPendentes({String? colaboradorId}) async {
+    final pendentes = await localDataSource.obterPontosNaoSincronizados(
+        colaboradorId: colaboradorId);
     if (pendentes.isEmpty) return 0;
 
     try {
@@ -49,12 +50,17 @@ class PontoRepository {
     }
   }
 
-  Future<int> obterQuantidadePendentes() async {
-    final pendentes = await localDataSource.obterPontosNaoSincronizados();
+  Future<int> obterQuantidadePendentes({String? colaboradorId}) async {
+    final pendentes = await localDataSource.obterPontosNaoSincronizados(
+        colaboradorId: colaboradorId);
     return pendentes.length;
   }
 
-  Future<List<RegistroPontoModel>> obterHistorico() async {
-    return await localDataSource.obterHistoricoHoje();
+  Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
+    return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
+  }
+
+  Future<bool> verificarConexao() async {
+    return await remoteDataSource.verificarConexao();
   }
 }

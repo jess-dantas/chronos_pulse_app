@@ -8,6 +8,7 @@ class UsuarioModel {
   final String? tenantId;
   final String? colaboradorId;
   final String? cpcId;
+  final bool acessoEstoque;
 
   UsuarioModel({
     required this.token,
@@ -19,7 +20,16 @@ class UsuarioModel {
     this.tenantId,
     this.colaboradorId,
     this.cpcId,
+    this.acessoEstoque = false,
   });
+
+  bool get isAdminPlataforma => role == 'ADMIN_PLATAFORMA';
+  bool get isAdminEmpresa => role == 'ADMIN_EMPRESA';
+  bool get isGestorRh => role == 'GESTOR_RH';
+  bool get isColaborador => role == 'COLABORADOR';
+
+  bool get isAdminOrRh => isAdminPlataforma || isAdminEmpresa || isGestorRh;
+  bool get temAcessoEstoque => isAdminOrRh || acessoEstoque;
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {
     return UsuarioModel(
@@ -32,6 +42,7 @@ class UsuarioModel {
       tenantId: json['tenantId'],
       colaboradorId: json['colaboradorId'] ?? json['cpcId'],
       cpcId: json['cpcId'],
+      acessoEstoque: json['acessoEstoque'] ?? false,
     );
   }
 
@@ -46,6 +57,7 @@ class UsuarioModel {
       'tenantId': tenantId,
       'colaboradorId': colaboradorId,
       'cpcId': cpcId,
+      'acessoEstoque': acessoEstoque,
     };
   }
 }

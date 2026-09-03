@@ -7,6 +7,10 @@ import 'package:chronos_pulse_app/features/auth/presentation/providers/auth_prov
 import 'package:chronos_pulse_app/features/estoque/data/datasources/estoque_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/estoque/data/repositories/estoque_repository.dart';
 import 'package:chronos_pulse_app/features/estoque/presentation/providers/estoque_provider.dart';
+import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_datasource.dart';
+import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
+import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 import 'package:chronos_pulse_app/main.dart';
 
 void main() {
@@ -21,11 +25,19 @@ void main() {
     final estoqueRemoteDataSource = EstoqueRemoteDataSource(dioClient);
     final estoqueRepository = EstoqueRepository(remoteDataSource: estoqueRemoteDataSource);
 
+    final pontoLocalDataSource = PontoLocalDataSource();
+    final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
+    final pontoRepository = PontoRepository(
+      localDataSource: pontoLocalDataSource,
+      remoteDataSource: pontoRemoteDataSource,
+    );
+
     await tester.pumpWidget(
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
           ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
+          ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
         ],
         child: const ChronosPulseApp(),
       ),

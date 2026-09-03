@@ -5,12 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/hardware/hardware_service.dart';
-import '../../../../core/network/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../data/datasources/ponto_local_datasource.dart';
-import '../../data/datasources/ponto_remote_datasource.dart';
 import '../../data/models/registro_ponto_model.dart';
-import '../../data/repositories/ponto_repository.dart';
+import '../providers/ponto_provider.dart';
 import 'camera_screen.dart';
 
 class HomePontoScreen extends StatefulWidget {
@@ -22,15 +19,10 @@ class HomePontoScreen extends StatefulWidget {
 
 class _HomePontoScreenState extends State<HomePontoScreen> {
   final HardwareService _hardwareService = HardwareService();
-  late final PontoRepository _pontoRepository;
   late Timer _timer;
 
   DateTime _horarioAtual = DateTime.now();
   bool _isLoading = false;
-  bool _isSincronizando = false;
-  int _pendentesCount = 0;
-
-  final List<RegistroPontoModel> _historicoHoje = [];
 
   final Map<String, String> _nomesTipos = {
     'ENTRADA': 'Entrada',
@@ -42,12 +34,6 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
   @override
   void initState() {
     super.initState();
-    final dioClient = DioClient();
-    _pontoRepository = PontoRepository(
-      localDataSource: PontoLocalDataSource(),
-      remoteDataSource: PontoRemoteDataSource(dioClient),
-    );
-    _carregarHistoricoEPendentes();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() => _horarioAtual = DateTime.now());
     });
@@ -59,9 +45,8 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     super.dispose();
   }
 
-  String _determinarProximoTipo() {
-    final count = _historicoHoje.length;
-    switch (count % 4) {
+  String _determinarProximoTipo(int totalRegistros) {
+    switch (totalRegistros % 4) {
       case 0:
         return 'ENTRADA';
       case 1:
@@ -75,9 +60,9 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     }
   }
 
-  String _obterLabelBotao(String tipo) {
+  String _obterLabelBotao(String tipo, int totalRegistros) {
     final nome = _nomesTipos[tipo] ?? tipo;
-    if (_historicoHoje.length >= 4 && tipo == 'ENTRADA') {
+    if (totalRegistros >= 4 && tipo == 'ENTRADA') {
       return 'Bater $nome (Extra)';
     }
     return 'Bater $nome';
@@ -98,46 +83,30 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     }
   }
 
-  Future<void> _carregarHistoricoEPendentes() async {
-    final historico = await _pontoRepository.obterHistorico();
-    final pendentes = await _pontoRepository.obterQuantidadePendentes();
+  Future<void> _sincronizarPendentes(PontoProvider pontoProvider) async {
+    final sincronizados = await pontoProvider.sincronizar();
+
     if (mounted) {
-      setState(() {
-        _historicoHoje.clear();
-        _historicoHoje.addAll(historico);
-        _pendentesCount = pendentes;
-      });
-    }
-  }
-
-  Future<void> _sincronizarPendentes() async {
-    if (_pendentesCount == 0) return;
-    setState(() => _isSincronizando = true);
-
-    try {
-      final sincronizados = await _pontoRepository.sincronizarPendentes();
-      await _carregarHistoricoEPendentes();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              sincronizados > 0
-                  ? '$sincronizados batida(s) sincronizada(s) com sucesso!'
-                  : 'Nenhuma conexão com o servidor. Os pontos permanecem salvos offline.',
-            ),
-            backgroundColor: sincronizados > 0 ? Colors.green : Colors.orange,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sincronizados > 0
+                ? '$sincronizados batida(s) sincronizada(s) com sucesso!'
+                : (pontoProvider.isOnline
+                    ? 'Todos os registros já estão sincronizados com o servidor.'
+                    : 'Servidor offline. Os pontos permanecem salvos em segurança no dispositivo.'),
           ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSincronizando = false);
+          backgroundColor: sincronizados > 0 || pontoProvider.isOnline
+              ? Colors.green
+              : Colors.orange,
+        ),
+      );
     }
   }
 
-  Future<void> _baterPonto() async {
+  Future<void> _baterPonto(PontoProvider pontoProvider) async {
     final authProvider = context.read<AuthProvider>();
-    final proximoTipo = _determinarProximoTipo();
+    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
 
     setState(() => _isLoading = true);
 
@@ -210,12 +179,8 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
         sincronizadoOffline: false,
       );
 
-      // 5. Salva offline e tenta sincronizar online
-      final foiSincronizado = await _pontoRepository.registrarPonto(
-        registro: novoRegistro,
-      );
-
-      await _carregarHistoricoEPendentes();
+      // 5. Salva offline e tenta sincronizar online via PontoProvider
+      final foiSincronizado = await pontoProvider.registrarPonto(novoRegistro);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -223,7 +188,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
             content: Text(
               foiSincronizado
                   ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
-                  : '${_nomesTipos[proximoTipo]} salva offline! Sincronização pendente.',
+                  : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.',
             ),
             backgroundColor: foiSincronizado ? Colors.green : Colors.orange,
           ),
@@ -246,11 +211,20 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final pontoProvider = context.watch<PontoProvider>();
     final usuario = authProvider.usuario;
+
+    final colabId = usuario?.colaboradorId ?? usuario?.cpcId;
+    if (pontoProvider.colaboradorId != colabId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        pontoProvider.definirColaborador(colabId);
+      });
+    }
+
     final horaFormatada = DateFormat('HH:mm:ss').format(_horarioAtual);
     final dataFormatada =
         DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(_horarioAtual);
-    final proximoTipo = _determinarProximoTipo();
+    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
     final corBotao = _obterCorTipo(proximoTipo);
 
     return Scaffold(
@@ -299,6 +273,75 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Sensor de Conectividade com o Backend (Heartbeat)
+                Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: pontoProvider.isOnline
+                          ? Colors.green.shade300
+                          : Colors.orange.shade300,
+                    ),
+                  ),
+                  color: pontoProvider.isOnline
+                      ? Colors.green.shade50
+                      : Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          pontoProvider.isOnline
+                              ? Icons.cloud_done
+                              : Icons.cloud_off,
+                          color: pontoProvider.isOnline
+                              ? Colors.green.shade700
+                              : Colors.orange.shade800,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            pontoProvider.isOnline
+                                ? 'Servidor Conectado (Online)'
+                                : 'Servidor Indisponível (Modo Offline)',
+                            style: TextStyle(
+                              color: pontoProvider.isOnline
+                                  ? Colors.green.shade900
+                                  : Colors.orange.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        if (pontoProvider.isVerificando)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 18),
+                            tooltip: 'Verificar conexão com o servidor',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            color: pontoProvider.isOnline
+                                ? Colors.green.shade800
+                                : Colors.orange.shade800,
+                            onPressed: () =>
+                                pontoProvider.checarConexao(autoSync: true),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 // Card de Informações do Colaborador
                 if (usuario != null)
                   Card(
@@ -407,7 +450,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                 const SizedBox(height: 20),
 
                 // Banner de Status de Sincronização Offline
-                if (_pendentesCount > 0)
+                if (pontoProvider.pendentesCount > 0)
                   Card(
                     color: Colors.orange[50],
                     shape: RoundedRectangleBorder(
@@ -421,11 +464,12 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.cloud_off, color: Colors.orange[800]),
+                          Icon(Icons.cloud_upload_outlined,
+                              color: Colors.orange[800]),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              '$_pendentesCount batida(s) salva(s) offline.',
+                              '${pontoProvider.pendentesCount} batida(s) salva(s) offline.',
                               style: TextStyle(
                                 color: Colors.orange[900],
                                 fontWeight: FontWeight.w600,
@@ -433,9 +477,10 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                             ),
                           ),
                           TextButton.icon(
-                            onPressed:
-                                _isSincronizando ? null : _sincronizarPendentes,
-                            icon: _isSincronizando
+                            onPressed: pontoProvider.isSincronizando
+                                ? null
+                                : () => _sincronizarPendentes(pontoProvider),
+                            icon: pontoProvider.isSincronizando
                                 ? const SizedBox(
                                     width: 14,
                                     height: 14,
@@ -450,19 +495,20 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                       ),
                     ),
                   ),
-                if (_pendentesCount > 0) const SizedBox(height: 16),
+                if (pontoProvider.pendentesCount > 0)
+                  const SizedBox(height: 16),
 
                 // Botão de Batida Automática Sequencial
                 SizedBox(
                   height: 58,
                   child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _baterPonto,
+                    onPressed: _isLoading ? null : () => _baterPonto(pontoProvider),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: corBotao,
                       foregroundColor: Colors.white,
                       elevation: 3,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     icon: _isLoading
@@ -474,9 +520,12 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                               strokeWidth: 2.5,
                             ),
                           )
-                        : const Icon(Icons.fingerprint, size: 30),
+                        : const Icon(Icons.touch_app, size: 26),
                     label: Text(
-                      _isLoading ? 'Registrando...' : _obterLabelBotao(proximoTipo),
+                      _isLoading
+                          ? 'Processando Registro...'
+                          : _obterLabelBotao(
+                              proximoTipo, pontoProvider.historico.length),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -486,105 +535,152 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // Lista de Histórico do Dia
+                // Seção de Histórico de Batidas de Hoje
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Histórico de Hoje (${_historicoHoje.length})',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
+                      'Batidas de Hoje',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
-                    IconButton(
-                      tooltip: 'Atualizar histórico',
-                      icon: const Icon(Icons.refresh, size: 20),
-                      onPressed: _carregarHistoricoEPendentes,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primaryContainer
+                            .withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Total: ${pontoProvider.historico.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-                _historicoHoje.isEmpty
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(vertical: 36),
-                        alignment: Alignment.center,
+                if (pontoProvider.historico.isEmpty)
+                  Card(
+                    elevation: 0,
+                    color: Colors.grey[200],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Center(
                         child: Column(
                           children: [
-                            Icon(Icons.access_time,
-                                size: 48, color: Colors.grey[400]),
-                            const SizedBox(height: 8),
+                            Icon(Icons.history, size: 36, color: Colors.grey),
+                            SizedBox(height: 8),
                             Text(
-                              'Nenhum ponto registrado hoje.',
-                              style: TextStyle(color: Colors.grey[600]),
+                              'Nenhum registro de ponto efetuado hoje.',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ],
                         ),
-                      )
-                    : ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _historicoHoje.length,
-                        itemBuilder: (context, index) {
-                          final item = _historicoHoje[index];
-                          final horaItem = DateFormat('HH:mm:ss')
-                              .format(item.dataHoraDispositivo.toLocal());
-                          final corItem = _obterCorTipo(item.tipoRegistro);
-                          final nomeTipo =
-                              _nomesTipos[item.tipoRegistro] ?? item.tipoRegistro;
+                      ),
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: pontoProvider.historico.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final registro = pontoProvider.historico[index];
+                      final hora = DateFormat('HH:mm:ss')
+                          .format(registro.dataHoraDispositivo.toLocal());
+                      final cor = _obterCorTipo(registro.tipoRegistro);
+                      final nomeTipo =
+                          _nomesTipos[registro.tipoRegistro] ??
+                              registro.tipoRegistro;
 
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      return Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: cor.withOpacity(0.15),
+                            child: Icon(Icons.access_time, color: cor),
+                          ),
+                          title: Text(
+                            '$nomeTipo (#${index + 1})',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: cor,
                             ),
-                            child: ListTile(
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: corItem.withOpacity(0.12),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  item.sincronizadoOffline
+                          ),
+                          subtitle: Text(
+                            'Horário: $hora',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: registro.sincronizadoOffline
+                                  ? Colors.green[50]
+                                  : Colors.orange[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: registro.sincronizadoOffline
+                                    ? Colors.green.shade200
+                                    : Colors.orange.shade200,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  registro.sincronizadoOffline
                                       ? Icons.cloud_done
                                       : Icons.cloud_off,
-                                  color: item.sincronizadoOffline
-                                      ? corItem
-                                      : Colors.orange,
-                                  size: 22,
-                                ),
-                              ),
-                              title: Text(
-                                nomeTipo,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(
-                                item.sincronizadoOffline
-                                    ? 'Sincronizado online'
-                                    : 'Pendente de sincronização',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: item.sincronizadoOffline
-                                      ? Colors.grey[600]
+                                  size: 14,
+                                  color: registro.sincronizadoOffline
+                                      ? Colors.green[700]
                                       : Colors.orange[800],
                                 ),
-                              ),
-                              trailing: Text(
-                                horaItem,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                const SizedBox(width: 4),
+                                Text(
+                                  registro.sincronizadoOffline
+                                      ? 'Sincronizado'
+                                      : 'Pendente',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: registro.sincronizadoOffline
+                                        ? Colors.green[800]
+                                        : Colors.orange[900],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
