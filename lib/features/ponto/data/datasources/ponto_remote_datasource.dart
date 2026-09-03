@@ -8,28 +8,34 @@ class PontoRemoteDataSource {
 
   PontoRemoteDataSource(this._dioClient);
 
-  Future<void> registrarPonto({
-    required RegistroPontoModel registro,
-    required String cpfColaborador,
-  }) async {
+  Future<List<String>> sincronizarPontos(List<RegistroPontoModel> registros) async {
+    if (registros.isEmpty) return [];
+
     try {
+      final payload = {
+        'registros': registros.map((r) => r.toApiJson()).toList(),
+      };
+
       final response = await _dioClient.dio.post(
-        '${ApiConstants.baseUrl}${ApiConstants.pontosEndpoint}',
-        data: {
-          'registros': [registro.toJson()..['sincronizadoOffline'] = true],
-        },
-        options: Options(
-          headers: {'X-CPF-Colaborador': cpfColaborador},
-        ),
+        ApiConstants.pontosEndpoint,
+        data: payload,
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Falha ao registrar ponto: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['idsSucesso'] != null) {
+          final List<dynamic> sucessos = data['idsSucesso'];
+          return sucessos.map((id) => id.toString()).toList();
+        }
+        return registros.map((r) => r.idLocal).toList();
+      } else {
+        throw Exception('Falha ao registrar ponto: status ${response.statusCode}');
       }
     } on DioException catch (e) {
-      throw Exception(
-        e.response?.data?['message'] ?? 'Erro de rede ao conectar com a API',
-      );
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro de rede ao conectar com a API');
+    } catch (e) {
+      throw Exception('Erro ao sincronizar ponto: ${e.toString()}');
     }
   }
 }

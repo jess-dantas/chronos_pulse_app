@@ -43,11 +43,9 @@ class PontoLocalDataSource {
     return result.map((json) => RegistroPontoModel.fromJson(json)).toList();
   }
 
-  Future<void> marcarComoSincronizado(String dataHoraDispositivo) async {
+  Future<void> marcarComoSincronizado(String idLocal) async {
     if (kIsWeb) {
-      final index = _webStorage.indexWhere(
-        (p) => p.dataHoraDispositivo.toIso8601String() == dataHoraDispositivo,
-      );
+      final index = _webStorage.indexWhere((p) => p.idLocal == idLocal);
       if (index != -1) {
         final item = _webStorage[index];
         _webStorage[index] = RegistroPontoModel(
@@ -59,6 +57,7 @@ class PontoLocalDataSource {
           longitude: item.longitude,
           precisaoGps: item.precisaoGps,
           fotoUrl: item.fotoUrl,
+          hashLocal: item.hashLocal,
           sincronizadoOffline: true,
         );
       }
@@ -69,8 +68,8 @@ class PontoLocalDataSource {
     await db.update(
       'pontos',
       {'sincronizadoOffline': 1},
-      where: 'dataHoraDispositivo = ?',
-      whereArgs: [dataHoraDispositivo],
+      where: 'idLocal = ?',
+      whereArgs: [idLocal],
     );
   }
 }

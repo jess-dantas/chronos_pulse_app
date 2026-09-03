@@ -11,45 +11,47 @@ class PontoRepository {
     required this.remoteDataSource,
   });
 
+  /// Salva localmente primeiro (offline-first) e tenta sincronizar com o backend
   Future<bool> registrarPonto({
     required RegistroPontoModel registro,
-    required String cpfColaborador,
   }) async {
-    // 1. Salva no banco SQLite local primeiro
+    // 1. Salva no banco local primeiro
     await localDataSource.salvarPontoLocal(registro);
 
-    // 2. Tenta enviar para a API Spring Boot
+    // 2. Tenta sincronizar com a API REST
     try {
-      await remoteDataSource.registrarPonto(
-        registro: registro,
-        cpfColaborador: cpfColaborador,
-      );
+      final idsSucesso = await remoteDataSource.sincronizarPontos([registro]);
 
-      // Se a API aceitou, marca como sincronizado localmente
-      await localDataSource.marcarComoSincronizado(
-          registro.dataHoraDispositivo.toIso8601String());
-      return true; // Sincronizado online com sucesso
-    } catch (e) {
-      // Se falhar (offline ou erro no servidor), o registro permanece gravado localmente
+      if (idsSucesso.contains(registro.idLocal) || idsSucesso.isNotEmpty) {
+        await localDataSource.marcarComoSincronizado(registro.idLocal);
+        return true; // Sincronizado online com sucesso
+      }
       return false; // Salvo offline
+    } catch (_) {
+      // Falha de rede ou servidor indisponível: ponto permanece salvo offline
+      return false;
     }
   }
 
-  Future<void> sincronizarPendentes(String cpfColaborador) async {
+  /// Sincroniza em lote todos os registros pendentes acumulados offline
+  Future<int> sincronizarPendentes() async {
     final pendentes = await localDataSource.obterPontosNaoSincronizados();
+    if (pendentes.isEmpty) return 0;
 
-    for (var ponto in pendentes) {
-      try {
-        await remoteDataSource.registrarPonto(
-          registro: ponto,
-          cpfColaborador: cpfColaborador,
-        );
-        await localDataSource.marcarComoSincronizado(
-            ponto.dataHoraDispositivo.toIso8601String());
-      } catch (_) {
-        // Permanece pendente para a próxima tentativa
+    try {
+      final idsSucesso = await remoteDataSource.sincronizarPontos(pendentes);
+      for (var id in idsSucesso) {
+        await localDataSource.marcarComoSincronizado(id);
       }
+      return idsSucesso.length;
+    } catch (_) {
+      return 0;
     }
+  }
+
+  Future<int> obterQuantidadePendentes() async {
+    final pendentes = await localDataSource.obterPontosNaoSincronizados();
+    return pendentes.length;
   }
 
   Future<List<RegistroPontoModel>> obterHistorico() async {

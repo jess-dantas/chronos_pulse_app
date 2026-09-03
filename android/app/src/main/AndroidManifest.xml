@@ -10,6 +10,10 @@
     <!-- Permissão de Biometria / Digital / FaceID -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- Adicione a permissão de Câmera abaixo -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
     <application
         android:usesCleartextTraffic="true"
         android:label="chronos_pulse_app"

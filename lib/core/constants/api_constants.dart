@@ -9,24 +9,38 @@ class ApiConstants {
     }
 
     // 2. Se estiver rodando no Android (Emulador usa 10.0.2.2, dispositivo físico usa IP da máquina)
-    if (Platform.isAndroid) {
-      const bool isEmulator = bool.fromEnvironment('EMULATOR', defaultValue: false);
-      return isEmulator
-          ? 'http://10.0.2.2:8080/api/v1'
-          : 'http://192.168.1.14:8080/api/v1';
+    try {
+      if (Platform.isAndroid) {
+        const bool isEmulator = bool.fromEnvironment('EMULATOR', defaultValue: false);
+        return isEmulator
+            ? 'http://10.0.2.2:8080/api/v1'
+            : 'http://192.168.1.14:8080/api/v1';
+      }
+
+      // 3. iOS — dispositivo físico precisa do IP da máquina (simulador usa localhost)
+      if (Platform.isIOS) {
+        const bool isSimulator = bool.fromEnvironment('SIMULATOR', defaultValue: false);
+        return isSimulator
+            ? 'http://localhost:8080/api/v1'
+            : 'http://192.168.1.14:8080/api/v1';
+      }
+    } catch (_) {
+      // Fallback para ambientes sem suporte a Platform
+      return 'http://localhost:8080/api/v1';
     }
 
-    // 3. iOS — dispositivo físico precisa do IP da máquina (simulador usa localhost)
-    if (Platform.isIOS) {
-      const bool isSimulator = bool.fromEnvironment('SIMULATOR', defaultValue: false);
-      return isSimulator
-          ? 'http://localhost:8080/api/v1'
-          : 'http://192.168.1.14:8080/api/v1';
-    }
-
-    // 4. Desktop
+    // 4. Desktop / Fallback
     return 'http://localhost:8080/api/v1';
   }
 
+  static const String loginEndpoint = '/auth/login';
   static const String pontosEndpoint = '/pontos/sincronizar';
+
+  // Módulo de Estoque & Almoxarifado
+  static const String estoqueMateriaisEndpoint = '/estoque/materiais';
+  static const String estoqueAlmoxarifadosEndpoint = '/estoque/almoxarifados';
+  static const String estoqueSaldosEndpoint = '/estoque/saldos';
+  static const String estoqueEntradaEndpoint = '/estoque/movimentacoes/entrada';
+  static const String estoqueSaidaEndpoint = '/estoque/movimentacoes/saida';
+  static const String estoqueRequisicoesEndpoint = '/estoque/requisicoes';
 }
