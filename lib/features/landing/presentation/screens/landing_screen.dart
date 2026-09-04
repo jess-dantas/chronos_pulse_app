@@ -76,41 +76,43 @@ class LandingScreen extends StatelessWidget {
             tooltip: isDark ? 'Modo Claro' : 'Modo Escuro',
             onPressed: () => themeProvider.toggleTheme(),
           ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: EdgeInsets.only(right: isDesktop ? 32 : 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _navigateToCadastro(context),
-                  icon: const Icon(Icons.business_center, size: 18),
-                  label: const Text('Cadastrar'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+          if (isDesktop) ...[
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 32),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _navigateToCadastro(context),
+                    icon: const Icon(Icons.business_center, size: 18),
+                    label: const Text('Cadastrar'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  key: const Key('landing_appbar_login_button'),
-                  onPressed: () => _navigateToLogin(context),
-                  icon: const Icon(Icons.login, size: 18),
-                  label: const Text('Login'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    key: const Key('landing_appbar_login_button'),
+                    onPressed: () => _navigateToLogin(context),
+                    icon: const Icon(Icons.login, size: 18),
+                    label: const Text('Login'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
       body: SingleChildScrollView(

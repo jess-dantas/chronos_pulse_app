@@ -1,0 +1,21 @@
+[build]
+  command = "flutter build web --release"
+  publish = "build/web"
+
+# Flutter Web (SPA) — roteamento por path servido pelo index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Assets versionados podem ser cacheados agressivamente
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Evitar cache da inicialização do app (bootstrap muda a cada build)
+[[headers]]
+  for = "/flutter_bootstrap.js"
+  [headers.values]
+    Cache-Control = "no-cache"

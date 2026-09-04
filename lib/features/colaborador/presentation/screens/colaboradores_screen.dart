@@ -102,20 +102,22 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
             tooltip: 'Atualizar lista',
             onPressed: () => provider.carregarColaboradores(),
           ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.person_add, size: 18),
-              label: const Text('Novo Colaborador'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.blue.shade800,
-                elevation: 0,
+          if (MediaQuery.sizeOf(context).width >= 600) ...[
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Novo Colaborador'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.blue.shade800,
+                  elevation: 0,
+                ),
+                onPressed: _abrirDialogNovoColaborador,
               ),
-              onPressed: _abrirDialogNovoColaborador,
             ),
-          ),
+          ],
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

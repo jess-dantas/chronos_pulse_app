@@ -29,6 +29,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
 
+  final temaInicial = await ThemeProvider.carregarTema();
+
   final dioClient = DioClient();
 
   final authRemoteDataSource = AuthRemoteDataSource(dioClient);
@@ -60,7 +62,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
         ChangeNotifierProvider.value(value: authProvider),
         ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
         ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),

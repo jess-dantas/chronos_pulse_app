@@ -218,50 +218,29 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: TextFormField(
-                                controller: _cpfController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [CpfInputFormatter()],
-                                decoration: InputDecoration(
-                                  labelText: 'CPF *',
-                                  hintText: '000.000.000-00',
-                                  prefixIcon: const Icon(Icons.credit_card),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Informe o CPF';
-                                  }
-                                  if (!CpfInputFormatter.isValidLength(value)) {
-                                    return 'CPF deve ter 11 dígitos';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 5,
-                              child: TextFormField(
-                                controller: _celularController,
-                                keyboardType: TextInputType.phone,
-                                decoration: InputDecoration(
-                                  labelText: 'Celular',
-                                  hintText: '(00) 00000-0000',
-                                  prefixIcon: const Icon(Icons.phone_outlined),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final empilhar = constraints.maxWidth < 500;
+                            final cpfField = _buildCpfField();
+                            final celularField = _buildCelularField();
+                            if (empilhar) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  cpfField,
+                                  const SizedBox(height: 12),
+                                  celularField,
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(flex: 4, child: cpfField),
+                                const SizedBox(width: 12),
+                                Expanded(flex: 5, child: celularField),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
 
@@ -362,6 +341,46 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCpfField() {
+    return TextFormField(
+      controller: _cpfController,
+      keyboardType: TextInputType.number,
+      inputFormatters: [CpfInputFormatter()],
+      decoration: InputDecoration(
+        labelText: 'CPF *',
+        hintText: '000.000.000-00',
+        prefixIcon: const Icon(Icons.credit_card),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Informe o CPF';
+        }
+        if (!CpfInputFormatter.isValidLength(value)) {
+          return 'CPF deve ter 11 dígitos';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCelularField() {
+    return TextFormField(
+      controller: _celularController,
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        labelText: 'Celular',
+        hintText: '(00) 00000-0000',
+        prefixIcon: const Icon(Icons.phone_outlined),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
