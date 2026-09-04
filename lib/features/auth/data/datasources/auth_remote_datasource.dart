@@ -31,10 +31,22 @@ class AuthRemoteDataSource {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw Exception('CPF ou senha incorretos.');
       }
-      final msg = e.response?.data?['message'] ?? e.message;
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw Exception(
+          'Não foi possível conectar ao servidor. Verifique sua conexão com a internet ou tente novamente mais tarde.',
+        );
+      }
+      final msg = (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message;
       throw Exception(msg ?? 'Erro de rede ao autenticar.');
     } catch (e) {
-      throw Exception('Erro ao realizar login: ${e.toString()}');
+      throw Exception(
+        e.toString().startsWith('Exception: ')
+            ? e.toString().replaceFirst('Exception: ', '')
+            : 'Erro ao realizar login: ${e.toString()}',
+      );
     }
   }
 }

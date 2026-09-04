@@ -27,6 +27,40 @@ class DioClient {
           }
           return handler.next(options);
         },
+        onError: (DioException error, ErrorInterceptorHandler handler) {
+          String userFriendlyMessage;
+          if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
+            userFriendlyMessage = 'Acesso não autorizado ou credenciais inválidas.';
+          } else if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.sendTimeout ||
+              error.type == DioExceptionType.receiveTimeout) {
+            userFriendlyMessage =
+                'Tempo limite de conexão excedido. Verifique sua conexão com a internet.';
+          } else if (error.type == DioExceptionType.connectionError) {
+            userFriendlyMessage =
+                'Não foi possível conectar ao servidor. Verifique sua conexão ou se a API está online.';
+          } else if (error.type == DioExceptionType.badResponse) {
+            final dynamic data = error.response?.data;
+            if (data is Map && data['message'] != null) {
+              userFriendlyMessage = data['message'].toString();
+            } else {
+              userFriendlyMessage = 'Erro no servidor (${error.response?.statusCode}).';
+            }
+          } else {
+            userFriendlyMessage =
+                error.message ?? 'Erro inesperado na comunicação com o servidor.';
+          }
+
+          return handler.next(
+            DioException(
+              requestOptions: error.requestOptions,
+              response: error.response,
+              type: error.type,
+              error: error.error,
+              message: userFriendlyMessage,
+            ),
+          );
+        },
       ),
     );
   }
