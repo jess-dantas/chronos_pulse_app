@@ -19,6 +19,7 @@ class AuthProvider extends ChangeNotifier {
   static const _keyCpcId = 'chronos_cpc_id';
   static const _keyAcessoEstoque = 'chronos_acesso_estoque';
   static const _keySessionInicio = 'chronos_session_inicio';
+  static const _keyFoto = 'chronos_foto';
 
   /// Tempo de inatividade antes de encerrar a sessão.
   static const Duration idleTimeout = Duration(minutes: 15);
@@ -98,6 +99,7 @@ class AuthProvider extends ChangeNotifier {
         tenantId: prefs.getString(_keyTenantId),
         cpcId: prefs.getString(_keyCpcId),
         acessoEstoque: prefs.getBool(_keyAcessoEstoque) ?? false,
+        foto: prefs.getString(_keyFoto),
       );
       _authRepository.updateToken(token);
 
@@ -113,6 +115,7 @@ class AuthProvider extends ChangeNotifier {
           tenantId: refreshed.tenantId,
           cpcId: refreshed.cpcId,
           acessoEstoque: refreshed.acessoEstoque,
+          foto: refreshed.foto ?? prefs.getString(_keyFoto),
         );
         _authRepository.updateToken(refreshed.token);
         await _saveSession(_usuario!);
@@ -153,8 +156,16 @@ class AuthProvider extends ChangeNotifier {
     required String responsavelNome,
     required String responsavelCpf,
     required String responsavelEmail,
+    String? responsavelTelefone,
     String? responsavelCelular,
     required String responsavelSenha,
+    String? enderecoLogradouro,
+    String? enderecoNumero,
+    String? enderecoComplemento,
+    String? enderecoBairro,
+    String? enderecoCidade,
+    String? enderecoUf,
+    String? enderecoCep,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -167,14 +178,107 @@ class AuthProvider extends ChangeNotifier {
         responsavelNome: responsavelNome,
         responsavelCpf: responsavelCpf,
         responsavelEmail: responsavelEmail,
+        responsavelTelefone: responsavelTelefone,
         responsavelCelular: responsavelCelular,
         responsavelSenha: responsavelSenha,
+        enderecoLogradouro: enderecoLogradouro,
+        enderecoNumero: enderecoNumero,
+        enderecoComplemento: enderecoComplemento,
+        enderecoBairro: enderecoBairro,
+        enderecoCidade: enderecoCidade,
+        enderecoUf: enderecoUf,
+        enderecoCep: enderecoCep,
       );
       await _saveSession(_usuario!);
       await _marcarInicioSessao();
       _isLoading = false;
       notifyListeners();
       registrarAtividade();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> alterarSenha(String novaSenha) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.alterarSenha(novaSenha: novaSenha);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<String?> esqueciSenha(String cpf) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final mensagem = await _authRepository.esqueciSenha(cpf: cpf);
+      _isLoading = false;
+      notifyListeners();
+      return mensagem;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> redefinirSenha({
+    required String cpf,
+    required String codigo,
+    required String novaSenha,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.redefinirSenha(
+        cpf: cpf,
+        codigo: codigo,
+        novaSenha: novaSenha,
+      );
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> enviarFoto(List<int> bytes, String nomeArquivo) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final foto = await _authRepository.enviarFoto(bytes, nomeArquivo);
+      final atual = _usuario;
+      if (atual != null) {
+        _usuario = atual.copyWith(foto: foto);
+        await _saveSession(_usuario!);
+      }
+      _isLoading = false;
+      notifyListeners();
       return true;
     } catch (e) {
       _isLoading = false;
@@ -218,6 +322,7 @@ class AuthProvider extends ChangeNotifier {
     if (usuario.tenantId != null) await prefs.setString(_keyTenantId, usuario.tenantId!);
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
+    if (usuario.foto != null) await prefs.setString(_keyFoto, usuario.foto!);
   }
 
   Future<void> _clearSession() async {
@@ -231,5 +336,6 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyCpcId);
     await prefs.remove(_keyAcessoEstoque);
     await prefs.remove(_keySessionInicio);
+    await prefs.remove(_keyFoto);
   }
 }

@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../screens/admin_dashboard_screen.dart';
+import '../screens/admin_empresas_screen.dart';
+import '../screens/admin_colaboradores_screen.dart';
 import '../screens/admin_contratos_screen.dart';
+import '../screens/admin_alterar_senha_screen.dart';
 
 class _AdminNavItem {
   final Widget screen;
@@ -37,10 +40,28 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
       selectedIcon: Icons.dashboard,
     ),
     _AdminNavItem(
+      screen: AdminEmpresasScreen(),
+      label: 'Empresas',
+      icon: Icons.business_outlined,
+      selectedIcon: Icons.business,
+    ),
+    _AdminNavItem(
+      screen: AdminColaboradoresScreen(),
+      label: 'Colaboradores',
+      icon: Icons.people_outline,
+      selectedIcon: Icons.people,
+    ),
+    _AdminNavItem(
       screen: AdminContratosScreen(),
       label: 'Contratos',
       icon: Icons.description_outlined,
       selectedIcon: Icons.description,
+    ),
+    _AdminNavItem(
+      screen: AdminAlterarSenhaScreen(),
+      label: 'Alterar Senha',
+      icon: Icons.password_outlined,
+      selectedIcon: Icons.password,
     ),
   ];
 

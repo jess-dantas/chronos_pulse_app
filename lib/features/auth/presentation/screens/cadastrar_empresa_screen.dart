@@ -17,10 +17,20 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
   final _cnpjController = TextEditingController();
   final _nomeEmpresaController = TextEditingController();
   final _nomeController = TextEditingController();
-  final _cpfController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _telefoneController = TextEditingController();
   final _celularController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _cpfController = TextEditingController();
   final _senhaController = TextEditingController();
+
+  final _endLogradouroController = TextEditingController();
+  final _endNumeroController = TextEditingController();
+  final _endComplementoController = TextEditingController();
+  final _endBairroController = TextEditingController();
+  final _endCidadeController = TextEditingController();
+  final _endUfController = TextEditingController();
+  final _endCepController = TextEditingController();
+
   bool _obscurePassword = true;
 
   @override
@@ -28,11 +38,24 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
     _cnpjController.dispose();
     _nomeEmpresaController.dispose();
     _nomeController.dispose();
-    _cpfController.dispose();
-    _emailController.dispose();
+    _telefoneController.dispose();
     _celularController.dispose();
+    _emailController.dispose();
+    _cpfController.dispose();
     _senhaController.dispose();
+    _endLogradouroController.dispose();
+    _endNumeroController.dispose();
+    _endComplementoController.dispose();
+    _endBairroController.dispose();
+    _endCidadeController.dispose();
+    _endUfController.dispose();
+    _endCepController.dispose();
     super.dispose();
+  }
+
+  String? _vazioOuNulo(TextEditingController controller) {
+    final texto = controller.text.trim();
+    return texto.isNotEmpty ? texto : null;
   }
 
   Future<void> _handleCadastro() async {
@@ -45,10 +68,16 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
       responsavelNome: _nomeController.text.trim(),
       responsavelCpf: _cpfController.text,
       responsavelEmail: _emailController.text.trim(),
-      responsavelCelular: _celularController.text.trim().isNotEmpty
-          ? _celularController.text.trim()
-          : null,
+      responsavelTelefone: _vazioOuNulo(_telefoneController),
+      responsavelCelular: _vazioOuNulo(_celularController),
       responsavelSenha: _senhaController.text,
+      enderecoLogradouro: _vazioOuNulo(_endLogradouroController),
+      enderecoNumero: _vazioOuNulo(_endNumeroController),
+      enderecoComplemento: _vazioOuNulo(_endComplementoController),
+      enderecoBairro: _vazioOuNulo(_endBairroController),
+      enderecoCidade: _vazioOuNulo(_endCidadeController),
+      enderecoUf: _vazioOuNulo(_endUfController),
+      enderecoCep: _vazioOuNulo(_endCepController),
     );
 
     if (sucesso && mounted) {
@@ -199,8 +228,19 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                         ),
                         const SizedBox(height: 24),
 
+                        // Seção: Endereço
+                        _buildSectionHeader(context, 'Endereço', Icons.location_on_outlined),
+                        const SizedBox(height: 12),
+
+                        _buildEnderecoFields(),
+                        const SizedBox(height: 24),
+
                         // Seção: Dados do Administrador
-                        _buildSectionHeader(context, 'Dados do Administrador', Icons.admin_panel_settings),
+                        _buildSectionHeader(
+                          context,
+                          'Dados do Administrador (responsável comercial)',
+                          Icons.admin_panel_settings,
+                        ),
                         const SizedBox(height: 12),
 
                         TextFormField(
@@ -218,29 +258,31 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final empilhar = constraints.maxWidth < 500;
-                            final cpfField = _buildCpfField();
-                            final celularField = _buildCelularField();
-                            if (empilhar) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  cpfField,
-                                  const SizedBox(height: 12),
-                                  celularField,
-                                ],
-                              );
-                            }
-                            return Row(
-                              children: [
-                                Expanded(flex: 4, child: cpfField),
-                                const SizedBox(width: 12),
-                                Expanded(flex: 5, child: celularField),
-                              ],
-                            );
-                          },
+                        TextFormField(
+                          controller: _telefoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Telefone',
+                            hintText: '(00) 0000-0000',
+                            prefixIcon: const Icon(Icons.call_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _celularController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: 'Celular',
+                            hintText: '(00) 00000-0000',
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 16),
 
@@ -248,7 +290,7 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            labelText: 'E-mail Corporativo *',
+                            labelText: 'E-mail *',
                             prefixIcon: const Icon(Icons.email_outlined),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -260,6 +302,30 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                             }
                             if (!v.contains('@') || !v.contains('.')) {
                               return 'Informe um e-mail válido';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _cpfController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [CpfInputFormatter()],
+                          decoration: InputDecoration(
+                            labelText: 'CPF (Login) *',
+                            hintText: '000.000.000-00',
+                            prefixIcon: const Icon(Icons.credit_card),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Informe o CPF';
+                            }
+                            if (!CpfInputFormatter.isValidLength(value)) {
+                              return 'CPF deve ter 11 dígitos';
                             }
                             return null;
                           },
@@ -346,39 +412,162 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
     );
   }
 
-  Widget _buildCpfField() {
-    return TextFormField(
-      controller: _cpfController,
-      keyboardType: TextInputType.number,
-      inputFormatters: [CpfInputFormatter()],
-      decoration: InputDecoration(
-        labelText: 'CPF *',
-        hintText: '000.000.000-00',
-        prefixIcon: const Icon(Icons.credit_card),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Informe o CPF';
+  Widget _buildEnderecoFields() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final emColuna = constraints.maxWidth < 520;
+
+        if (emColuna) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildCampoEndereco(
+                controller: _endLogradouroController,
+                label: 'Logradouro',
+                hint: 'Rua, Avenida...',
+                icon: Icons.signpost_outlined,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endNumeroController,
+                label: 'Número',
+                hint: 'Nº',
+                icon: Icons.tag,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endComplementoController,
+                label: 'Complemento',
+                hint: 'Bloco, Apto, Andar...',
+                icon: Icons.add_home_outlined,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endBairroController,
+                label: 'Bairro',
+                hint: 'Bairro',
+                icon: Icons.location_city,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endCidadeController,
+                label: 'Cidade',
+                hint: 'Cidade',
+                icon: Icons.location_on_outlined,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endUfController,
+                label: 'UF',
+                hint: 'UF',
+                icon: Icons.map_outlined,
+              ),
+              const SizedBox(height: 12),
+              _buildCampoEndereco(
+                controller: _endCepController,
+                label: 'CEP',
+                hint: '00000-000',
+                icon: Icons.mail_outline,
+              ),
+            ],
+          );
         }
-        if (!CpfInputFormatter.isValidLength(value)) {
-          return 'CPF deve ter 11 dígitos';
-        }
-        return null;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildCampoEndereco(
+              controller: _endLogradouroController,
+              label: 'Logradouro',
+              hint: 'Rua, Avenida...',
+              icon: Icons.signpost_outlined,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildCampoEndereco(
+                    controller: _endNumeroController,
+                    label: 'Número',
+                    hint: 'Nº',
+                    icon: Icons.tag,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 5,
+                  child: _buildCampoEndereco(
+                    controller: _endComplementoController,
+                    label: 'Complemento',
+                    hint: 'Bloco, Apto, Andar...',
+                    icon: Icons.add_home_outlined,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildCampoEndereco(
+              controller: _endBairroController,
+              label: 'Bairro',
+              hint: 'Bairro',
+              icon: Icons.location_city,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: _buildCampoEndereco(
+                    controller: _endCidadeController,
+                    label: 'Cidade',
+                    hint: 'Cidade',
+                    icon: Icons.location_on_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: _buildCampoEndereco(
+                    controller: _endUfController,
+                    label: 'UF',
+                    hint: 'UF',
+                    icon: Icons.map_outlined,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: _buildCampoEndereco(
+                    controller: _endCepController,
+                    label: 'CEP',
+                    hint: '00000-000',
+                    icon: Icons.mail_outline,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
       },
     );
   }
 
-  Widget _buildCelularField() {
+  Widget _buildCampoEndereco({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+  }) {
     return TextFormField(
-      controller: _celularController,
-      keyboardType: TextInputType.phone,
+      controller: controller,
+      textInputAction: TextInputAction.next,
       decoration: InputDecoration(
-        labelText: 'Celular',
-        hintText: '(00) 00000-0000',
-        prefixIcon: const Icon(Icons.phone_outlined),
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -392,12 +581,14 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
       children: [
         Icon(icon, size: 20, color: colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.primary,
-              ),
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
+          ),
         ),
         const Expanded(child: Divider(indent: 12)),
       ],

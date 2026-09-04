@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -20,6 +21,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminProvider>().carregarDashboard();
     });
+  }
+
+  Future<void> _selecionarFoto() async {
+    final arquivo = await FilePicker.pickFile(type: FileType.image);
+    if (arquivo == null) return;
+
+    final bytes = await arquivo.readAsBytes();
+    if (bytes.isEmpty) return;
+
+    if (bytes.length > 512 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('A imagem deve ter no máximo 512KB.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final sucesso = await authProvider.enviarFoto(bytes, arquivo.name);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          sucesso
+              ? 'Foto de perfil atualizada.'
+              : authProvider.errorMessage ?? 'Erro ao atualizar a foto.',
+        ),
+        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
+      ),
+    );
   }
 
   @override
@@ -45,14 +82,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.all(24),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                        child: Icon(
-                          Icons.admin_panel_settings,
-                          size: 32,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            foregroundImage: usuario?.temFoto == true
+                                ? MemoryImage(usuario!.fotoBytes)
+                                : null,
+                            child: usuario?.temFoto == true
+                                ? null
+                                : Icon(
+                                    Icons.admin_panel_settings,
+                                    size: 32,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                          ),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: InkWell(
+                              onTap: _selecionarFoto,
+                              customBorder: const CircleBorder(),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.surface,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.photo_camera,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -139,44 +209,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                     ),
-                  ],
-                ),
-              const SizedBox(height: 32),
-
-              // Acesso Rápido
-              Text(
-                'Acesso Rápido',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _QuickAccessCard(
-                      titulo: 'Gerenciar Empresas',
-                      descricao: 'Listar, cadastrar e gerenciar tenants',
-                      icono: Icons.business_center,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AdminEmpresasScreen()),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _QuickAccessCard(
-                      titulo: 'Gerenciar Contratos',
-                      descricao: 'Visualizar e cadastrar contratos',
-                      icono: Icons.assignment,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AdminContratosScreen()),
-                      ),
-                    ),
-                  ),
-                ],
+],
               ),
             ],
           ),
@@ -240,51 +273,6 @@ class _MetricCard extends StatelessWidget {
           ],
         ),
       ),
-      ),
-    );
-  }
-}
-
-class _QuickAccessCard extends StatelessWidget {
-  final String titulo;
-  final String descricao;
-  final IconData icono;
-  final VoidCallback onTap;
-
-  const _QuickAccessCard({
-    required this.titulo,
-    required this.descricao,
-    required this.icono,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icono, size: 32, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 12),
-              Text(
-                titulo,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                descricao,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

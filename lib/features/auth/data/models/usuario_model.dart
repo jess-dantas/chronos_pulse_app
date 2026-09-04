@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 class UsuarioModel {
   final String token;
   final String? refreshToken;
@@ -10,6 +13,7 @@ class UsuarioModel {
   final String? colaboradorId;
   final String? cpcId;
   final bool acessoEstoque;
+  final String? foto;
 
   UsuarioModel({
     required this.token,
@@ -23,6 +27,7 @@ class UsuarioModel {
     this.colaboradorId,
     this.cpcId,
     this.acessoEstoque = false,
+    this.foto,
   });
 
   bool get isAdminPlataforma => role == 'ADMIN_PLATAFORMA';
@@ -34,6 +39,36 @@ class UsuarioModel {
   bool get isAdminOrRh => isAdminPlataforma || isAdminEmpresa || isGestorRh;
   bool get isGestorPlataforma => isAdminPlataforma || isSuporte;
   bool get temAcessoEstoque => isAdminOrRh || acessoEstoque;
+
+  bool get temFoto => foto != null && foto!.isNotEmpty;
+
+  Uint8List get fotoBytes {
+    if (!temFoto) return Uint8List(0);
+    final partes = foto!.split(',');
+    final base64 = partes.length > 1 ? partes[1] : partes[0];
+    try {
+      return base64Decode(base64);
+    } catch (_) {
+      return Uint8List(0);
+    }
+  }
+
+  UsuarioModel copyWith({String? foto}) {
+    return UsuarioModel(
+      token: token,
+      refreshToken: refreshToken,
+      tipo: tipo,
+      nome: nome,
+      email: email,
+      cpf: cpf,
+      role: role,
+      tenantId: tenantId,
+      colaboradorId: colaboradorId,
+      cpcId: cpcId,
+      acessoEstoque: acessoEstoque,
+      foto: foto ?? this.foto,
+    );
+  }
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {
     return UsuarioModel(
@@ -48,6 +83,7 @@ class UsuarioModel {
       colaboradorId: json['colaboradorId'] ?? json['cpcId'],
       cpcId: json['cpcId'],
       acessoEstoque: json['acessoEstoque'] ?? false,
+      foto: json['foto'],
     );
   }
 
@@ -64,6 +100,7 @@ class UsuarioModel {
       'colaboradorId': colaboradorId,
       'cpcId': cpcId,
       'acessoEstoque': acessoEstoque,
+      'foto': foto,
     };
   }
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/auth_provider.dart';
+import 'recuperar_senha_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -212,6 +213,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                           ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const RecuperarSenhaScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('Esqueci minha senha'),
                         ),
                       ],
                     ),

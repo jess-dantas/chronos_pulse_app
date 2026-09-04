@@ -46,6 +46,10 @@ class ApiConstants {
   static const String cadastrarEmpresaEndpoint = '/auth/cadastrar-empresa';
   static const String refreshTokenEndpoint = '/auth/refresh';
   static const String meEndpoint = '/auth/me';
+  static const String meFotoEndpoint = '/auth/me/foto';
+  static const String alterarSenhaEndpoint = '/auth/alterar-senha';
+  static const String esqueciSenhaEndpoint = '/auth/esqueci-senha';
+  static const String redefinirSenhaEndpoint = '/auth/redefinir-senha';
   static const String pontosEndpoint = '/pontos/sincronizar';
   static const String pontosEspelhoEndpoint = '/pontos/espelho';
   static const String pontosAjustarEndpoint = '/pontos/ajustar';
