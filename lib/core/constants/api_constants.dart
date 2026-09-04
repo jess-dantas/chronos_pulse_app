@@ -12,7 +12,7 @@ class ApiConstants {
     // 1. Se estiver rodando na WEB
     if (kIsWeb) {
       return kReleaseMode
-          ? 'https://chronos-pulse-api.onrender.com/api/v1'
+          ? 'https://chronos-pulse.onrender.com/api/v1'
           : 'http://localhost:8080/api/v1';
     }
 
