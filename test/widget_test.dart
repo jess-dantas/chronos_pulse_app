@@ -44,12 +44,12 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
-          ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
+          ChangeNotifierProvider.value(value: AuthProvider(authRepository)),
           ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
           ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
           ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
         ],
-        child: const ChronosPulseApp(),
+        child: ChronosPulseApp(authProvider: AuthProvider(authRepository)),
       ),
     );
 

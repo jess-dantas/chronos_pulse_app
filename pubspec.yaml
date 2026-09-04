@@ -30,6 +30,9 @@ dependencies:
   # Gerenciamento de Estado
   provider: ^6.1.2
 
+  # Persistência de Sessão
+  shared_preferences: ^2.3.0
+
   # Formatação de Datas
   intl: ^0.20.0
 

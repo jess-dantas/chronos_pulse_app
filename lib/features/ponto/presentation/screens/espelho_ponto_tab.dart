@@ -38,9 +38,25 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
   }
 
   void _abrirDialogAjuste([DateTime? dataInicial]) {
+    final pontoProvider = context.read<PontoProvider>();
+
+    // Combina espelho (mes selecionado) com o histórico de hoje (registros locais
+    // recentes que ainda podem não constar no espelho remoto), sem duplicar.
+    final chaves = <String>{};
+    final registros = <RegistroPontoModel>[];
+    for (final r in [...pontoProvider.espelho, ...pontoProvider.historico]) {
+      final local = r.dataHoraDispositivo.toLocal();
+      final chave =
+          '${r.tipoRegistro}|${DateTime(local.year, local.month, local.day, local.hour, local.minute).toIso8601String()}';
+      if (chaves.add(chave)) registros.add(r);
+    }
+
     showDialog(
       context: context,
-      builder: (context) => AjustePontoDialog(dataInicial: dataInicial),
+      builder: (context) => AjustePontoDialog(
+        dataInicial: dataInicial,
+        todosRegistros: registros,
+      ),
     );
   }
 

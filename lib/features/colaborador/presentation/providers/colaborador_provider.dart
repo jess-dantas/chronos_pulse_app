@@ -72,4 +72,62 @@ class ColaboradorProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<bool> atualizarColaborador({
+    required String id,
+    required String nome,
+    required String emailCorporativo,
+    String? matricula,
+    String? cargo,
+    String? departamento,
+    String? dataNascimento,
+    String? dataAdmissao,
+    bool acessoEstoque = false,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.atualizarColaborador(
+        id: id,
+        nome: nome,
+        emailCorporativo: emailCorporativo,
+        matricula: matricula,
+        cargo: cargo,
+        departamento: departamento,
+        dataNascimento: dataNascimento,
+        dataAdmissao: dataAdmissao,
+        acessoEstoque: acessoEstoque,
+      );
+      await carregarColaboradores();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao atualizar colaborador: ${e.toString()}';
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> excluirColaborador(String id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.excluirColaborador(id);
+      await carregarColaboradores();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao excluir colaborador: ${e.toString()}';
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

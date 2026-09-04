@@ -49,4 +49,60 @@ class AuthRemoteDataSource {
       );
     }
   }
+
+  Future<UsuarioModel> cadastrarEmpresa({
+    required String cnpj,
+    required String nomeEmpresa,
+    required String responsavelNome,
+    required String responsavelCpf,
+    required String responsavelEmail,
+    String? responsavelCelular,
+    required String responsavelSenha,
+  }) async {
+    try {
+      final cleanCnpj = cnpj
+          .replaceAll(RegExp(r'[^0-9A-Za-z]'), '')
+          .toUpperCase();
+      final cleanCpf = responsavelCpf.replaceAll(RegExp(r'\D'), '');
+      final response = await _dioClient.dio.post(
+        ApiConstants.cadastrarEmpresaEndpoint,
+        data: {
+          'cnpj': cleanCnpj,
+          'nomeEmpresa': nomeEmpresa,
+          'responsavelNome': responsavelNome,
+          'responsavelCpf': cleanCpf,
+          'responsavelEmail': responsavelEmail,
+          'responsavelCelular': responsavelCelular,
+          'responsavelSenha': responsavelSenha,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      } else {
+        throw Exception('Erro ao cadastrar empresa.');
+      }
+    } on DioException catch (e) {
+      final msg = (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message;
+      throw Exception(msg ?? 'Erro ao cadastrar empresa.');
+    }
+  }
+
+  Future<UsuarioModel> refreshToken(String refreshToken) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.refreshTokenEndpoint,
+        data: {'refreshToken': refreshToken},
+      );
+
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      } else {
+        throw Exception('Refresh token inválido.');
+      }
+    } on DioException catch (e) {
+      final msg = (e.response?.data is Map ? e.response?.data['message'] : null) ?? e.message;
+      throw Exception(msg ?? 'Erro ao renovar sessão.');
+    }
+  }
 }

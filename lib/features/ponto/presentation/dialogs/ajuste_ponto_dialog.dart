@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/registro_ponto_model.dart';
 import '../../domain/constants/justificativas_ponto.dart';
 import '../providers/ponto_provider.dart';
 
 class AjustePontoDialog extends StatefulWidget {
   final DateTime? dataInicial;
+  final List<RegistroPontoModel> todosRegistros;
 
-  const AjustePontoDialog({super.key, this.dataInicial});
+  const AjustePontoDialog({
+    super.key,
+    this.dataInicial,
+    this.todosRegistros = const [],
+  });
 
   @override
   State<AjustePontoDialog> createState() => _AjustePontoDialogState();
@@ -18,7 +24,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
 
   late DateTime _dataSelecionada;
   late TimeOfDay _horaSelecionada;
-  String _tipoRegistro = 'ENTRADA';
+  late String _tipoRegistro;
   String? _justificativaSelecionada;
   final TextEditingController _observacaoController = TextEditingController();
   bool _isEnviando = false;
@@ -28,6 +34,31 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
     super.initState();
     _dataSelecionada = widget.dataInicial ?? DateTime.now();
     _horaSelecionada = TimeOfDay.now();
+    _tipoRegistro = _determinarProximoTipoParaData(_dataSelecionada);
+  }
+
+  String _determinarProximoTipo(List<RegistroPontoModel> registros) {
+    final total = registros.length;
+    switch (total % 4) {
+      case 0:
+        return 'ENTRADA';
+      case 1:
+        return 'INTERVALO';
+      case 2:
+        return 'RETORNO';
+      case 3:
+        return 'SAIDA';
+      default:
+        return 'ENTRADA';
+    }
+  }
+
+  String _determinarProximoTipoParaData(DateTime data) {
+    final registrosDoDia = widget.todosRegistros.where((r) {
+      final d = r.dataHoraDispositivo.toLocal();
+      return d.year == data.year && d.month == data.month && d.day == data.day;
+    }).toList();
+    return _determinarProximoTipo(registrosDoDia);
   }
 
   @override
@@ -44,7 +75,10 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
     if (picked != null) {
-      setState(() => _dataSelecionada = picked);
+      setState(() {
+        _dataSelecionada = picked;
+        _tipoRegistro = _determinarProximoTipoParaData(picked);
+      });
     }
   }
 
