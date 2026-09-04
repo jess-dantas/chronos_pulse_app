@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../../../auth/presentation/screens/cadastrar_empresa_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 
 class LandingScreen extends StatelessWidget {
@@ -10,6 +11,14 @@ class LandingScreen extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const LoginScreen(),
+      ),
+    );
+  }
+
+  void _navigateToCadastro(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CadastrarEmpresaScreen(),
       ),
     );
   }
@@ -70,19 +79,36 @@ class LandingScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Padding(
             padding: EdgeInsets.only(right: isDesktop ? 32 : 16),
-            child: ElevatedButton.icon(
-              key: const Key('landing_appbar_login_button'),
-              onPressed: () => _navigateToLogin(context),
-              icon: const Icon(Icons.login, size: 18),
-              label: const Text('Login'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _navigateToCadastro(context),
+                  icon: const Icon(Icons.business_center, size: 18),
+                  label: const Text('Cadastrar'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  key: const Key('landing_appbar_login_button'),
+                  onPressed: () => _navigateToLogin(context),
+                  icon: const Icon(Icons.login, size: 18),
+                  label: const Text('Login'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -219,6 +245,26 @@ class LandingScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       elevation: 4,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    key: const Key('landing_hero_register_button'),
+                    onPressed: () => _navigateToCadastro(context),
+                    icon: const Icon(Icons.business_center),
+                    label: const Text('Cadastrar Empresa'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 18,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(color: colorScheme.primary, width: 2),
                     ),
                   ),
                 ],
@@ -653,7 +699,7 @@ class LandingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Entre com suas credenciais para gerenciar batidas de ponto, estoques e requisições públicas.',
+                    'Entre com suas credenciais ou cadastre sua empresa para gerenciar batidas de ponto, estoques e requisições públicas.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
@@ -661,25 +707,53 @@ class LandingScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => _navigateToLogin(context),
-                    icon: const Icon(Icons.login),
-                    label: const Text('Login'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: colorScheme.primary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 36,
-                        vertical: 16,
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _navigateToLogin(context),
+                        icon: const Icon(Icons.login),
+                        label: const Text('Login'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 36,
+                            vertical: 16,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      OutlinedButton.icon(
+                        onPressed: () => _navigateToCadastro(context),
+                        icon: const Icon(Icons.business_center),
+                        label: const Text('Cadastrar Empresa'),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.15),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 36,
+                            vertical: 16,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Colors.white54, width: 2),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),

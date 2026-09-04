@@ -42,4 +42,34 @@ class ColaboradorRemoteDataSource {
       },
     );
   }
+
+  Future<void> atualizarColaborador({
+    required String id,
+    required String nome,
+    required String emailCorporativo,
+    String? matricula,
+    String? cargo,
+    String? departamento,
+    String? dataNascimento,
+    String? dataAdmissao,
+    bool acessoEstoque = false,
+  }) async {
+    await _dioClient.dio.put(
+      '/colaboradores/$id',
+      data: {
+        'nome': nome,
+        'emailCorporativo': emailCorporativo,
+        'matricula': matricula,
+        'cargo': cargo,
+        'departamento': departamento,
+        'dataNascimento': dataNascimento,
+        'dataAdmissao': dataAdmissao,
+        'acessoEstoque': acessoEstoque,
+      },
+    );
+  }
+
+  Future<void> excluirColaborador(String id) async {
+    await _dioClient.dio.delete('/colaboradores/$id');
+  }
 }

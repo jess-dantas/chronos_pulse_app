@@ -13,8 +13,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _cpfController = TextEditingController(text: '123.456.789-01');
-  final _senhaController = TextEditingController(text: 'senha123');
+  final _cpfController = TextEditingController();
+  final _senhaController = TextEditingController();
   bool _obscurePassword = true;
 
   @override

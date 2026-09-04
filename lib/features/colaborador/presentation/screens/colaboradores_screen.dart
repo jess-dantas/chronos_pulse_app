@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/colaborador_provider.dart';
+import 'editar_colaborador_dialog.dart';
 import 'novo_colaborador_dialog.dart';
 
 class ColaboradoresScreen extends StatefulWidget {
@@ -27,6 +28,52 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
       barrierDismissible: false,
       builder: (_) => const NovoColaboradorDialog(),
     );
+  }
+
+  void _abrirDialogEditarColaborador(colaborador) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => EditarColaboradorDialog(colaborador: colaborador),
+    );
+  }
+
+  void _confirmarExclusao(colaborador) async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: Text(
+          'Deseja realmente excluir o colaborador ${colaborador.nome}?\n\nEsta ação irá desativar o acesso do colaborador à plataforma.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Excluir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true && mounted) {
+      final provider = context.read<ColaboradorProvider>();
+      final sucesso = await provider.excluirColaborador(colaborador.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(sucesso
+                ? 'Colaborador excluído com sucesso!'
+                : provider.errorMessage ?? 'Erro ao excluir colaborador.'),
+            backgroundColor: sucesso ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -307,6 +354,27 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
                                                   ),
                                                 ],
                                               ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            // Botões de Ação
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                IconButton(
+                                                  icon: Icon(Icons.edit_outlined,
+                                                      size: 18, color: Colors.blue.shade600),
+                                                  tooltip: 'Editar Colaborador',
+                                                  onPressed: () =>
+                                                      _abrirDialogEditarColaborador(colab),
+                                                ),
+                                                IconButton(
+                                                  icon: Icon(Icons.delete_outline,
+                                                      size: 18, color: Colors.red.shade400),
+                                                  tooltip: 'Excluir Colaborador',
+                                                  onPressed: () =>
+                                                      _confirmarExclusao(colab),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),

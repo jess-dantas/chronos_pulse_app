@@ -26,11 +26,13 @@ class UsuarioModel {
   });
 
   bool get isAdminPlataforma => role == 'ADMIN_PLATAFORMA';
+  bool get isSuporte => role == 'SUPORTE_N1' || role == 'SUPORTE_N2';
   bool get isAdminEmpresa => role == 'ADMIN_EMPRESA';
   bool get isGestorRh => role == 'GESTOR_RH';
   bool get isColaborador => role == 'COLABORADOR';
 
   bool get isAdminOrRh => isAdminPlataforma || isAdminEmpresa || isGestorRh;
+  bool get isGestorPlataforma => isAdminPlataforma || isSuporte;
   bool get temAcessoEstoque => isAdminOrRh || acessoEstoque;
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {

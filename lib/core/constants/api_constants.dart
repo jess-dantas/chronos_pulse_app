@@ -43,6 +43,9 @@ class ApiConstants {
 
   static const String pingEndpoint = '/auth/ping';
   static const String loginEndpoint = '/auth/login';
+  static const String cadastrarEmpresaEndpoint = '/auth/cadastrar-empresa';
+  static const String refreshTokenEndpoint = '/auth/refresh';
+  static const String meEndpoint = '/auth/me';
   static const String pontosEndpoint = '/pontos/sincronizar';
   static const String pontosEspelhoEndpoint = '/pontos/espelho';
   static const String pontosAjustarEndpoint = '/pontos/ajustar';
@@ -54,4 +57,12 @@ class ApiConstants {
   static const String estoqueEntradaEndpoint = '/estoque/movimentacoes/entrada';
   static const String estoqueSaidaEndpoint = '/estoque/movimentacoes/saida';
   static const String estoqueRequisicoesEndpoint = '/estoque/requisicoes';
+
+  // Módulo Admin (Gestão de Contratos e Métricas)
+  static const String adminDashboardEndpoint = '/admin/dashboard';
+  static const String adminContratosEndpoint = '/admin/contratos';
+  static String adminContratoEventosEndpoint(String contratoId) => '/admin/contratos/$contratoId/eventos';
+  static const String adminContratoEventoEndpoint = '/admin/contratos/eventos';
+  static const String adminEmpresasEndpoint = '/empresas';
+  static const String adminColaboradoresEndpoint = '/admin/colaboradores';
 }

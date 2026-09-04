@@ -65,17 +65,35 @@ class PontoRepository {
     int? mes,
     int? ano,
   }) async {
+    List<RegistroPontoModel> remotos = [];
     try {
-      final remotos = await remoteDataSource.buscarEspelho(
+      remotos = await remoteDataSource.buscarEspelho(
         colaboradorId: colaboradorId,
         mes: mes,
         ano: ano,
       );
-      if (remotos.isNotEmpty) return remotos;
     } catch (_) {
-      // Se a API estiver offline, busca do histórico local
+      // Se a API estiver offline, usa somente o histórico local
     }
-    return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
+
+    final locais = await localDataSource.obterPorMesAno(
+      colaboradorId: colaboradorId,
+      mes: mes,
+      ano: ano,
+    );
+
+    if (remotos.isEmpty) return locais;
+
+    // Mescla registros locais ainda não presentes no servidor (ex.: ajustes offline)
+    final chaves = remotos.map(_chaveRegistro).toSet();
+    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    return [...remotos, ...extras];
+  }
+
+  String _chaveRegistro(RegistroPontoModel r) {
+    final local = r.dataHoraDispositivo.toLocal();
+    final minuto = DateTime(local.year, local.month, local.day, local.hour, local.minute);
+    return '${r.tipoRegistro}|${minuto.toIso8601String()}';
   }
 
   Future<bool> ajustarPontoManual({
@@ -103,7 +121,7 @@ class PontoRepository {
     await localDataSource.salvarPontoLocal(registroLocal);
 
     try {
-      final resultado = await remoteDataSource.solicitarAjusteManual(
+      await remoteDataSource.solicitarAjusteManual(
         dataHora: dataHora,
         tipoRegistro: tipoRegistro,
         justificativa: justificativa,
