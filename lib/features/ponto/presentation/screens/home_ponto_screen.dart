@@ -9,6 +9,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../providers/ponto_provider.dart';
 import 'camera_screen.dart';
+import 'espelho_ponto_tab.dart';
 
 class HomePontoScreen extends StatefulWidget {
   const HomePontoScreen({super.key});
@@ -227,52 +228,94 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
     final corBotao = _obterCorTipo(proximoTipo);
 
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text(
-          'Chronos Pulse',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        elevation: 1,
-        actions: [
-          IconButton(
-            tooltip: 'Sair da conta',
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Confirmar Saída'),
-                  content: const Text('Deseja realmente desconectar do sistema?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancelar'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        authProvider.logout();
-                      },
-                      child: const Text('Sair'),
-                    ),
-                  ],
-                ),
-              );
-            },
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Controle de Ponto',
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
-        ],
+          centerTitle: true,
+          elevation: 1,
+          bottom: const TabBar(
+            tabs: [
+              Tab(
+                icon: Icon(Icons.touch_app),
+                text: 'Bater Ponto',
+              ),
+              Tab(
+                icon: Icon(Icons.receipt_long),
+                text: 'Espelho de Ponto',
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Sair da conta',
+              icon: const Icon(Icons.logout),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Confirmar Saída'),
+                    content: const Text('Deseja realmente desconectar do sistema?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancelar'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          authProvider.logout();
+                        },
+                        child: const Text('Sair'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: TabBarView(
+          children: [
+            _buildBaterPontoTab(
+              context,
+              authProvider,
+              pontoProvider,
+              horaFormatada,
+              dataFormatada,
+              proximoTipo,
+              corBotao,
+            ),
+            const EspelhoPontoTab(),
+          ],
+        ),
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+    );
+  }
+
+  Widget _buildBaterPontoTab(
+    BuildContext context,
+    AuthProvider authProvider,
+    PontoProvider pontoProvider,
+    String horaFormatada,
+    String dataFormatada,
+    String proximoTipo,
+    Color corBotao,
+  ) {
+    final usuario = authProvider.usuario;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
                 // Sensor de Conectividade com o Backend (Heartbeat)
                 Card(
                   elevation: 1,
@@ -685,7 +728,6 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

@@ -54,4 +54,66 @@ class PontoRemoteDataSource {
       throw Exception('Erro ao sincronizar ponto: ${e.toString()}');
     }
   }
+
+  Future<List<RegistroPontoModel>> buscarEspelho({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (colaboradorId != null) queryParams['colaboradorId'] = colaboradorId;
+      if (mes != null) queryParams['mes'] = mes;
+      if (ano != null) queryParams['ano'] = ano;
+
+      final response = await _dioClient.dio.get(
+        ApiConstants.pontosEspelhoEndpoint,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> lista = response.data;
+        return lista.map((item) => RegistroPontoModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao buscar espelho de ponto na API');
+    } catch (e) {
+      throw Exception('Erro ao carregar espelho: ${e.toString()}');
+    }
+  }
+
+  Future<RegistroPontoModel> solicitarAjusteManual({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    try {
+      final payload = {
+        'dataHora': dataHora.toUtc().toIso8601String(),
+        'tipoRegistro': tipoRegistro,
+        'justificativa': justificativa,
+        'observacao': observacao,
+        if (colaboradorId != null) 'colaboradorId': colaboradorId,
+      };
+
+      final response = await _dioClient.dio.post(
+        ApiConstants.pontosAjustarEndpoint,
+        data: payload,
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return RegistroPontoModel.fromJson(response.data as Map<String, dynamic>);
+      }
+      throw Exception('Falha ao registrar ajuste: status ${response.statusCode}');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao solicitar ajuste manual na API');
+    } catch (e) {
+      throw Exception('Erro ao ajustar ponto: ${e.toString()}');
+    }
+  }
 }

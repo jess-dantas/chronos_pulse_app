@@ -36,6 +36,8 @@ class ApiConstants {
   static const String pingEndpoint = '/auth/ping';
   static const String loginEndpoint = '/auth/login';
   static const String pontosEndpoint = '/pontos/sincronizar';
+  static const String pontosEspelhoEndpoint = '/pontos/espelho';
+  static const String pontosAjustarEndpoint = '/pontos/ajustar';
 
   // Módulo de Estoque & Almoxarifado
   static const String estoqueMateriaisEndpoint = '/estoque/materiais';

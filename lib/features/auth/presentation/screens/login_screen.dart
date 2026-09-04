@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -11,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _cpfController = TextEditingController(text: '12345678901');
+  final _cpfController = TextEditingController(text: '123.456.789-01');
   final _senhaController = TextEditingController(text: 'senha123');
   bool _obscurePassword = true;
 
@@ -26,12 +28,17 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
+    final cpfLimpo = CpfInputFormatter.clean(_cpfController.text);
     final sucesso = await authProvider.login(
-      _cpfController.text.trim(),
+      cpfLimpo,
       _senhaController.text,
     );
 
-    if (!sucesso && mounted) {
+    if (sucesso && mounted) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    } else if (!sucesso && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage ?? 'Erro ao realizar login.'),
@@ -44,14 +51,28 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
     final isCarregando = authProvider.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: Icon(
+              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+            tooltip: themeProvider.isDarkMode ? 'Tema Claro' : 'Tema Escuro',
+            onPressed: () => themeProvider.toggleTheme(),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Card(
@@ -100,20 +121,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Gestão Pública Integrada • Ponto & Almoxarifado',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey[600],
-                              ),
-                        ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 24),
 
                         // Campo CPF
                         TextFormField(
                           controller: _cpfController,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            CpfInputFormatter(),
+                          ],
                           decoration: InputDecoration(
                             labelText: 'CPF',
                             hintText: '000.000.000-00',
@@ -126,8 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return 'Informe o CPF';
                             }
-                            final clean = value.replaceAll(RegExp(r'\D'), '');
-                            if (clean.length != 11) {
+                            if (!CpfInputFormatter.isValidLength(value)) {
                               return 'O CPF deve conter 11 dígitos';
                             }
                             return null;
@@ -190,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   )
                                 : const Text(
-                                    'Acessar Sistema',
+                                    'Logar',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,

@@ -4,6 +4,7 @@ import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_mode
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
+import 'package:chronos_pulse_app/features/ponto/domain/constants/justificativas_ponto.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 
 class MockPontoLocalDataSource extends PontoLocalDataSource {
@@ -47,6 +48,9 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
         fotoUrl: antigo.fotoUrl,
         hashLocal: antigo.hashLocal,
         sincronizadoOffline: true,
+        ajusteManual: antigo.ajusteManual,
+        justificativa: antigo.justificativa,
+        observacao: antigo.observacao,
       );
     }
   }
@@ -71,9 +75,52 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
     ultimosSincronizados = List.from(registros);
     return registros.map((r) => r.idLocal).toList();
   }
+
+  @override
+  Future<RegistroPontoModel> solicitarAjusteManual({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    if (!online) {
+      throw Exception('Servidor indisponível');
+    }
+    return RegistroPontoModel(
+      idLocal: 'ajuste-1',
+      colaboradorId: colaboradorId,
+      dataHoraDispositivo: dataHora,
+      tipoRegistro: tipoRegistro,
+      latitude: 0,
+      longitude: 0,
+      precisaoGps: 0,
+      sincronizadoOffline: true,
+      ajusteManual: true,
+      justificativa: justificativa,
+      observacao: observacao,
+    );
+  }
 }
 
 void main() {
+  group('JustificativasPadronizadas', () {
+    test('Deve conter as 8 justificativas exigidas com descrições corretas', () {
+      final lista = JustificativasPonto.lista;
+      expect(lista.length, equals(8));
+
+      final titulos = lista.map((j) => j.titulo).toList();
+      expect(titulos, contains('Esquecimento de marcação'));
+      expect(titulos, contains('Falha técnica'));
+      expect(titulos, contains('Atividade externa'));
+      expect(titulos, contains('Viagem a trabalho'));
+      expect(titulos, contains('Trabalho remoto'));
+      expect(titulos, contains('Atendimento médico'));
+      expect(titulos, contains('Autorização da liderança'));
+      expect(titulos, contains('Plantão ou sobreaviso'));
+    });
+  });
+
   group('PontoProvider & Sensor de Conectividade', () {
     late MockPontoLocalDataSource localDataSource;
     late MockPontoRemoteDataSource remoteDataSource;
@@ -166,6 +213,22 @@ void main() {
       expect(totalSincronizados, equals(2));
       expect(provider.pendentesCount, equals(0));
       expect(provider.isOnline, isTrue);
+    });
+
+    test('Ajuste manual de ponto deve salvar justificativa e atualizar espelho', () async {
+      final sucesso = await provider.ajustarPontoManual(
+        dataHora: DateTime(2026, 9, 3, 8, 0),
+        tipoRegistro: 'ENTRADA',
+        justificativa: 'Esquecimento de marcação',
+        observacao: 'Cheguei no horário correto',
+      );
+
+      expect(sucesso, isTrue);
+      expect(provider.historico.length, equals(1));
+      final reg = provider.historico.first;
+      expect(reg.ajusteManual, isTrue);
+      expect(reg.justificativa, equals('Esquecimento de marcação'));
+      expect(reg.observacao, equals('Cheguei no horário correto'));
     });
   });
 }
