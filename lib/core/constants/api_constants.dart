@@ -3,9 +3,17 @@ import 'dart:io' show Platform;
 
 class ApiConstants {
   static String get baseUrl {
+    // 0. Variável de ambiente informada em tempo de compilação (--dart-define=API_URL=...)
+    const String envUrl = String.fromEnvironment('API_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) {
+      return envUrl;
+    }
+
     // 1. Se estiver rodando na WEB
     if (kIsWeb) {
-      return 'http://localhost:8080/api/v1';
+      return kReleaseMode
+          ? 'https://chronos-pulse-api.onrender.com/api/v1'
+          : 'http://localhost:8080/api/v1';
     }
 
     // 2. Se estiver rodando no Android (Emulador usa 10.0.2.2, dispositivo físico usa IP da máquina)
