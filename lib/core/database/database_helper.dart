@@ -31,7 +31,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -40,6 +40,14 @@ class DatabaseHelper {
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE pontos ADD COLUMN idLocal TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE pontos ADD COLUMN ajusteManual INTEGER DEFAULT 0');
+      await db.execute('ALTER TABLE pontos ADD COLUMN justificativa TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN observacao TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN nsr INTEGER');
+      await db.execute('ALTER TABLE pontos ADD COLUMN hashLocal TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN dataHoraServidor TEXT');
     }
   }
 
@@ -50,12 +58,18 @@ class DatabaseHelper {
         idLocal TEXT,
         colaboradorId TEXT NOT NULL,
         dataHoraDispositivo TEXT NOT NULL,
+        dataHoraServidor TEXT,
         tipoRegistro TEXT NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
         precisaoGps REAL NOT NULL,
         fotoUrl TEXT,
-        sincronizadoOffline INTEGER NOT NULL
+        hashLocal TEXT,
+        sincronizadoOffline INTEGER NOT NULL,
+        ajusteManual INTEGER DEFAULT 0,
+        justificativa TEXT,
+        observacao TEXT,
+        nsr INTEGER
       )
     ''');
   }

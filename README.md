@@ -33,8 +33,19 @@ Front-end mobile e web unificado para o ecossistema **Chronos Pulse**:
 
 ## Visão Geral e Funcionalidades
 
+- **Alternância de Tema (Dark Mode / Light Mode)**: Suporte completo a tema escuro e claro com toggle na barra superior.
 - **Autenticação JWT por CPF/Senha**: Login integrado com extração segura de `colaboradorId`, `tenantId` e `role`.
 - **Ciclo Automático de Jornada**: O aplicativo determina a sequência esperada (`ENTRADA` → `INTERVALO` → `RETORNO` → `SAIDA` → `ENTRADA`) sem exigir seleção manual.
+- **Espelho de Ponto Individual & Exportação em PDF**: Consulta do demonstrativo mensal de batidas, cálculo de horas trabalhadas e exportação em PDF formatado segundo a Portaria MTP nº 671/2021.
+- **Ajuste Manual com Justificativa Obrigatória**: Inclusão e correção de horários esquecidos ou divergentes com seleção das 8 justificativas padronizadas:
+  1. *Esquecimento de marcação*
+  2. *Falha técnica*
+  3. *Atividade externa*
+  4. *Viagem a trabalho*
+  5. *Trabalho remoto*
+  6. *Atendimento médico*
+  7. *Autorização da liderança*
+  8. *Plantão ou sobreaviso*
 - **Offline-First com Resiliência**: Os registros são persistidos localmente no banco SQLite / Web Storage antes do envio; caso a rede esteja indisponível, permanecem marcados para sincronização posterior.
 - **Sincronização em Lote**: Botão de sincronização manual ou envio automático acumulado ao recuperar a conexão com o backend.
 - **Biometria e GPS**: Validação biométrica no dispositivo (com bypass seguro em navegadores) e captura de coordenadas geográficas de alta precisão.

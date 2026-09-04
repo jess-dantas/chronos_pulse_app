@@ -4,6 +4,7 @@ class UsuarioModel {
   final String tipo;
   final String nome;
   final String email;
+  final String? cpf;
   final String role;
   final String? tenantId;
   final String? colaboradorId;
@@ -16,6 +17,7 @@ class UsuarioModel {
     required this.tipo,
     required this.nome,
     required this.email,
+    this.cpf,
     required this.role,
     this.tenantId,
     this.colaboradorId,
@@ -38,6 +40,7 @@ class UsuarioModel {
       tipo: json['tipo'] ?? 'Bearer',
       nome: json['nome'] ?? '',
       email: json['email'] ?? '',
+      cpf: json['cpf'] ?? json['sub'],
       role: json['role'] ?? '',
       tenantId: json['tenantId'],
       colaboradorId: json['colaboradorId'] ?? json['cpcId'],
@@ -53,6 +56,7 @@ class UsuarioModel {
       'tipo': tipo,
       'nome': nome,
       'email': email,
+      'cpf': cpf,
       'role': role,
       'tenantId': tenantId,
       'colaboradorId': colaboradorId,

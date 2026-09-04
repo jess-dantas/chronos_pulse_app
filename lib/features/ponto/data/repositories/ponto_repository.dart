@@ -60,6 +60,63 @@ class PontoRepository {
     return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
   }
 
+  Future<List<RegistroPontoModel>> obterEspelhoPonto({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    try {
+      final remotos = await remoteDataSource.buscarEspelho(
+        colaboradorId: colaboradorId,
+        mes: mes,
+        ano: ano,
+      );
+      if (remotos.isNotEmpty) return remotos;
+    } catch (_) {
+      // Se a API estiver offline, busca do histórico local
+    }
+    return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
+  }
+
+  Future<bool> ajustarPontoManual({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    final registroLocal = RegistroPontoModel(
+      idLocal: DateTime.now().millisecondsSinceEpoch.toString(),
+      colaboradorId: colaboradorId,
+      dataHoraDispositivo: dataHora,
+      tipoRegistro: tipoRegistro,
+      latitude: 0,
+      longitude: 0,
+      precisaoGps: 0,
+      sincronizadoOffline: false,
+      ajusteManual: true,
+      justificativa: justificativa,
+      observacao: observacao,
+    );
+
+    // Salva localmente primeiro
+    await localDataSource.salvarPontoLocal(registroLocal);
+
+    try {
+      final resultado = await remoteDataSource.solicitarAjusteManual(
+        dataHora: dataHora,
+        tipoRegistro: tipoRegistro,
+        justificativa: justificativa,
+        observacao: observacao,
+        colaboradorId: colaboradorId,
+      );
+      await localDataSource.marcarComoSincronizado(registroLocal.idLocal);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> verificarConexao() async {
     return await remoteDataSource.verificarConexao();
   }

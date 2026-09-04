@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'core/network/dio_client.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/landing/presentation/screens/landing_screen.dart';
 import 'features/colaborador/data/datasources/colaborador_remote_datasource.dart';
 import 'features/colaborador/data/repositories/colaborador_repository.dart';
 import 'features/colaborador/presentation/providers/colaborador_provider.dart';
@@ -48,6 +51,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider(authRepository)),
         ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
         ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
@@ -63,13 +67,14 @@ class ChronosPulseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return MaterialApp(
       title: 'Chronos Pulse',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeProvider.themeMode,
       home: const AuthWrapper(),
     );
   }
@@ -85,6 +90,6 @@ class AuthWrapper extends StatelessWidget {
     if (authProvider.isAuthenticated) {
       return const MainNavigationScreen();
     }
-    return const LoginScreen();
+    return const LandingScreen();
   }
 }

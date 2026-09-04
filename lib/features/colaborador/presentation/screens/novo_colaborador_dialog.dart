@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/colaborador_provider.dart';
 
 class NovoColaboradorDialog extends StatefulWidget {
@@ -70,7 +71,7 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
     final dateFormat = DateFormat('yyyy-MM-dd');
 
     // Remove caracteres não numéricos do CPF
-    final cpfLimpo = _cpfController.text.replaceAll(RegExp(r'\D'), '');
+    final cpfLimpo = CpfInputFormatter.clean(_cpfController.text);
 
     final sucesso = await provider.cadastrarColaborador(
       cpf: cpfLimpo,
@@ -170,14 +171,22 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                               child: TextFormField(
                                 controller: _cpfController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  CpfInputFormatter(),
+                                ],
                                 decoration: const InputDecoration(
                                   labelText: 'CPF (11 dígitos) *',
+                                  hintText: '000.000.000-00',
                                   prefixIcon: Icon(Icons.credit_card),
                                   border: OutlineInputBorder(),
                                 ),
                                 validator: (v) {
-                                  final limpo = v?.replaceAll(RegExp(r'\D'), '') ?? '';
-                                  if (limpo.length != 11) return 'CPF inválido';
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Informe o CPF';
+                                  }
+                                  if (!CpfInputFormatter.isValidLength(v)) {
+                                    return 'O CPF deve ter 11 dígitos';
+                                  }
                                   return null;
                                 },
                               ),

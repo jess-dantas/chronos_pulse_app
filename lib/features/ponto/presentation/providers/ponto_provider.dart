@@ -11,15 +11,24 @@ class PontoProvider extends ChangeNotifier {
   bool _isVerificando = false;
   bool _isSincronizando = false;
   bool _isDisposed = false;
+  bool _carregandoEspelho = false;
   int _pendentesCount = 0;
+  int _mesSelecionado = DateTime.now().month;
+  int _anoSelecionado = DateTime.now().year;
+
   List<RegistroPontoModel> _historico = [];
+  List<RegistroPontoModel> _espelho = [];
   Timer? _heartbeatTimer;
 
   bool get isOnline => _isOnline;
   bool get isVerificando => _isVerificando;
   bool get isSincronizando => _isSincronizando;
+  bool get carregandoEspelho => _carregandoEspelho;
   int get pendentesCount => _pendentesCount;
+  int get mesSelecionado => _mesSelecionado;
+  int get anoSelecionado => _anoSelecionado;
   List<RegistroPontoModel> get historico => _historico;
+  List<RegistroPontoModel> get espelho => _espelho;
   String? get colaboradorId => _colaboradorId;
 
   PontoProvider(this._repository) {
@@ -31,7 +40,14 @@ class PontoProvider extends ChangeNotifier {
     if (_colaboradorId != id) {
       _colaboradorId = id;
       carregarDados();
+      carregarEspelho();
     }
+  }
+
+  void alterarPeriodoEspelho(int mes, int ano) {
+    _mesSelecionado = mes;
+    _anoSelecionado = ano;
+    carregarEspelho();
   }
 
   void iniciarMonitoramento({Duration interval = const Duration(seconds: 8)}) {
@@ -43,7 +59,48 @@ class PontoProvider extends ChangeNotifier {
   Future<void> carregarDados() async {
     _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
     _pendentesCount = await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
+    await carregarEspelho();
     if (!_isDisposed) notifyListeners();
+  }
+
+  Future<void> carregarEspelho({int? mes, int? ano}) async {
+    if (_isDisposed) return;
+    final m = mes ?? _mesSelecionado;
+    final a = ano ?? _anoSelecionado;
+
+    _carregandoEspelho = true;
+    if (!_isDisposed) notifyListeners();
+
+    try {
+      _espelho = await _repository.obterEspelhoPonto(
+        colaboradorId: _colaboradorId,
+        mes: m,
+        ano: a,
+      );
+    } catch (_) {
+      _espelho = [];
+    } finally {
+      _carregandoEspelho = false;
+      if (!_isDisposed) notifyListeners();
+    }
+  }
+
+  Future<bool> ajustarPontoManual({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+  }) async {
+    final sucesso = await _repository.ajustarPontoManual(
+      dataHora: dataHora,
+      tipoRegistro: tipoRegistro,
+      justificativa: justificativa,
+      observacao: observacao,
+      colaboradorId: _colaboradorId,
+    );
+
+    await carregarDados();
+    return sucesso;
   }
 
   Future<bool> checarConexao({bool autoSync = false}) async {

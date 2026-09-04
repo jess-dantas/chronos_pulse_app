@@ -4,6 +4,7 @@ class RegistroPontoModel {
   final String idLocal;
   final String? colaboradorId;
   final DateTime dataHoraDispositivo;
+  final DateTime? dataHoraServidor;
   final String tipoRegistro; // "ENTRADA", "INTERVALO", "RETORNO", "SAIDA"
   final double latitude;
   final double longitude;
@@ -11,11 +12,16 @@ class RegistroPontoModel {
   final String? fotoUrl;
   final String? hashLocal;
   final bool sincronizadoOffline;
+  final bool ajusteManual;
+  final String? justificativa;
+  final String? observacao;
+  final int? nsr;
 
   RegistroPontoModel({
     required this.idLocal,
     this.colaboradorId,
     required this.dataHoraDispositivo,
+    this.dataHoraServidor,
     required this.tipoRegistro,
     required this.latitude,
     required this.longitude,
@@ -23,6 +29,10 @@ class RegistroPontoModel {
     this.fotoUrl,
     this.hashLocal,
     this.sincronizadoOffline = false,
+    this.ajusteManual = false,
+    this.justificativa,
+    this.observacao,
+    this.nsr,
   });
 
   /// Formato salvo localmente no SQLite / Web storage
@@ -31,6 +41,7 @@ class RegistroPontoModel {
       'idLocal': idLocal,
       'colaboradorId': colaboradorId,
       'dataHoraDispositivo': dataHoraDispositivo.toIso8601String(),
+      'dataHoraServidor': dataHoraServidor?.toIso8601String(),
       'tipoRegistro': tipoRegistro,
       'latitude': latitude,
       'longitude': longitude,
@@ -38,6 +49,10 @@ class RegistroPontoModel {
       'fotoUrl': fotoUrl,
       'hashLocal': hashLocal,
       'sincronizadoOffline': sincronizadoOffline ? 1 : 0,
+      'ajusteManual': ajusteManual ? 1 : 0,
+      'justificativa': justificativa,
+      'observacao': observacao,
+      'nsr': nsr,
     };
   }
 
@@ -55,17 +70,28 @@ class RegistroPontoModel {
   }
 
   factory RegistroPontoModel.fromJson(Map<String, dynamic> json) {
+    DateTime parseData(dynamic val) {
+      if (val == null) return DateTime.now();
+      if (val is DateTime) return val;
+      return DateTime.parse(val.toString());
+    }
+
     return RegistroPontoModel(
-      idLocal: json['idLocal'] ?? const Uuid().v4(),
-      colaboradorId: json['colaboradorId'],
-      dataHoraDispositivo: DateTime.parse(json['dataHoraDispositivo']),
-      tipoRegistro: json['tipoRegistro'] ?? 'ENTRADA',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      precisaoGps: (json['precisaoGps'] as num).toDouble(),
-      fotoUrl: json['fotoUrl'],
-      hashLocal: json['hashLocal'],
+      idLocal: json['idLocal']?.toString() ?? json['id']?.toString() ?? const Uuid().v4(),
+      colaboradorId: json['colaboradorId']?.toString(),
+      dataHoraDispositivo: parseData(json['dataHoraDispositivo'] ?? json['dataHora']),
+      dataHoraServidor: json['dataHoraServidor'] != null ? parseData(json['dataHoraServidor']) : null,
+      tipoRegistro: json['tipoRegistro']?.toString() ?? 'ENTRADA',
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
+      precisaoGps: (json['precisaoGps'] as num?)?.toDouble() ?? 0.0,
+      fotoUrl: json['fotoUrl']?.toString(),
+      hashLocal: json['hashLocal']?.toString() ?? json['hashIntegridade']?.toString(),
       sincronizadoOffline: (json['sincronizadoOffline'] == true || json['sincronizadoOffline'] == 1),
+      ajusteManual: (json['ajusteManual'] == true || json['ajusteManual'] == 1),
+      justificativa: json['justificativa']?.toString(),
+      observacao: json['observacao']?.toString(),
+      nsr: (json['nsr'] as num?)?.toInt(),
     );
   }
 }
