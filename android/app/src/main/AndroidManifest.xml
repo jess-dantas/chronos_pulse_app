@@ -16,7 +16,7 @@
     
     <application
         android:usesCleartextTraffic="true"
-        android:label="chronos_pulse_app"
+        android:label="Chronos Pulse"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
