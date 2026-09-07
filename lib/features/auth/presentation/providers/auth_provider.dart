@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   static const _keyRole = 'chronos_role';
   static const _keyNome = 'chronos_nome';
   static const _keyEmail = 'chronos_email';
+  static const _keyCpf = 'chronos_cpf';
   static const _keyTenantId = 'chronos_tenant_id';
   static const _keyCpcId = 'chronos_cpc_id';
   static const _keyAcessoEstoque = 'chronos_acesso_estoque';
@@ -96,6 +97,7 @@ class AuthProvider extends ChangeNotifier {
         tipo: 'Bearer',
         nome: prefs.getString(_keyNome) ?? '',
         email: prefs.getString(_keyEmail) ?? '',
+        cpf: prefs.getString(_keyCpf),
         role: prefs.getString(_keyRole) ?? '',
         tenantId: prefs.getString(_keyTenantId),
         cpcId: prefs.getString(_keyCpcId),
@@ -113,6 +115,7 @@ class AuthProvider extends ChangeNotifier {
           tipo: 'Bearer',
           nome: refreshed.nome,
           email: refreshed.email,
+          cpf: refreshed.cpf ?? prefs.getString(_keyCpf),
           role: refreshed.role,
           tenantId: refreshed.tenantId,
           cpcId: refreshed.cpcId,
@@ -141,6 +144,9 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       _usuario = await _authRepository.login(cpf: cpf, senha: senha);
+      if (_usuario!.cpf == null || _usuario!.cpf!.isEmpty) {
+        _usuario = _usuario!.copyWith(cpf: cpf);
+      }
       await _saveSession(_usuario!);
       await _marcarInicioSessao();
       _isLoading = false;
@@ -194,6 +200,9 @@ class AuthProvider extends ChangeNotifier {
         enderecoUf: enderecoUf,
         enderecoCep: enderecoCep,
       );
+      if (_usuario!.cpf == null || _usuario!.cpf!.isEmpty) {
+        _usuario = _usuario!.copyWith(cpf: responsavelCpf);
+      }
       await _saveSession(_usuario!);
       await _marcarInicioSessao();
       _isLoading = false;
@@ -324,6 +333,9 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString(_keyRole, usuario.role);
     await prefs.setString(_keyNome, usuario.nome);
     await prefs.setString(_keyEmail, usuario.email);
+    if (usuario.cpf != null && usuario.cpf!.isNotEmpty) {
+      await prefs.setString(_keyCpf, usuario.cpf!);
+    }
     if (usuario.tenantId != null) await prefs.setString(_keyTenantId, usuario.tenantId!);
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
@@ -340,6 +352,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyRole);
     await prefs.remove(_keyNome);
     await prefs.remove(_keyEmail);
+    await prefs.remove(_keyCpf);
     await prefs.remove(_keyTenantId);
     await prefs.remove(_keyCpcId);
     await prefs.remove(_keyAcessoEstoque);

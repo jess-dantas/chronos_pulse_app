@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_empresas_screen.dart';
@@ -120,7 +121,7 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
                   Chip(
                     avatar: const Icon(Icons.admin_panel_settings, size: 18),
                     label: Text('${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})'),
-                    backgroundColor: Colors.deepPurple.withOpacity(0.08),
+                    backgroundColor: AppTheme.lilasSurface(context, lightAlpha: 0.08),
                   ),
                   const SizedBox(width: 12),
                 ],

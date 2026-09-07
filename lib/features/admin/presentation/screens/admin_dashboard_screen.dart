@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:chronos_pulse_app/core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/admin_provider.dart';
 import 'admin_colaboradores_screen.dart';
@@ -146,14 +147,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.deepPurple.withOpacity(0.1),
+                          color: AppTheme.lilasSurface(context),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.deepPurple.shade200),
+                          border: Border.all(color: AppTheme.lilasBorder(context)),
                         ),
                         child: Text(
                           usuario?.role.replaceAll('ROLE_', '') ?? '',
                           style: TextStyle(
-                            color: Colors.deepPurple[800],
+                            color: AppTheme.onLilasSurface(context),
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),

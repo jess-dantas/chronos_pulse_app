@@ -123,7 +123,7 @@ class PdfEspelhoService {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
-                        'CHRONOS PULSE • SISTEMA DE PONTO ELETRÔNICO',
+                        'CHRONOS PULSE - SISTEMA DE PONTO ELETRÔNICO',
                         style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 13),
                       ),
                       pw.Text(
@@ -142,7 +142,7 @@ class PdfEspelhoService {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text('Colaborador: ${usuario.nome}', style: const pw.TextStyle(fontSize: 9)),
-                      pw.Text('CPF: ${usuario.cpf}', style: const pw.TextStyle(fontSize: 9)),
+                      pw.Text('CPF: ${usuario.cpf ?? '—'}', style: const pw.TextStyle(fontSize: 9)),
                       pw.Text('Perfil: ${usuario.role}', style: const pw.TextStyle(fontSize: 9)),
                     ],
                   ),
@@ -226,7 +226,7 @@ class PdfEspelhoService {
 
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Espelho_Ponto_${usuario.cpf}_${mes}_$ano.pdf',
+      name: 'Espelho_Ponto_${usuario.cpf ?? 'SEM_CPF'}_${mes}_$ano.pdf',
     );
   }
 }

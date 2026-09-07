@@ -13,15 +13,19 @@ class ColaboradorRepository {
   Future<void> cadastrarColaborador({
     required String cpf,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     required String senha,
     String? matricula,
     String? cargo,
     String? departamento,
     required String dataNascimento,
     required String dataAdmissao,
+    String? dataDesligamento,
     String? tenantId,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     return await remoteDataSource.cadastrarColaborador(
       cpf: cpf,
@@ -33,21 +37,29 @@ class ColaboradorRepository {
       departamento: departamento,
       dataNascimento: dataNascimento,
       dataAdmissao: dataAdmissao,
+      dataDesligamento: dataDesligamento,
       tenantId: tenantId,
       acessoEstoque: acessoEstoque,
+      acessoPatrimonio: acessoPatrimonio,
+      acessoFrota: acessoFrota,
+      acessoProtocolo: acessoProtocolo,
     );
   }
 
   Future<void> atualizarColaborador({
     required String id,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     String? matricula,
     String? cargo,
     String? departamento,
     String? dataNascimento,
     String? dataAdmissao,
+    String? dataDesligamento,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     return await remoteDataSource.atualizarColaborador(
       id: id,
@@ -58,7 +70,11 @@ class ColaboradorRepository {
       departamento: departamento,
       dataNascimento: dataNascimento,
       dataAdmissao: dataAdmissao,
+      dataDesligamento: dataDesligamento,
       acessoEstoque: acessoEstoque,
+      acessoPatrimonio: acessoPatrimonio,
+      acessoFrota: acessoFrota,
+      acessoProtocolo: acessoProtocolo,
     );
   }
 

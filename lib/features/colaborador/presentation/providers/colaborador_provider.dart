@@ -33,15 +33,19 @@ class ColaboradorProvider extends ChangeNotifier {
   Future<bool> cadastrarColaborador({
     required String cpf,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     required String senha,
     String? matricula,
     String? cargo,
     String? departamento,
     required String dataNascimento,
     required String dataAdmissao,
+    String? dataDesligamento,
     String? tenantId,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -58,8 +62,12 @@ class ColaboradorProvider extends ChangeNotifier {
         departamento: departamento,
         dataNascimento: dataNascimento,
         dataAdmissao: dataAdmissao,
+        dataDesligamento: dataDesligamento,
         tenantId: tenantId,
         acessoEstoque: acessoEstoque,
+        acessoPatrimonio: acessoPatrimonio,
+        acessoFrota: acessoFrota,
+        acessoProtocolo: acessoProtocolo,
       );
       await carregarColaboradores();
       return true;
@@ -76,13 +84,17 @@ class ColaboradorProvider extends ChangeNotifier {
   Future<bool> atualizarColaborador({
     required String id,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     String? matricula,
     String? cargo,
     String? departamento,
     String? dataNascimento,
     String? dataAdmissao,
+    String? dataDesligamento,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -98,7 +110,11 @@ class ColaboradorProvider extends ChangeNotifier {
         departamento: departamento,
         dataNascimento: dataNascimento,
         dataAdmissao: dataAdmissao,
+        dataDesligamento: dataDesligamento,
         acessoEstoque: acessoEstoque,
+        acessoPatrimonio: acessoPatrimonio,
+        acessoFrota: acessoFrota,
+        acessoProtocolo: acessoProtocolo,
       );
       await carregarColaboradores();
       return true;

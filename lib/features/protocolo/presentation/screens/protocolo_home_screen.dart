@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../data/models/protocolo_models.dart';
 import '../providers/protocolo_provider.dart';
 import 'dialogs/alterar_status_dialog.dart';
@@ -140,10 +141,13 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
-              backgroundColor: Colors.deepPurple.withOpacity(0.1),
+              backgroundColor: AppTheme.lilasSurface(context),
               child: Text(
                 p.numeroProtocolo.isEmpty ? '#' : p.numeroProtocolo.split('-').last,
-                style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: AppTheme.onLilasSurface(context),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             title: Text(p.assunto, style: const TextStyle(fontWeight: FontWeight.bold)),

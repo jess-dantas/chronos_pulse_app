@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/frota_provider.dart';
 import 'dialogs/novo_abastecimento_dialog.dart';
 import 'dialogs/novo_veiculo_dialog.dart';
@@ -131,8 +132,8 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
-              backgroundColor: Colors.deepPurple.withOpacity(0.1),
-              child: const Icon(Icons.directions_car, color: Colors.deepPurple),
+              backgroundColor: AppTheme.lilasSurface(context),
+              child: Icon(Icons.directions_car, color: AppTheme.onLilasSurface(context)),
             ),
             title: Text(
               '${v.marca ?? ''} ${v.modelo ?? ''}'.trim().isEmpty ? v.placa : '${v.marca ?? ''} ${v.modelo ?? ''} (${v.placa})',

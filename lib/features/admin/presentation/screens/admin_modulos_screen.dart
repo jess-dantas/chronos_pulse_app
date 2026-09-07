@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/admin_provider.dart';
 
 class AdminModulosScreen extends StatefulWidget {
@@ -89,20 +90,24 @@ class _AdminModulosScreenState extends State<AdminModulosScreen> {
               children: [
                 Card(
                   elevation: 0,
-                  color: Colors.deepPurple.withOpacity(0.06),
+                  color: AppTheme.lilasSurface(context),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.info_outline, color: Colors.deepPurple),
+                        Icon(Icons.info_outline, color: AppTheme.onLilasSurface(context)),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Ative ou desative módulos por empresa (CNPJ). '
-                            'Os módulos core (Ponto, RH e Estoque) são ativados automaticamente no cadastro de novas empresas.',
-                            style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                            'Os módulos core (Ponto e RH) são ativados automaticamente no cadastro de novas empresas. '
+                            'Os demais módulos são ativados conforme contrato.',
+                            style: TextStyle(
+                              color: AppTheme.isDark(context) ? Colors.grey[300] : Colors.grey[800],
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -225,7 +230,9 @@ class _ModuloTile extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: selecionado ? Colors.deepPurple.withOpacity(0.5) : Colors.grey.shade300,
+          color: selecionado
+              ? (AppTheme.isDark(context) ? AppTheme.lilasBorder(context) : Colors.deepPurple.withOpacity(0.5))
+              : Colors.grey.shade300,
         ),
       ),
       child: CheckboxListTile(

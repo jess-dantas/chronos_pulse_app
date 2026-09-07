@@ -45,4 +45,25 @@ class CpfInputFormatter extends TextInputFormatter {
     if (cpf == null) return false;
     return clean(cpf).length == 11;
   }
+
+  /// Validação completa do CPF, incluindo os dígitos verificadores
+  static bool isValid(String? cpf) {
+    if (cpf == null) return false;
+    final digits = clean(cpf);
+    if (digits.length != 11) return false;
+    if (RegExp(r'^(\d)\1{10}$').hasMatch(digits)) return false;
+
+    int calcularDigito(int posicao) {
+      var soma = 0;
+      for (var i = 0; i < posicao; i++) {
+        soma += int.parse(digits[i]) * (posicao + 1 - i);
+      }
+      final resto = soma % 11;
+      return resto < 2 ? 0 : 11 - resto;
+    }
+
+    if (calcularDigito(9) != int.parse(digits[9])) return false;
+    if (calcularDigito(10) != int.parse(digits[10])) return false;
+    return true;
+  }
 }
