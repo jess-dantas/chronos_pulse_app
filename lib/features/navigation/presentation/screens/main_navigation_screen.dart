@@ -4,7 +4,10 @@ import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../colaborador/presentation/screens/colaboradores_screen.dart';
 import '../../../estoque/presentation/screens/estoque_home_screen.dart';
+import '../../../frota/presentation/screens/frota_home_screen.dart';
+import '../../../patrimonio/presentation/screens/patrimonio_home_screen.dart';
 import '../../../ponto/presentation/screens/home_ponto_screen.dart';
+import '../../../protocolo/presentation/screens/protocolo_home_screen.dart';
 
 class _NavigationItem {
   final Widget screen;
@@ -37,18 +40,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
     final List<_NavigationItem> items = [];
 
-    // 1. Módulo de Ponto Eletrônico (todos os usuários autenticados)
-    items.add(
-      const _NavigationItem(
-        screen: HomePontoScreen(),
-        label: 'Ponto',
-        icon: Icons.fingerprint,
-        selectedIcon: Icons.fingerprint,
-      ),
-    );
+    // 1. Módulo de Ponto Eletrônico (usuários com módulo PONTO ativo)
+    if (usuario != null && usuario.temModuloPonto) {
+      items.add(
+        const _NavigationItem(
+          screen: HomePontoScreen(),
+          label: 'Ponto',
+          icon: Icons.fingerprint,
+          selectedIcon: Icons.fingerprint,
+        ),
+      );
+    }
 
-    // 2. Gestão de Colaboradores (Admin Plataforma, Admin Empresa e Gestor de RH)
-    if (usuario != null && usuario.isAdminOrRh) {
+    // 2. Gestão de Colaboradores (Admin Plataforma, Admin Empresa e Gestor de RH com módulo RH ativo)
+    if (usuario != null && usuario.isAdminOrRh && usuario.temModuloRh) {
       items.add(
         const _NavigationItem(
           screen: ColaboradoresScreen(),
@@ -59,14 +64,50 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       );
     }
 
-    // 3. Módulo de Estoque e Almoxarifado (Admin Plataforma, Admin Empresa, Gestor RH ou Colaborador autorizado)
-    if (usuario != null && usuario.temAcessoEstoque) {
+    // 3. Módulo de Estoque e Almoxarifado (usuários com módulo ESTOQUE ativo)
+    if (usuario != null && usuario.temModuloEstoque) {
       items.add(
         const _NavigationItem(
           screen: EstoqueHomeScreen(),
           label: 'Estoque',
           icon: Icons.inventory_2_outlined,
           selectedIcon: Icons.inventory_2,
+        ),
+      );
+    }
+
+    // 4. Módulo de Patrimônio (usuários com módulo PATRIMONIO ativo)
+    if (usuario != null && usuario.temModuloPatrimonio) {
+      items.add(
+        const _NavigationItem(
+          screen: PatrimonioHomeScreen(),
+          label: 'Patrimônio',
+          icon: Icons.inventory_outlined,
+          selectedIcon: Icons.inventory,
+        ),
+      );
+    }
+
+    // 5. Módulo de Frota (usuários com módulo FROTA ativo)
+    if (usuario != null && usuario.temModuloFrota) {
+      items.add(
+        const _NavigationItem(
+          screen: FrotaHomeScreen(),
+          label: 'Frota',
+          icon: Icons.local_shipping_outlined,
+          selectedIcon: Icons.local_shipping,
+        ),
+      );
+    }
+
+    // 6. Módulo de Protocolo (usuários com módulo PROTOCOLO ativo)
+    if (usuario != null && usuario.temModuloProtocolo) {
+      items.add(
+        const _NavigationItem(
+          screen: ProtocoloHomeScreen(),
+          label: 'Protocolo',
+          icon: Icons.assignment_outlined,
+          selectedIcon: Icons.assignment,
         ),
       );
     }

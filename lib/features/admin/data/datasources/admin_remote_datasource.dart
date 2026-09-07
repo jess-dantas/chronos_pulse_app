@@ -136,4 +136,43 @@ class AdminRemoteDataSource {
       throw Exception(e.response?.data?['message'] ?? 'Erro ao adicionar evento ao contrato');
     }
   }
+
+  Future<List<Map<String, dynamic>>> listarCatalogoModulos() async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.adminModulosCatalogoEndpoint);
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Erro ao listar módulos');
+    }
+  }
+
+  Future<List<String>> listarModulosEmpresa(String tenantId) async {
+    try {
+      final response = await _dioClient.dio.get(ApiConstants.adminModulosEmpresaEndpoint(tenantId));
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List).whereType<String>().toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Erro ao listar módulos da empresa');
+    }
+  }
+
+  Future<List<String>> atualizarModulosEmpresa(String tenantId, List<String> modulos) async {
+    try {
+      final response = await _dioClient.dio.put(
+        ApiConstants.adminModulosEmpresaEndpoint(tenantId),
+        data: {'modulos': modulos},
+      );
+      if (response.statusCode == 200 && response.data is List) {
+        return (response.data as List).whereType<String>().toList();
+      }
+      throw Exception('Falha ao atualizar módulos da empresa');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Erro ao atualizar módulos da empresa');
+    }
+  }
 }

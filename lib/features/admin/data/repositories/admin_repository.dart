@@ -59,4 +59,16 @@ class AdminRepository {
       descricao: descricao,
     );
   }
+
+  Future<List<Map<String, dynamic>>> listarCatalogoModulos() {
+    return _remoteDataSource.listarCatalogoModulos();
+  }
+
+  Future<List<String>> listarModulosEmpresa(String tenantId) {
+    return _remoteDataSource.listarModulosEmpresa(tenantId);
+  }
+
+  Future<List<String>> atualizarModulosEmpresa(String tenantId, List<String> modulos) {
+    return _remoteDataSource.atualizarModulosEmpresa(tenantId, modulos);
+  }
 }

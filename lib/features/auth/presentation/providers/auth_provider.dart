@@ -18,6 +18,7 @@ class AuthProvider extends ChangeNotifier {
   static const _keyTenantId = 'chronos_tenant_id';
   static const _keyCpcId = 'chronos_cpc_id';
   static const _keyAcessoEstoque = 'chronos_acesso_estoque';
+  static const _keyModulos = 'chronos_modulos';
   static const _keySessionInicio = 'chronos_session_inicio';
   static const _keyFoto = 'chronos_foto';
 
@@ -100,6 +101,7 @@ class AuthProvider extends ChangeNotifier {
         cpcId: prefs.getString(_keyCpcId),
         acessoEstoque: prefs.getBool(_keyAcessoEstoque) ?? false,
         foto: prefs.getString(_keyFoto),
+        modulos: prefs.getStringList(_keyModulos) ?? const [],
       );
       _authRepository.updateToken(token);
 
@@ -116,6 +118,9 @@ class AuthProvider extends ChangeNotifier {
           cpcId: refreshed.cpcId,
           acessoEstoque: refreshed.acessoEstoque,
           foto: refreshed.foto ?? prefs.getString(_keyFoto),
+          modulos: refreshed.modulos.isNotEmpty
+              ? refreshed.modulos
+              : (prefs.getStringList(_keyModulos) ?? const []),
         );
         _authRepository.updateToken(refreshed.token);
         await _saveSession(_usuario!);
@@ -323,6 +328,9 @@ class AuthProvider extends ChangeNotifier {
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
     if (usuario.foto != null) await prefs.setString(_keyFoto, usuario.foto!);
+    if (usuario.modulos.isNotEmpty) {
+      await prefs.setStringList(_keyModulos, usuario.modulos);
+    }
   }
 
   Future<void> _clearSession() async {
@@ -335,6 +343,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyTenantId);
     await prefs.remove(_keyCpcId);
     await prefs.remove(_keyAcessoEstoque);
+    await prefs.remove(_keyModulos);
     await prefs.remove(_keySessionInicio);
     await prefs.remove(_keyFoto);
   }
