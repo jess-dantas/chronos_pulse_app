@@ -10,7 +10,11 @@ class ColaboradorModel {
   final String departamento;
   final String? dataAdmissao;
   final String? dataNascimento;
+  final String? dataDesligamento;
   final bool acessoEstoque;
+  final bool acessoPatrimonio;
+  final bool acessoFrota;
+  final bool acessoProtocolo;
   final bool ativo;
 
   ColaboradorModel({
@@ -25,7 +29,11 @@ class ColaboradorModel {
     required this.departamento,
     this.dataAdmissao,
     this.dataNascimento,
+    this.dataDesligamento,
     required this.acessoEstoque,
+    this.acessoPatrimonio = false,
+    this.acessoFrota = false,
+    this.acessoProtocolo = false,
     required this.ativo,
   });
 
@@ -42,7 +50,11 @@ class ColaboradorModel {
       departamento: json['departamento'] ?? '',
       dataAdmissao: json['dataAdmissao'],
       dataNascimento: json['dataNascimento'],
+      dataDesligamento: json['dataDesligamento'],
       acessoEstoque: json['acessoEstoque'] ?? false,
+      acessoPatrimonio: json['acessoPatrimonio'] ?? false,
+      acessoFrota: json['acessoFrota'] ?? false,
+      acessoProtocolo: json['acessoProtocolo'] ?? false,
       ativo: json['ativo'] ?? true,
     );
   }

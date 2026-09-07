@@ -1,34 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/empresa_form_fields.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/admin_provider.dart';
 
-class CadastrarEmpresaScreen extends StatefulWidget {
-  const CadastrarEmpresaScreen({super.key});
+class AdminNovaEmpresaScreen extends StatefulWidget {
+  const AdminNovaEmpresaScreen({super.key});
 
   @override
-  State<CadastrarEmpresaScreen> createState() => _CadastrarEmpresaScreenState();
+  State<AdminNovaEmpresaScreen> createState() => _AdminNovaEmpresaScreenState();
 }
 
-class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
+class _AdminNovaEmpresaScreenState extends State<AdminNovaEmpresaScreen> {
   final _empresaFormFieldsKey = GlobalKey<EmpresaFormFieldsState>();
 
   Future<void> _handleCadastro() async {
     if (!(_empresaFormFieldsKey.currentState?.validate() ?? false)) return;
 
     final fields = _empresaFormFieldsKey.currentState!;
-    final authProvider = context.read<AuthProvider>();
-    final sucesso = await authProvider.cadastrarEmpresa(
+    final adminProvider = context.read<AdminProvider>();
+    final sucesso = await adminProvider.cadastrarEmpresa(
       cnpj: fields.cnpj,
-      nomeEmpresa: fields.nomeEmpresa,
+      nome: fields.nomeEmpresa,
       responsavelNome: fields.responsavelNome,
-      responsavelCpf: fields.responsavelCpf ?? '',
-      responsavelEmail: fields.responsavelEmail ?? '',
+      responsavelEmail: fields.responsavelEmail,
       responsavelTelefone: fields.responsavelTelefone,
       responsavelCelular: fields.responsavelCelular,
-      responsavelSenha: fields.responsavelSenha ?? '',
       enderecoLogradouro: fields.enderecoLogradouro,
       enderecoNumero: fields.enderecoNumero,
       enderecoComplemento: fields.enderecoComplemento,
@@ -38,55 +35,40 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
       enderecoCep: fields.enderecoCep,
     );
 
-    if (sucesso && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Empresa cadastrada com sucesso!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.of(context).popUntil((route) => route.isFirst);
-    } else if (!sucesso && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Erro ao cadastrar empresa.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+    if (!mounted) return;
+    if (sucesso) {
+      Navigator.of(context).pop(true);
+      return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(adminProvider.errorMessage ?? 'Erro ao cadastrar empresa.'),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final themeProvider = context.watch<ThemeProvider>();
-    final isCarregando = authProvider.isLoading;
+    final adminProvider = context.watch<AdminProvider>();
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text('Cadastro de Empresa'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-            ),
-            tooltip: themeProvider.isDarkMode ? 'Tema Claro' : 'Tema Escuro',
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-          const SizedBox(width: 8),
-        ],
+        title: const Text(
+          'Nova Empresa',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
+              constraints: const BoxConstraints(maxWidth: 720),
               child: Card(
-                elevation: 4,
+                elevation: 3,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -96,41 +78,24 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Center(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            height: 70,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primaryContainer,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.fingerprint,
-                                size: 36,
-                                color: colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ),
+                      Icon(
+                        Icons.business_center,
+                        size: 48,
+                        color: colorScheme.primary,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Criar sua empresa no Chronos Pulse',
+                        'Cadastrar nova empresa',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: colorScheme.primary,
                             ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Preencha os dados da empresa e do administrador responsável.',
+                        'Informe os dados da empresa, endereço e contato do responsável. '
+                        'Os módulos Ponto e RH serão ativados automaticamente.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Colors.grey.shade600,
@@ -139,13 +104,14 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                       const SizedBox(height: 8),
                       EmpresaFormFields(
                         key: _empresaFormFieldsKey,
-                        mostrarCredenciaisResponsavel: true,
+                        mostrarCredenciaisResponsavel: false,
+                        tituloSecaoContato: 'Contato do Responsável',
                       ),
                       const SizedBox(height: 24),
                       SizedBox(
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: isCarregando ? null : _handleCadastro,
+                          onPressed: adminProvider.isLoading ? null : _handleCadastro,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryAction(context),
                             foregroundColor: Colors.white,
@@ -153,7 +119,7 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: isCarregando
+                          child: adminProvider.isLoading
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
@@ -170,11 +136,6 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                                   ),
                                 ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Já tem conta? Voltar ao Login'),
                       ),
                     ],
                   ),

@@ -1,71 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/data/listas_govbr.dart';
-import '../../../../core/utils/cpf_input_formatter.dart';
-import '../../../../core/widgets/acessos_modulos_card.dart';
-import '../../data/models/colaborador_model.dart';
-import '../providers/colaborador_provider.dart';
+import '../../../../../core/data/listas_govbr.dart';
+import '../../../../../core/utils/cpf_input_formatter.dart';
+import '../../../../../core/widgets/acessos_modulos_card.dart';
+import '../../providers/admin_provider.dart';
 
-class EditarColaboradorDialog extends StatefulWidget {
-  final ColaboradorModel colaborador;
+class AdminNovoColaboradorDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> empresas;
 
-  const EditarColaboradorDialog({super.key, required this.colaborador});
+  const AdminNovoColaboradorDialog({super.key, this.empresas = const []});
 
   @override
-  State<EditarColaboradorDialog> createState() => _EditarColaboradorDialogState();
+  State<AdminNovoColaboradorDialog> createState() => _AdminNovoColaboradorDialogState();
 }
 
-class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
+class _AdminNovoColaboradorDialogState extends State<AdminNovoColaboradorDialog> {
   final _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController _nomeController;
-  late final TextEditingController _cpfController;
-  late final TextEditingController _emailController;
-  late final TextEditingController _matriculaController;
+  final _nomeController = TextEditingController();
+  final _cpfController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _senhaController = TextEditingController();
+  final _matriculaController = TextEditingController();
 
-  late String? _cargo;
-  late String? _departamento;
+  String? _tenantId;
+  String? _cargo;
+  String? _departamento;
 
-  late DateTime _dataNascimento;
-  late DateTime _dataAdmissao;
+  DateTime _dataNascimento = DateTime(1995, 1, 1);
+  DateTime _dataAdmissao = DateTime.now();
   DateTime? _dataDesligamento;
-  late bool _acessoEstoque;
-  late bool _acessoPatrimonio;
-  late bool _acessoFrota;
-  late bool _acessoProtocolo;
+  bool _acessoEstoque = false;
+  bool _acessoPatrimonio = false;
+  bool _acessoFrota = false;
+  bool _acessoProtocolo = false;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final colab = widget.colaborador;
-    _nomeController = TextEditingController(text: colab.nome);
-    _cpfController = TextEditingController(text: colab.cpf);
-    _emailController = TextEditingController(text: colab.email);
-    _matriculaController = TextEditingController(text: colab.matricula);
-    _cargo = colab.cargo.isNotEmpty ? colab.cargo : null;
-    _departamento = colab.departamento.isNotEmpty ? colab.departamento : null;
-    _dataNascimento = colab.dataNascimento != null
-        ? DateTime.tryParse(colab.dataNascimento!) ?? DateTime(1995, 1, 1)
-        : DateTime(1995, 1, 1);
-    _dataAdmissao = colab.dataAdmissao != null
-        ? DateTime.tryParse(colab.dataAdmissao!) ?? DateTime.now()
-        : DateTime.now();
-    _dataDesligamento = colab.dataDesligamento != null
-        ? DateTime.tryParse(colab.dataDesligamento!)
-        : null;
-    _acessoEstoque = colab.acessoEstoque;
-    _acessoPatrimonio = colab.acessoPatrimonio;
-    _acessoFrota = colab.acessoFrota;
-    _acessoProtocolo = colab.acessoProtocolo;
-  }
 
   @override
   void dispose() {
     _nomeController.dispose();
     _cpfController.dispose();
     _emailController.dispose();
+    _senhaController.dispose();
     _matriculaController.dispose();
     super.dispose();
   }
@@ -114,15 +91,17 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
 
     setState(() => _isLoading = true);
 
-    final provider = context.read<ColaboradorProvider>();
+    final provider = context.read<AdminProvider>();
     final dateFormat = DateFormat('yyyy-MM-dd');
+    final cpfLimpo = CpfInputFormatter.clean(_cpfController.text);
 
-    final sucesso = await provider.atualizarColaborador(
-      id: widget.colaborador.id,
+    final sucesso = await provider.cadastrarColaborador(
+      cpf: cpfLimpo,
       nome: _nomeController.text.trim(),
       emailCorporativo: _emailController.text.trim().isEmpty
           ? null
           : _emailController.text.trim(),
+      senha: _senhaController.text,
       matricula: _matriculaController.text.trim(),
       cargo: _cargo,
       departamento: _departamento,
@@ -131,6 +110,7 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
       dataDesligamento: _dataDesligamento != null
           ? dateFormat.format(_dataDesligamento!)
           : null,
+      tenantId: _tenantId,
       acessoEstoque: _acessoEstoque,
       acessoPatrimonio: _acessoPatrimonio,
       acessoFrota: _acessoFrota,
@@ -144,66 +124,17 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Colaborador atualizado com sucesso!'),
+            content: Text('Colaborador cadastrado com sucesso!'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(provider.errorMessage ?? 'Erro ao atualizar colaborador.'),
+            content: Text(provider.errorMessage ?? 'Erro ao cadastrar colaborador.'),
             backgroundColor: Colors.red,
           ),
         );
-      }
-    }
-  }
-
-  Future<void> _confirmarExclusao() async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmar Exclusão'),
-        content: Text(
-          'Deseja realmente excluir o colaborador ${widget.colaborador.nome}?\n\nEsta ação irá desativar o acesso do colaborador à plataforma.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Excluir', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmar == true && mounted) {
-      setState(() => _isLoading = true);
-      final provider = context.read<ColaboradorProvider>();
-      final sucesso = await provider.excluirColaborador(widget.colaborador.id);
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (sucesso) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Colaborador excluído com sucesso!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(provider.errorMessage ?? 'Erro ao excluir colaborador.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     }
   }
@@ -227,10 +158,10 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.edit, color: Colors.blue.shade700, size: 28),
+                      Icon(Icons.person_add, color: Colors.blue.shade700, size: 28),
                       const SizedBox(width: 12),
                       const Text(
-                        'Editar Colaborador',
+                        'Novo Colaborador',
                         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -271,7 +202,6 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                               : null,
                         ),
                         const SizedBox(height: 16),
-
                         Row(
                           children: [
                             Expanded(
@@ -279,13 +209,25 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                               child: TextFormField(
                                 controller: _cpfController,
                                 keyboardType: TextInputType.number,
-                                enabled: false,
                                 inputFormatters: [CpfInputFormatter()],
                                 decoration: const InputDecoration(
-                                  labelText: 'CPF (não editável)',
+                                  labelText: 'CPF (11 dígitos) *',
+                                  hintText: '000.000.000-00',
                                   prefixIcon: Icon(Icons.credit_card),
                                   border: OutlineInputBorder(),
                                 ),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Informe o CPF';
+                                  }
+                                  if (!CpfInputFormatter.isValidLength(v)) {
+                                    return 'O CPF deve ter 11 dígitos';
+                                  }
+                                  if (!CpfInputFormatter.isValid(v)) {
+                                    return 'CPF inválido';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -312,7 +254,19 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                           ],
                         ),
                         const SizedBox(height: 16),
-
+                        TextFormField(
+                          controller: _senhaController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Senha de Acesso Inicial *',
+                            prefixIcon: Icon(Icons.lock_outline),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) => (v == null || v.length < 6)
+                              ? 'Senha deve ter no mínimo 6 caracteres'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
                         TextFormField(
                           controller: _matriculaController,
                           decoration: const InputDecoration(
@@ -364,7 +318,32 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                           ],
                         ),
                         const SizedBox(height: 16),
-
+                        DropdownButtonFormField<String?>(
+                          initialValue: _tenantId,
+                          decoration: const InputDecoration(
+                            labelText: 'Empresa',
+                            hintText: 'Opcional. Em branco usa a empresa do usuário logado.',
+                            prefixIcon: Icon(Icons.business),
+                            border: OutlineInputBorder(),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('Sem empresa (padrão do usuário)'),
+                            ),
+                            ...widget.empresas.map(
+                              (e) => DropdownMenuItem<String?>(
+                                value: e['id']?.toString(),
+                                child: Text(
+                                  e['nome']?.toString() ?? e['id']?.toString() ?? '—',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => _tenantId = v),
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
@@ -413,7 +392,6 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                           onPressed: _selecionarDesligamento,
                         ),
                         const SizedBox(height: 20),
-
                         AcessosModulosCard(
                           acessoEstoque: _acessoEstoque,
                           acessoPatrimonio: _acessoPatrimonio,
@@ -433,41 +411,26 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _confirmarExclusao,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Excluir'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                    ),
+                  TextButton(
+                    onPressed: _isLoading ? null : () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
                   ),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _salvar,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.save),
-                        label: const Text('Salvar Alterações'),
-                        style: ElevatedButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _salvar,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.save),
+                    label: const Text('Salvar Colaborador'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    ),
                   ),
                 ],
               ),

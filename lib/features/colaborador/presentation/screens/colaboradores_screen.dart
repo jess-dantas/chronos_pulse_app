@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/colaborador_model.dart';
 import '../providers/colaborador_provider.dart';
 import 'editar_colaborador_dialog.dart';
 import 'novo_colaborador_dialog.dart';
@@ -36,6 +37,17 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
       barrierDismissible: false,
       builder: (_) => EditarColaboradorDialog(colaborador: colaborador),
     );
+  }
+
+  String _modulosAcessosLabel(ColaboradorModel colab) {
+    final modulos = <String>[
+      if (colab.acessoEstoque) 'Estoque',
+      if (colab.acessoPatrimonio) 'Patrimônio',
+      if (colab.acessoFrota) 'Frota',
+      if (colab.acessoProtocolo) 'Protocolo',
+    ];
+    if (modulos.isEmpty) return 'Apenas Ponto';
+    return 'Acesso: ${modulos.join(', ')}';
   }
 
   void _confirmarExclusao(colaborador) async {
@@ -314,17 +326,23 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
                                         Column(
                                           crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
-                                            // Badge Permissão de Estoque
+                                            // Badge de módulos acessíveis
                                             Container(
                                               padding: const EdgeInsets.symmetric(
                                                   horizontal: 8, vertical: 4),
                                               decoration: BoxDecoration(
-                                                color: colab.acessoEstoque
+                                                color: colab.acessoEstoque ||
+                                                        colab.acessoPatrimonio ||
+                                                        colab.acessoFrota ||
+                                                        colab.acessoProtocolo
                                                     ? Colors.green.shade50
                                                     : Colors.grey.shade100,
                                                 borderRadius: BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: colab.acessoEstoque
+                                                  color: colab.acessoEstoque ||
+                                                          colab.acessoPatrimonio ||
+                                                          colab.acessoFrota ||
+                                                          colab.acessoProtocolo
                                                       ? Colors.green.shade300
                                                       : Colors.grey.shade300,
                                                 ),
@@ -333,23 +351,30 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Icon(
-                                                    colab.acessoEstoque
+                                                    colab.acessoEstoque ||
+                                                            colab.acessoPatrimonio ||
+                                                            colab.acessoFrota ||
+                                                            colab.acessoProtocolo
                                                         ? Icons.inventory_2
                                                         : Icons.lock_outline,
                                                     size: 14,
-                                                    color: colab.acessoEstoque
+                                                    color: colab.acessoEstoque ||
+                                                            colab.acessoPatrimonio ||
+                                                            colab.acessoFrota ||
+                                                            colab.acessoProtocolo
                                                         ? Colors.green.shade800
                                                         : Colors.grey.shade600,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
-                                                    colab.acessoEstoque
-                                                        ? 'Acesso ao Estoque'
-                                                        : 'Apenas Ponto',
+                                                    _modulosAcessosLabel(colab),
                                                     style: TextStyle(
                                                       fontSize: 11,
                                                       fontWeight: FontWeight.bold,
-                                                      color: colab.acessoEstoque
+                                                      color: colab.acessoEstoque ||
+                                                              colab.acessoPatrimonio ||
+                                                              colab.acessoFrota ||
+                                                              colab.acessoProtocolo
                                                           ? Colors.green.shade900
                                                           : Colors.grey.shade700,
                                                     ),
@@ -357,6 +382,27 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
                                                 ],
                                               ),
                                             ),
+                                            if (colab.dataDesligamento != null) ...[
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.red.shade50,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                      color: Colors.red.shade200),
+                                                ),
+                                                child: Text(
+                                                  'Desligado',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red.shade800,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                             const SizedBox(height: 8),
                                             // Botões de Ação
                                             Row(

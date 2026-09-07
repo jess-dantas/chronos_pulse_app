@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/screens/cadastrar_empresa_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
@@ -101,7 +102,7 @@ class LandingScreen extends StatelessWidget {
                     icon: const Icon(Icons.login, size: 18),
                     label: const Text('Login'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
+                      backgroundColor: AppTheme.primaryAction(context),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -233,7 +234,7 @@ class LandingScreen extends StatelessWidget {
                     icon: const Icon(Icons.arrow_forward),
                     label: const Text('Login na Plataforma'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
+                      backgroundColor: AppTheme.primaryAction(context),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
@@ -466,6 +467,51 @@ class LandingScreen extends StatelessWidget {
                           'Trilha de auditoria completa para órgãos fiscalizadores e TCEs.',
                         ],
                       ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.inventory,
+                        color: const Color(0xFFB45309),
+                        tag: 'MÓDULO DE PATRIMÔNIO',
+                        title: 'Bens Públicos & Tombamento',
+                        features: [
+                          'Cadastro de bens com tombamento, categoria e localização detalhada.',
+                          'Controle do estado de conservação (conservado, danificado, inservível).',
+                          'Registro de valor de aquisição alinhado à contabilidade patrimonial.',
+                          'Histórico completo de baixas e responsáveis pelo bem.',
+                          'Inventário patrimonial para conformidade junto a órgãos de controle.',
+                        ],
+                      ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.local_shipping_outlined,
+                        color: const Color(0xFF0891B2),
+                        tag: 'MÓDULO DE FROTA',
+                        title: 'Veículos & Abastecimentos',
+                        features: [
+                          'Cadastro de veículos com placa, tipo, combustível e odômetro atual.',
+                          'Registro de abastecimentos com litros, valor unitário e quilometragem.',
+                          'Acompanhamento do custo médio por litro da frota.',
+                          'Histórico de consumo por veículo para redução de despesas.',
+                          'Controle da utilização oficial da frota pública.',
+                        ],
+                      ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.assignment_outlined,
+                        color: const Color(0xFFDB2777),
+                        tag: 'MÓDULO DE PROTOCOLO',
+                        title: 'Documentos & Tramitação',
+                        features: [
+                          'Registro de documentos com numeração sequencial de protocolo.',
+                          'Classificação por tipo, assunto e remetente/destinatário.',
+                          'Fluxo de status: Recebido, Triagem, Em tramitação, Arquivado e Cancelado.',
+                          'Atribuição de responsável e observações no acompanhamento.',
+                          'Acompanhamento completo da tramitação processual em tempo real.',
+                        ],
+                      ),
                     ],
                   );
                 },
@@ -672,9 +718,6 @@ class LandingScreen extends StatelessWidget {
   }
 
   Widget _buildCtaSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 56),
       child: Center(
@@ -685,7 +728,7 @@ class LandingScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
             ),
-            color: colorScheme.primary,
+            color: AppTheme.primaryAction(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
               child: Column(
@@ -720,7 +763,7 @@ class LandingScreen extends StatelessWidget {
                         label: const Text('Login'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: colorScheme.primary,
+                          foregroundColor: AppTheme.primaryAction(context),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 36,
                             vertical: 16,

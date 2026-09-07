@@ -15,15 +15,19 @@ class ColaboradorRemoteDataSource {
   Future<void> cadastrarColaborador({
     required String cpf,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     required String senha,
     String? matricula,
     String? cargo,
     String? departamento,
     required String dataNascimento,
     required String dataAdmissao,
+    String? dataDesligamento,
     String? tenantId,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     await _dioClient.dio.post(
       '/colaboradores',
@@ -37,8 +41,12 @@ class ColaboradorRemoteDataSource {
         'departamento': departamento,
         'dataNascimento': dataNascimento,
         'dataAdmissao': dataAdmissao,
+        'dataDesligamento': dataDesligamento,
         if (tenantId != null && tenantId.isNotEmpty) 'tenantId': tenantId,
         'acessoEstoque': acessoEstoque,
+        'acessoPatrimonio': acessoPatrimonio,
+        'acessoFrota': acessoFrota,
+        'acessoProtocolo': acessoProtocolo,
       },
     );
   }
@@ -46,13 +54,17 @@ class ColaboradorRemoteDataSource {
   Future<void> atualizarColaborador({
     required String id,
     required String nome,
-    required String emailCorporativo,
+    String? emailCorporativo,
     String? matricula,
     String? cargo,
     String? departamento,
     String? dataNascimento,
     String? dataAdmissao,
+    String? dataDesligamento,
     bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
   }) async {
     await _dioClient.dio.put(
       '/colaboradores/$id',
@@ -64,7 +76,11 @@ class ColaboradorRemoteDataSource {
         'departamento': departamento,
         'dataNascimento': dataNascimento,
         'dataAdmissao': dataAdmissao,
+        'dataDesligamento': dataDesligamento,
         'acessoEstoque': acessoEstoque,
+        'acessoPatrimonio': acessoPatrimonio,
+        'acessoFrota': acessoFrota,
+        'acessoProtocolo': acessoProtocolo,
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../colaborador/presentation/screens/colaboradores_screen.dart';
@@ -156,7 +157,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   Chip(
                     avatar: const Icon(Icons.account_circle, size: 18),
                     label: Text('${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})'),
-                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                    backgroundColor: AppTheme.lilasSurface(context, lightAlpha: 0.08),
                   ),
                   const SizedBox(width: 12),
                 ],

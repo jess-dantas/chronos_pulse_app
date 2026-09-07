@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../providers/patrimonio_provider.dart';
 import 'dialogs/novo_bem_dialog.dart';
 
@@ -104,8 +105,8 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
                           child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             leading: CircleAvatar(
-                              backgroundColor: Colors.deepPurple.withOpacity(0.1),
-                              child: const Icon(Icons.inventory, color: Colors.deepPurple),
+                              backgroundColor: AppTheme.lilasSurface(context),
+                              child: Icon(Icons.inventory, color: AppTheme.onLilasSurface(context)),
                             ),
                             title: Text(
                               bem.descricao,
@@ -138,13 +139,13 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.deepPurple.withOpacity(0.1),
+                                color: AppTheme.lilasSurface(context),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 bem.estado,
-                                style: const TextStyle(
-                                  color: Colors.deepPurple,
+                                style: TextStyle(
+                                  color: AppTheme.onLilasSurface(context),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,
                                 ),

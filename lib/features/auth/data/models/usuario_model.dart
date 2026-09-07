@@ -13,6 +13,9 @@ class UsuarioModel {
   final String? colaboradorId;
   final String? cpcId;
   final bool acessoEstoque;
+  final bool acessoPatrimonio;
+  final bool acessoFrota;
+  final bool acessoProtocolo;
   final String? foto;
   final List<String> modulos;
 
@@ -28,6 +31,9 @@ class UsuarioModel {
     this.colaboradorId,
     this.cpcId,
     this.acessoEstoque = false,
+    this.acessoPatrimonio = false,
+    this.acessoFrota = false,
+    this.acessoProtocolo = false,
     this.foto,
     this.modulos = const [],
   });
@@ -41,6 +47,9 @@ class UsuarioModel {
   bool get isAdminOrRh => isAdminPlataforma || isAdminEmpresa || isGestorRh;
   bool get isGestorPlataforma => isAdminPlataforma || isSuporte;
   bool get temAcessoEstoque => isAdminOrRh || acessoEstoque;
+  bool get temAcessoPatrimonio => isAdminOrRh || acessoPatrimonio;
+  bool get temAcessoFrota => isAdminOrRh || acessoFrota;
+  bool get temAcessoProtocolo => isAdminOrRh || acessoProtocolo;
 
   bool get temModuloPonto => isGestorPlataforma || _temModulo('PONTO');
   bool get temModuloRh => isGestorPlataforma || _temModulo('RECURSOS_HUMANOS');
@@ -64,19 +73,22 @@ class UsuarioModel {
     }
   }
 
-  UsuarioModel copyWith({String? foto, List<String>? modulos}) {
+  UsuarioModel copyWith({String? cpf, String? foto, List<String>? modulos}) {
     return UsuarioModel(
       token: token,
       refreshToken: refreshToken,
       tipo: tipo,
       nome: nome,
       email: email,
-      cpf: cpf,
+      cpf: cpf ?? this.cpf,
       role: role,
       tenantId: tenantId,
       colaboradorId: colaboradorId,
       cpcId: cpcId,
       acessoEstoque: acessoEstoque,
+      acessoPatrimonio: acessoPatrimonio,
+      acessoFrota: acessoFrota,
+      acessoProtocolo: acessoProtocolo,
       foto: foto ?? this.foto,
       modulos: modulos ?? this.modulos,
     );
@@ -100,6 +112,9 @@ class UsuarioModel {
       colaboradorId: json['colaboradorId'] ?? json['cpcId'],
       cpcId: json['cpcId'],
       acessoEstoque: json['acessoEstoque'] ?? false,
+      acessoPatrimonio: json['acessoPatrimonio'] ?? false,
+      acessoFrota: json['acessoFrota'] ?? false,
+      acessoProtocolo: json['acessoProtocolo'] ?? false,
       foto: json['foto'],
       modulos: modulos,
     );
@@ -118,6 +133,9 @@ class UsuarioModel {
       'colaboradorId': colaboradorId,
       'cpcId': cpcId,
       'acessoEstoque': acessoEstoque,
+      'acessoPatrimonio': acessoPatrimonio,
+      'acessoFrota': acessoFrota,
+      'acessoProtocolo': acessoProtocolo,
       'foto': foto,
       'modulos': modulos,
     };

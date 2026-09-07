@@ -189,6 +189,188 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> cadastrarEmpresa({
+    required String cnpj,
+    required String nome,
+    String? responsavelNome,
+    String? responsavelEmail,
+    String? responsavelTelefone,
+    String? responsavelCelular,
+    String? enderecoLogradouro,
+    String? enderecoNumero,
+    String? enderecoComplemento,
+    String? enderecoBairro,
+    String? enderecoCidade,
+    String? enderecoUf,
+    String? enderecoCep,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.cadastrarEmpresa(
+        cnpj: cnpj,
+        nome: nome,
+        responsavelNome: responsavelNome,
+        responsavelEmail: responsavelEmail,
+        responsavelTelefone: responsavelTelefone,
+        responsavelCelular: responsavelCelular,
+        enderecoLogradouro: enderecoLogradouro,
+        enderecoNumero: enderecoNumero,
+        enderecoComplemento: enderecoComplemento,
+        enderecoBairro: enderecoBairro,
+        enderecoCidade: enderecoCidade,
+        enderecoUf: enderecoUf,
+        enderecoCep: enderecoCep,
+      );
+      await carregarEmpresas();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> atualizarEmpresa({
+    required String id,
+    String? nome,
+    bool? ativo,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.atualizarEmpresa(id: id, nome: nome, ativo: ativo);
+      await carregarEmpresas();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> cadastrarColaborador({
+    required String cpf,
+    required String nome,
+    String? emailCorporativo,
+    required String senha,
+    String? matricula,
+    String? cargo,
+    String? departamento,
+    required String dataNascimento,
+    required String dataAdmissao,
+    String? dataDesligamento,
+    String? tenantId,
+    bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.cadastrarColaborador(
+        cpf: cpf,
+        nome: nome,
+        emailCorporativo: emailCorporativo,
+        senha: senha,
+        matricula: matricula,
+        cargo: cargo,
+        departamento: departamento,
+        dataNascimento: dataNascimento,
+        dataAdmissao: dataAdmissao,
+        dataDesligamento: dataDesligamento,
+        tenantId: tenantId,
+        acessoEstoque: acessoEstoque,
+        acessoPatrimonio: acessoPatrimonio,
+        acessoFrota: acessoFrota,
+        acessoProtocolo: acessoProtocolo,
+      );
+      await carregarColaboradores();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> atualizarColaborador({
+    required String id,
+    required String nome,
+    String? emailCorporativo,
+    String? matricula,
+    String? cargo,
+    String? departamento,
+    String? dataNascimento,
+    String? dataAdmissao,
+    String? dataDesligamento,
+    bool acessoEstoque = false,
+    bool acessoPatrimonio = false,
+    bool acessoFrota = false,
+    bool acessoProtocolo = false,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.atualizarColaborador(
+        id: id,
+        nome: nome,
+        emailCorporativo: emailCorporativo,
+        matricula: matricula,
+        cargo: cargo,
+        departamento: departamento,
+        dataNascimento: dataNascimento,
+        dataAdmissao: dataAdmissao,
+        dataDesligamento: dataDesligamento,
+        acessoEstoque: acessoEstoque,
+        acessoPatrimonio: acessoPatrimonio,
+        acessoFrota: acessoFrota,
+        acessoProtocolo: acessoProtocolo,
+      );
+      await carregarColaboradores();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> excluirColaborador(String id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.excluirColaborador(id);
+      await carregarColaboradores();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   void limparErro() {
     _errorMessage = null;
     notifyListeners();

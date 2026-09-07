@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/data/listas_govbr.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
+import '../../../../core/widgets/acessos_modulos_card.dart';
 import '../providers/colaborador_provider.dart';
 
 class NovoColaboradorDialog extends StatefulWidget {
@@ -19,12 +21,17 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
   final _matriculaController = TextEditingController();
-  final _cargoController = TextEditingController();
-  final _departamentoController = TextEditingController();
+
+  String? _cargo;
+  String? _departamento;
 
   DateTime _dataNascimento = DateTime(1995, 1, 1);
   DateTime _dataAdmissao = DateTime.now();
+  DateTime? _dataDesligamento;
   bool _acessoEstoque = false;
+  bool _acessoPatrimonio = false;
+  bool _acessoFrota = false;
+  bool _acessoProtocolo = false;
   bool _isLoading = false;
 
   @override
@@ -34,8 +41,6 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
     _emailController.dispose();
     _senhaController.dispose();
     _matriculaController.dispose();
-    _cargoController.dispose();
-    _departamentoController.dispose();
     super.dispose();
   }
 
@@ -62,6 +67,22 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
     }
   }
 
+  Future<void> _selecionarDesligamento() async {
+    final dataInicial = _dataDesligamento ?? DateTime.now();
+    final DateTime? escolhida = await showDatePicker(
+      context: context,
+      initialDate: dataInicial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+
+    if (escolhida != null) {
+      setState(() => _dataDesligamento = escolhida);
+    } else if (_dataDesligamento != null) {
+      setState(() => _dataDesligamento = null);
+    }
+  }
+
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -70,20 +91,27 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
     final provider = context.read<ColaboradorProvider>();
     final dateFormat = DateFormat('yyyy-MM-dd');
 
-    // Remove caracteres não numéricos do CPF
     final cpfLimpo = CpfInputFormatter.clean(_cpfController.text);
 
     final sucesso = await provider.cadastrarColaborador(
       cpf: cpfLimpo,
       nome: _nomeController.text.trim(),
-      emailCorporativo: _emailController.text.trim(),
+      emailCorporativo: _emailController.text.trim().isEmpty
+          ? null
+          : _emailController.text.trim(),
       senha: _senhaController.text,
       matricula: _matriculaController.text.trim(),
-      cargo: _cargoController.text.trim(),
-      departamento: _departamentoController.text.trim(),
+      cargo: _cargo,
+      departamento: _departamento,
       dataNascimento: dateFormat.format(_dataNascimento),
       dataAdmissao: dateFormat.format(_dataAdmissao),
+      dataDesligamento: _dataDesligamento != null
+          ? dateFormat.format(_dataDesligamento!)
+          : null,
       acessoEstoque: _acessoEstoque,
+      acessoPatrimonio: _acessoPatrimonio,
+      acessoFrota: _acessoFrota,
+      acessoProtocolo: _acessoProtocolo,
     );
 
     setState(() => _isLoading = false);
@@ -115,7 +143,7 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 720),
+        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 800),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -149,6 +177,16 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '* = Obrigatório',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         // Nome Completo
                         TextFormField(
                           controller: _nomeController,
@@ -187,6 +225,9 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                                   if (!CpfInputFormatter.isValidLength(v)) {
                                     return 'O CPF deve ter 11 dígitos';
                                   }
+                                  if (!CpfInputFormatter.isValid(v)) {
+                                    return 'CPF inválido';
+                                  }
                                   return null;
                                 },
                               ),
@@ -198,13 +239,18 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
-                                  labelText: 'E-mail Corporativo *',
+                                  labelText: 'E-mail Corporativo',
+                                  hintText: 'Opcional',
                                   prefixIcon: Icon(Icons.email_outlined),
                                   border: OutlineInputBorder(),
                                 ),
-                                validator: (v) => (v == null || !v.contains('@'))
-                                    ? 'Informe um e-mail válido'
-                                    : null,
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) return null;
+                                  if (!v.contains('@') || !v.contains('.')) {
+                                    return 'Informe um e-mail válido';
+                                  }
+                                  return null;
+                                },
                               ),
                             ),
                           ],
@@ -227,38 +273,52 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                         const SizedBox(height: 16),
 
                         // Matrícula, Cargo e Departamento
+                        TextFormField(
+                          controller: _matriculaController,
+                          decoration: const InputDecoration(
+                            labelText: 'Matrícula',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                controller: _matriculaController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Matrícula',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 4,
-                              child: TextFormField(
-                                controller: _cargoController,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _cargo,
+                                isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Cargo',
+                                  hintText: 'Selecione...',
                                   border: OutlineInputBorder(),
                                 ),
+                                items: ListasGovBr.cargos.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e, overflow: TextOverflow.ellipsis),
+                                  ),
+                                ).toList(),
+                                onChanged: (v) => setState(() => _cargo = v),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              flex: 4,
-                              child: TextFormField(
-                                controller: _departamentoController,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _departamento,
+                                isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Departamento / Setor',
+                                  hintText: 'Selecione...',
                                   border: OutlineInputBorder(),
                                 ),
+                                items: ListasGovBr.departamentos.map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e, overflow: TextOverflow.ellipsis),
+                                  ),
+                                ).toList(),
+                                onChanged: (v) => setState(() => _departamento = v),
                               ),
                             ),
                           ],
@@ -297,30 +357,36 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.event_busy, size: 20),
+                          label: Text(
+                            _dataDesligamento != null
+                                ? 'Desligamento: ${dateFormat.format(_dataDesligamento!)}'
+                                : 'Desligamento: não informado',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _selecionarDesligamento,
+                        ),
                         const SizedBox(height: 20),
 
-                        // Permissão de Módulo: Estoque & Almoxarifado
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text(
-                              'Acesso ao Módulo de Estoque e Almoxarifado',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                            subtitle: const Text(
-                              'Habilita a visualização do catálogo, saldos, movimentações e requisições públicas de materiais.',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            value: _acessoEstoque,
-                            activeColor: Colors.blue.shade700,
-                            onChanged: (val) => setState(() => _acessoEstoque = val),
-                          ),
+                        // Permissões por Módulo
+                        AcessosModulosCard(
+                          acessoEstoque: _acessoEstoque,
+                          acessoPatrimonio: _acessoPatrimonio,
+                          acessoFrota: _acessoFrota,
+                          acessoProtocolo: _acessoProtocolo,
+                          onChanged: (e, p, f, pr) => setState(() {
+                            _acessoEstoque = e;
+                            _acessoPatrimonio = p;
+                            _acessoFrota = f;
+                            _acessoProtocolo = pr;
+                          }),
                         ),
                       ],
                     ),

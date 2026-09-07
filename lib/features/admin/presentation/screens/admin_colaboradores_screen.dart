@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/admin_provider.dart';
+import 'dialogs/admin_editar_colaborador_dialog.dart';
+import 'dialogs/admin_novo_colaborador_dialog.dart';
 
 class AdminColaboradoresScreen extends StatefulWidget {
   const AdminColaboradoresScreen({super.key});
@@ -16,8 +18,68 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminProvider>().carregarColaboradores();
+      final provider = context.read<AdminProvider>();
+      provider.carregarColaboradores();
+      if (provider.empresas.isEmpty) {
+        provider.carregarEmpresas();
+      }
     });
+  }
+
+  Future<void> _abrirNovoColaborador() async {
+    final adminProvider = context.read<AdminProvider>();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AdminNovoColaboradorDialog(
+        empresas: adminProvider.empresas,
+      ),
+    );
+  }
+
+  Future<void> _editarColaborador(Map<String, dynamic> colaborador) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AdminEditarColaboradorDialog(colaborador: colaborador),
+    );
+  }
+
+  Future<void> _excluirColaborador(Map<String, dynamic> colaborador) async {
+    final nome = colaborador['nome']?.toString() ?? 'este colaborador';
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: Text(
+          'Deseja realmente excluir $nome?\n\nEsta ação irá remover o acesso do colaborador à plataforma.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Excluir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    final provider = context.read<AdminProvider>();
+    final sucesso = await provider.excluirColaborador(colaborador['id'].toString());
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(sucesso
+              ? 'Colaborador excluído com sucesso!'
+              : provider.errorMessage ?? 'Erro ao excluir colaborador.'),
+          backgroundColor: sucesso ? Colors.green : Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -55,18 +117,43 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                       'Total: ${lista.length} colaborador(es) em todas as empresas',
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
-                    SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'Todos', label: Text('Todos')),
-                        ButtonSegment(value: 'Ativos', label: Text('Ativos')),
+                    Wrap(
+                      spacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(value: 'Todos', label: Text('Todos')),
+                            ButtonSegment(value: 'Ativos', label: Text('Ativos')),
+                          ],
+                          selected: {_filtro},
+                          onSelectionChanged: (s) =>
+                              setState(() => _filtro = s.first),
+                        ),
+                        FilledButton.icon(
+                          onPressed: _abrirNovoColaborador,
+                          icon: const Icon(Icons.person_add),
+                          label: const Text('Novo Colaborador'),
+                        ),
                       ],
-                      selected: {_filtro},
-                      onSelectionChanged: (s) =>
-                          setState(() => _filtro = s.first),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
+                if (adminProvider.errorMessage != null)
+                  Card(
+                    color: Colors.red[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error, color: Colors.red[700]),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(adminProvider.errorMessage!)),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (adminProvider.isLoading && lista.isEmpty)
                   const Center(child: CircularProgressIndicator())
                 else if (filtrados.isEmpty)
@@ -147,6 +234,30 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                                       acessoEstoque ? 'Estoque' : 'Sem estoque',
                                       acessoEstoque ? Colors.teal : Colors.grey,
                                     ),
+                                    if (c['acessoPatrimonio'] == true)
+                                      _chip(
+                                        Icon(Icons.inventory_2, size: 14),
+                                        'Patrimônio',
+                                        Colors.indigo,
+                                      ),
+                                    if (c['acessoFrota'] == true)
+                                      _chip(
+                                        Icon(Icons.directions_bus, size: 14),
+                                        'Frota',
+                                        Colors.teal.shade700,
+                                      ),
+                                    if (c['acessoProtocolo'] == true)
+                                      _chip(
+                                        Icon(Icons.folder_shared, size: 14),
+                                        'Protocolo',
+                                        Colors.cyan.shade700,
+                                      ),
+                                    if (c['dataDesligamento'] != null)
+                                      _chip(
+                                        Icon(Icons.event_busy, size: 14),
+                                        'Desligado em ${c['dataDesligamento']}',
+                                        Colors.red,
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
@@ -157,23 +268,38 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                               ],
                             ),
                           ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: (ativo ? Colors.green : Colors.red).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (ativo ? Colors.green : Colors.red).withOpacity(0.3),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: (ativo ? Colors.green : Colors.red).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: (ativo ? Colors.green : Colors.red).withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  ativo ? 'ATIVO' : 'INATIVO',
+                                  style: TextStyle(
+                                    color: (ativo ? Colors.green : Colors.red).shade700,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              ativo ? 'ATIVO' : 'INATIVO',
-                              style: TextStyle(
-                                color: (ativo ? Colors.green : Colors.red).shade700,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: 'Editar',
+                                onPressed: () => _editarColaborador(c),
                               ),
-                            ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                tooltip: 'Excluir',
+                                onPressed: () => _excluirColaborador(c),
+                              ),
+                            ],
                           ),
                         ),
                       );
