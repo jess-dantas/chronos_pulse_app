@@ -69,4 +69,18 @@ class ApiConstants {
   static const String adminContratoEventoEndpoint = '/admin/contratos/eventos';
   static const String adminEmpresasEndpoint = '/empresas';
   static const String adminColaboradoresEndpoint = '/admin/colaboradores';
+
+  // Módulo Plataforma (Catálogo de Módulos e Ativação por Empresa)
+  static const String adminModulosCatalogoEndpoint = '/admin/modulos';
+  static String adminModulosEmpresaEndpoint(String tenantId) => '/admin/empresas/$tenantId/modulos';
+
+  // Módulo Patrimônio
+  static const String patrimonioEndpoint = '/patrimonio';
+
+  // Módulo Frota
+  static const String frotaVeiculosEndpoint = '/frota/veiculos';
+  static const String frotaAbastecimentosEndpoint = '/frota/abastecimentos';
+
+  // Módulo Protocolo
+  static const String protocoloEndpoint = '/protocolo';
 }

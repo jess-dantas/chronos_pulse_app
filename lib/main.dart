@@ -24,6 +24,15 @@ import 'features/admin/data/datasources/admin_remote_datasource.dart';
 import 'features/admin/data/repositories/admin_repository.dart';
 import 'features/admin/presentation/providers/admin_provider.dart';
 import 'features/admin/presentation/screens/admin_navigation_screen.dart';
+import 'features/patrimonio/data/datasources/patrimonio_remote_datasource.dart';
+import 'features/patrimonio/data/repositories/patrimonio_repository.dart';
+import 'features/patrimonio/presentation/providers/patrimonio_provider.dart';
+import 'features/frota/data/datasources/frota_remote_datasource.dart';
+import 'features/frota/data/repositories/frota_repository.dart';
+import 'features/frota/presentation/providers/frota_provider.dart';
+import 'features/protocolo/data/datasources/protocolo_remote_datasource.dart';
+import 'features/protocolo/data/repositories/protocolo_repository.dart';
+import 'features/protocolo/presentation/providers/protocolo_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +66,17 @@ void main() async {
   final adminRemoteDataSource = AdminRemoteDataSource(dioClient);
   final adminRepository = AdminRepository(remoteDataSource: adminRemoteDataSource);
 
+  final patrimonioRemoteDataSource = PatrimonioRemoteDataSource(dioClient);
+  final patrimonioRepository =
+      PatrimonioRepository(remoteDataSource: patrimonioRemoteDataSource);
+
+  final frotaRemoteDataSource = FrotaRemoteDataSource(dioClient);
+  final frotaRepository = FrotaRepository(remoteDataSource: frotaRemoteDataSource);
+
+  final protocoloRemoteDataSource = ProtocoloRemoteDataSource(dioClient);
+  final protocoloRepository =
+      ProtocoloRepository(remoteDataSource: protocoloRemoteDataSource);
+
   final authProvider = AuthProvider(authRepository);
 
   runApp(
@@ -68,6 +88,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
         ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
         ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
+        ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
+        ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
+        ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
       ],
       child: ChronosPulseApp(authProvider: authProvider),
     ),

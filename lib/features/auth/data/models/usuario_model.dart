@@ -14,6 +14,7 @@ class UsuarioModel {
   final String? cpcId;
   final bool acessoEstoque;
   final String? foto;
+  final List<String> modulos;
 
   UsuarioModel({
     required this.token,
@@ -28,6 +29,7 @@ class UsuarioModel {
     this.cpcId,
     this.acessoEstoque = false,
     this.foto,
+    this.modulos = const [],
   });
 
   bool get isAdminPlataforma => role == 'ADMIN_PLATAFORMA';
@@ -39,6 +41,15 @@ class UsuarioModel {
   bool get isAdminOrRh => isAdminPlataforma || isAdminEmpresa || isGestorRh;
   bool get isGestorPlataforma => isAdminPlataforma || isSuporte;
   bool get temAcessoEstoque => isAdminOrRh || acessoEstoque;
+
+  bool get temModuloPonto => isGestorPlataforma || _temModulo('PONTO');
+  bool get temModuloRh => isGestorPlataforma || _temModulo('RECURSOS_HUMANOS');
+  bool get temModuloEstoque => isGestorPlataforma || _temModulo('ESTOQUE');
+  bool get temModuloPatrimonio => isGestorPlataforma || _temModulo('PATRIMONIO');
+  bool get temModuloFrota => isGestorPlataforma || _temModulo('FROTA');
+  bool get temModuloProtocolo => isGestorPlataforma || _temModulo('PROTOCOLO');
+
+  bool _temModulo(String codigo) => modulos.contains(codigo);
 
   bool get temFoto => foto != null && foto!.isNotEmpty;
 
@@ -53,7 +64,7 @@ class UsuarioModel {
     }
   }
 
-  UsuarioModel copyWith({String? foto}) {
+  UsuarioModel copyWith({String? foto, List<String>? modulos}) {
     return UsuarioModel(
       token: token,
       refreshToken: refreshToken,
@@ -67,10 +78,16 @@ class UsuarioModel {
       cpcId: cpcId,
       acessoEstoque: acessoEstoque,
       foto: foto ?? this.foto,
+      modulos: modulos ?? this.modulos,
     );
   }
 
   factory UsuarioModel.fromJson(Map<String, dynamic> json) {
+    final rawModulos = json['modulos'];
+    List<String> modulos = const [];
+    if (rawModulos is List) {
+      modulos = rawModulos.whereType<String>().toList();
+    }
     return UsuarioModel(
       token: json['accessToken'] ?? json['token'] ?? '',
       refreshToken: json['refreshToken'],
@@ -84,6 +101,7 @@ class UsuarioModel {
       cpcId: json['cpcId'],
       acessoEstoque: json['acessoEstoque'] ?? false,
       foto: json['foto'],
+      modulos: modulos,
     );
   }
 
@@ -101,6 +119,7 @@ class UsuarioModel {
       'cpcId': cpcId,
       'acessoEstoque': acessoEstoque,
       'foto': foto,
+      'modulos': modulos,
     };
   }
 }

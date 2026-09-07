@@ -7,6 +7,7 @@ import '../screens/admin_empresas_screen.dart';
 import '../screens/admin_colaboradores_screen.dart';
 import '../screens/admin_contratos_screen.dart';
 import '../screens/admin_alterar_senha_screen.dart';
+import '../screens/admin_modulos_screen.dart';
 
 class _AdminNavItem {
   final Widget screen;
@@ -56,6 +57,12 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
       label: 'Contratos',
       icon: Icons.description_outlined,
       selectedIcon: Icons.description,
+    ),
+    _AdminNavItem(
+      screen: AdminModulosScreen(),
+      label: 'Módulos',
+      icon: Icons.widgets_outlined,
+      selectedIcon: Icons.widgets,
     ),
     _AdminNavItem(
       screen: AdminAlterarSenhaScreen(),

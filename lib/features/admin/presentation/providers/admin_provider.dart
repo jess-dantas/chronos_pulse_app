@@ -8,6 +8,7 @@ class AdminProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _contratos = [];
   List<Map<String, dynamic>> _empresas = [];
   List<Map<String, dynamic>> _colaboradores = [];
+  List<Map<String, dynamic>> _modulosCatalogo = [];
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -17,6 +18,7 @@ class AdminProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get contratos => _contratos;
   List<Map<String, dynamic>> get empresas => _empresas;
   List<Map<String, dynamic>> get colaboradores => _colaboradores;
+  List<Map<String, dynamic>> get modulosCatalogo => _modulosCatalogo;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -122,6 +124,49 @@ class AdminProvider extends ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       throw e;
+    }
+  }
+
+  Future<void> carregarCatalogoModulos() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _modulosCatalogo = await _repository.listarCatalogoModulos();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<List<String>> listarModulosEmpresa(String tenantId) async {
+    try {
+      return await _repository.listarModulosEmpresa(tenantId);
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<bool> atualizarModulosEmpresa(String tenantId, List<String> modulos) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.atualizarModulosEmpresa(tenantId, modulos);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
