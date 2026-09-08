@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../data/models/admin_models.dart';
 import '../providers/admin_provider.dart';
 
 class AdminContratosScreen extends StatefulWidget {
@@ -20,12 +21,12 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
     });
   }
 
-  String? _nomeEmpresa(AdminProvider provider, Map<String, dynamic> contrato) {
+  String? _nomeEmpresa(AdminProvider provider, AdminContratoModel contrato) {
     final empresas = provider.empresas;
-    final tenantId = contrato['tenantId']?.toString();
+    final tenantId = contrato.tenantId;
     if (empresas.isEmpty || tenantId == null) return null;
     for (final e in empresas) {
-      if (e['id']?.toString() == tenantId) return e['nome']?.toString();
+      if (e.id == tenantId) return e.nome;
     }
     return null;
   }
@@ -37,7 +38,7 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
     );
   }
 
-  void _abrirDialogDetalhes(Map<String, dynamic> contrato, String? nomeEmpresa) {
+  void _abrirDialogDetalhes(AdminContratoModel contrato, String? nomeEmpresa) {
     showDialog(
       context: context,
       builder: (_) => _ContratoDetalhesDialog(
@@ -115,7 +116,7 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final c = contratos[index];
-                      final status = c['status'] ?? 'ATIVO';
+                      final status = c.status ?? 'ATIVO';
                       final statusCor = status == 'ATIVO'
                           ? Colors.green
                           : status == 'SUSPENSO'
@@ -129,11 +130,11 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: CircleAvatar(
-                            backgroundColor: statusCor.withOpacity(0.1),
+                            backgroundColor: statusCor.withValues(alpha: 0.1),
                             child: Icon(Icons.description, color: statusCor),
                           ),
                           title: Text(
-                            '${c['numero'] ?? 'S/N'} — ${c['objeto'] ?? 'Sem objeto'}',
+                            '${c.numero.isEmpty ? 'S/N' : c.numero} — ${c.objeto.isEmpty ? 'Sem objeto' : c.objeto}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Padding(
@@ -152,8 +153,8 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
                                   const SizedBox(height: 2),
                                 ],
                                 Text(
-                                  'Vigência: ${c['dataInicio'] ?? '?'} a ${c['dataFim'] ?? '?'} | '
-                                  'Valor Mensal: R\$ ${c['valorMensal'] ?? '0,00'}',
+                                  'Vigência: ${c.dataInicio ?? '?'} a ${c.dataFim ?? '?'} | '
+                                  'Valor Mensal: R\$ ${c.valorMensal}',
                                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                                 ),
                               ],
@@ -162,9 +163,9 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: statusCor.withOpacity(0.1),
+                              color: statusCor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: statusCor.withOpacity(0.3)),
+                              border: Border.all(color: statusCor.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               status,
@@ -329,8 +330,8 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
                       items: empresas
                           .map(
                             (e) => DropdownMenuItem(
-                              value: e['id']?.toString(),
-                              child: Text(e['nome']?.toString() ?? 'Sem nome'),
+                              value: e.id,
+                              child: Text(e.nome.isEmpty ? 'Sem nome' : e.nome),
                             ),
                           )
                           .toList(),
@@ -479,7 +480,7 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
 }
 
 class _ContratoDetalhesDialog extends StatefulWidget {
-  final Map<String, dynamic> contrato;
+  final AdminContratoModel contrato;
   final String? nomeEmpresa;
 
   const _ContratoDetalhesDialog({required this.contrato, this.nomeEmpresa});
@@ -489,7 +490,7 @@ class _ContratoDetalhesDialog extends StatefulWidget {
 }
 
 class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
-  List<Map<String, dynamic>> _eventos = [];
+  List<AdminContratoEventoModel> _eventos = [];
   bool _carregandoEventos = true;
   String? _erroEventos;
 
@@ -507,7 +508,7 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
     try {
       final eventos = await context
           .read<AdminProvider>()
-          .listarEventosContrato(widget.contrato['id'].toString());
+          .listarEventosContrato(widget.contrato.id);
       if (!mounted) return;
       setState(() => _eventos = eventos);
     } catch (e) {
@@ -534,7 +535,7 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
                 children: [
                   Expanded(
                     child: Text(
-                      c['numero']?.toString() ?? 'Contrato',
+                      c.numero.isEmpty ? 'Contrato' : c.numero,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -554,16 +555,16 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
                     children: [
                       if (widget.nomeEmpresa != null)
                         _infoLinha('Empresa', widget.nomeEmpresa!),
-                      _infoLinha('Objeto', c['objeto']?.toString() ?? '—'),
+                      _infoLinha('Objeto', c.objeto.isEmpty ? '—' : c.objeto),
                       _infoLinha(
                         'Vigência',
-                        '${c['dataInicio'] ?? '?'} a ${c['dataFim'] ?? '?'}',
+                        '${c.dataInicio ?? '?'} a ${c.dataFim ?? '?'}',
                       ),
-                      _infoLinha('Valor Mensal', 'R\$ ${c['valorMensal'] ?? '0,00'}'),
-                      _infoLinha('Valor Total', 'R\$ ${c['valorTotal'] ?? '0,00'}'),
-                      _infoLinha('Status', c['status']?.toString() ?? 'ATIVO'),
-                      if (c['observacoes'] != null)
-                        _infoLinha('Observações', c['observacoes'].toString()),
+                      _infoLinha('Valor Mensal', 'R\$ ${c.valorMensal}'),
+                      _infoLinha('Valor Total', 'R\$ ${c.valorTotal}'),
+                      _infoLinha('Status', c.status ?? 'ATIVO'),
+                      if (c.observacoes != null)
+                        _infoLinha('Observações', c.observacoes!),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -625,8 +626,8 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
     );
   }
 
-  Widget _eventoCard(Map<String, dynamic> e) {
-    final tipo = e['tipo']?.toString() ?? 'OUTRO';
+  Widget _eventoCard(AdminContratoEventoModel e) {
+    final tipo = e.tipo;
     final cor = tipo == 'ADITIVO'
         ? Colors.blue
         : tipo == 'PAGAMENTO'
@@ -643,17 +644,17 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
         dense: true,
         leading: CircleAvatar(
           radius: 16,
-          backgroundColor: cor.withOpacity(0.1),
+          backgroundColor: cor.withValues(alpha: 0.1),
           child: Icon(_iconeEvento(tipo), size: 18, color: cor),
         ),
         title: Text(tipo, style: TextStyle(color: cor, fontWeight: FontWeight.bold, fontSize: 13)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(e['descricao']?.toString() ?? ''),
-            if (e['criadoEm'] != null)
+            Text(e.descricao),
+            if (e.dataHora != null)
               Text(
-                e['criadoEm'].toString(),
+                e.dataHora!,
                 style: TextStyle(color: Colors.grey[600], fontSize: 12),
               ),
           ],
@@ -676,7 +677,7 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
   }
 
   void _abrirDialogNovoEvento() {
-    final contratoId = widget.contrato['id'].toString();
+    final contratoId = widget.contrato.id;
     showDialog(
       context: context,
       builder: (_) => _NovoEventoDialog(contratoId: contratoId),

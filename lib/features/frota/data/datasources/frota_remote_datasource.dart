@@ -1,5 +1,6 @@
 import 'package:chronos_pulse_app/core/constants/api_constants.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
+import 'package:chronos_pulse_app/core/network/paginated_response.dart';
 import '../models/frota_models.dart';
 
 class FrotaRemoteDataSource {
@@ -7,21 +8,17 @@ class FrotaRemoteDataSource {
 
   FrotaRemoteDataSource(this._dioClient);
 
-  Future<List<FrotaVeiculoModel>> getVeiculos() async {
-    final queryParams = <String, dynamic>{'page': 0, 'size': 100};
+  Future<PaginatedResponse<FrotaVeiculoModel>> getVeiculos({int page = 0, int size = 50}) async {
+    final queryParams = <String, dynamic>{'page': page, 'size': size};
     final response = await _dioClient.dio.get(
       ApiConstants.frotaVeiculosEndpoint,
       queryParameters: queryParams,
     );
     if (response.statusCode == 200) {
-      final data = response.data;
-      if (data is List) {
-        return data.map((e) => FrotaVeiculoModel.fromJson(e)).toList();
-      }
-      if (data is Map) {
-        final content = data['content'] as List? ?? [];
-        return content.map((e) => FrotaVeiculoModel.fromJson(e)).toList();
-      }
+      return PaginatedResponse.from(
+        response.data,
+        (itens) => itens.map(FrotaVeiculoModel.fromJson).toList(),
+      );
     }
     throw Exception('Falha ao carregar veículos');
   }
@@ -37,21 +34,17 @@ class FrotaRemoteDataSource {
     throw Exception('Falha ao cadastrar veículo');
   }
 
-  Future<List<AbastecimentoModel>> getAbastecimentos() async {
-    final queryParams = <String, dynamic>{'page': 0, 'size': 100};
+  Future<PaginatedResponse<AbastecimentoModel>> getAbastecimentos({int page = 0, int size = 50}) async {
+    final queryParams = <String, dynamic>{'page': page, 'size': size};
     final response = await _dioClient.dio.get(
       ApiConstants.frotaAbastecimentosEndpoint,
       queryParameters: queryParams,
     );
     if (response.statusCode == 200) {
-      final data = response.data;
-      if (data is List) {
-        return data.map((e) => AbastecimentoModel.fromJson(e)).toList();
-      }
-      if (data is Map) {
-        final content = data['content'] as List? ?? [];
-        return content.map((e) => AbastecimentoModel.fromJson(e)).toList();
-      }
+      return PaginatedResponse.from(
+        response.data,
+        (itens) => itens.map(AbastecimentoModel.fromJson).toList(),
+      );
     }
     throw Exception('Falha ao carregar abastecimentos');
   }

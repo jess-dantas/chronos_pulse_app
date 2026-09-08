@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/security/session_storage.dart';
 import '../../data/models/usuario_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -10,8 +11,8 @@ class AuthProvider extends ChangeNotifier {
   UsuarioModel? _usuario;
   bool _isLoading = false;
   String? _errorMessage;
-  static const _keyToken = 'chronos_access_token';
-  static const _keyRefreshToken = 'chronos_refresh_token';
+  static const keyAccessToken = 'chronos_access_token';
+  static const keyRefreshToken = 'chronos_refresh_token';
   static const _keyRole = 'chronos_role';
   static const _keyNome = 'chronos_nome';
   static const _keyEmail = 'chronos_email';
@@ -78,8 +79,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> tryRestoreSession() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_keyToken);
-    final refreshToken = prefs.getString(_keyRefreshToken);
+    final token = await SessionStorage.readToken(keyAccessToken);
+    final refreshToken = await SessionStorage.readToken(keyRefreshToken);
     final sessionInicio = prefs.getInt(_keySessionInicio) ?? 0;
 
     if (_sessaoAbsolutaExpirada(sessionInicio)) {
@@ -135,6 +136,29 @@ class AuthProvider extends ChangeNotifier {
         registrarAtividade();
       }
     }
+  }
+
+  /// Atualiza a sessão em memória após um refresh de token disparado
+  /// pelo interceptor do cliente HTTP (R03).
+  void restaurarSessaoAposRefresh(UsuarioModel renovado) {
+    final atual = _usuario;
+    if (atual != null) {
+      _usuario = UsuarioModel(
+        token: renovado.token,
+        refreshToken: renovado.refreshToken ?? atual.refreshToken,
+        tipo: 'Bearer',
+        nome: renovado.nome.isNotEmpty ? renovado.nome : atual.nome,
+        email: renovado.email.isNotEmpty ? renovado.email : atual.email,
+        cpf: renovado.cpf ?? atual.cpf,
+        role: renovado.role.isNotEmpty ? renovado.role : atual.role,
+        tenantId: renovado.tenantId ?? atual.tenantId,
+        cpcId: renovado.cpcId ?? atual.cpcId,
+        acessoEstoque: renovado.acessoEstoque,
+        foto: renovado.foto ?? atual.foto,
+        modulos: renovado.modulos.isNotEmpty ? renovado.modulos : atual.modulos,
+      );
+    }
+    notifyListeners();
   }
 
   Future<bool> login(String cpf, String senha) async {
@@ -326,9 +350,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _saveSession(UsuarioModel usuario) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, usuario.token);
+    await SessionStorage.writeToken(keyAccessToken, usuario.token);
     if (usuario.refreshToken != null) {
-      await prefs.setString(_keyRefreshToken, usuario.refreshToken!);
+      await SessionStorage.writeToken(keyRefreshToken, usuario.refreshToken!);
     }
     await prefs.setString(_keyRole, usuario.role);
     await prefs.setString(_keyNome, usuario.nome);
@@ -347,8 +371,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
-    await prefs.remove(_keyRefreshToken);
+    await SessionStorage.removeToken(keyAccessToken);
+    await SessionStorage.removeToken(keyRefreshToken);
     await prefs.remove(_keyRole);
     await prefs.remove(_keyNome);
     await prefs.remove(_keyEmail);

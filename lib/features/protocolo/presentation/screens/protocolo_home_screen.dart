@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/csv_export.dart';
 import '../../data/models/protocolo_models.dart';
 import '../providers/protocolo_provider.dart';
 import 'dialogs/alterar_status_dialog.dart';
@@ -37,6 +38,51 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
     if (ok == true && mounted) context.read<ProtocoloProvider>().carregarProtocolos();
   }
 
+  Future<void> _exportarCsv(List<ProtocoloModel> lista) async {
+    if (lista.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sem protocolos para exportar.')),
+        );
+      }
+      return;
+    }
+    final exportado = await CsvExport.exportar(
+      arquivoNome: 'protocolo_${DateTime.now().toIso8601String().substring(0, 10)}.csv',
+      cabecalho: const [
+        'Número',
+        'Tipo',
+        'Assunto',
+        'Descrição',
+        'Remetente',
+        'Destinatário',
+        'Data de Protocolo',
+        'Status',
+        'Responsável',
+        'Observações',
+      ],
+      linhas: lista.map((p) {
+        return [
+          p.numeroProtocolo,
+          p.tipo,
+          p.assunto,
+          p.descricao ?? '',
+          p.remetente ?? '',
+          p.destinatario ?? '',
+          p.dataProtocolo ?? '',
+          p.status,
+          p.responsavel ?? '',
+          p.observacoes ?? '',
+        ];
+      }).toList(),
+    );
+    if (mounted && exportado) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV exportado com sucesso.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProtocoloProvider>();
@@ -54,6 +100,13 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: 'Exportar CSV',
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () => _exportarCsv(
+              _somenteRecebido ? provider.protocolosRecebido : provider.protocolos,
+            ),
+          ),
           IconButton(
             tooltip: 'Recarregar',
             icon: const Icon(Icons.refresh),
@@ -125,9 +178,26 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: lista.length,
+      itemCount: lista.length + (provider.hasMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
+        if (index >= lista.length) {
+          return Center(
+            child: OutlinedButton.icon(
+              onPressed: provider.carregandoMais
+                  ? null
+                  : () => context.read<ProtocoloProvider>().carregarMaisProtocolos(),
+              icon: provider.carregandoMais
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.expand_more),
+              label: const Text('Carregar mais protocolos'),
+            ),
+          );
+        }
         final p = lista[index];
         final status = p.status;
         final cor = status == 'RECEBIDO'
@@ -181,7 +251,7 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: cor.withOpacity(0.12),
+                    color: cor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

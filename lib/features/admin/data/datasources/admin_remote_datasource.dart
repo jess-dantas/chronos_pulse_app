@@ -1,17 +1,21 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../models/admin_models.dart';
 
 class AdminRemoteDataSource {
   final DioClient _dioClient;
 
   AdminRemoteDataSource(this._dioClient);
 
-  Future<List<Map<String, dynamic>>> listarEmpresas() async {
+  Future<List<AdminEmpresaModel>> listarEmpresas() async {
     try {
       final response = await _dioClient.dio.get(ApiConstants.adminEmpresasEndpoint);
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+        return (response.data as List)
+            .whereType<Map<String, dynamic>>()
+            .map(AdminEmpresaModel.fromJson)
+            .toList();
       }
       return [];
     } on DioException catch (e) {
@@ -82,23 +86,26 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<Map<String, dynamic>> buscarDashboard() async {
+  Future<AdminDashboardModel> buscarDashboard() async {
     try {
       final response = await _dioClient.dio.get(ApiConstants.adminDashboardEndpoint);
       if (response.statusCode == 200 && response.data is Map) {
-        return Map<String, dynamic>.from(response.data);
+        return AdminDashboardModel.fromJson(Map<String, dynamic>.from(response.data));
       }
-      return {};
+      throw Exception('Resposta inesperada do dashboard');
     } on DioException catch (e) {
       throw Exception(e.response?.data?['message'] ?? 'Erro ao buscar dados do dashboard');
     }
   }
 
-  Future<List<Map<String, dynamic>>> listarColaboradores() async {
+  Future<List<AdminColaboradorModel>> listarColaboradores() async {
     try {
       final response = await _dioClient.dio.get(ApiConstants.adminColaboradoresEndpoint);
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+        return (response.data as List)
+            .whereType<Map<String, dynamic>>()
+            .map(AdminColaboradorModel.fromJson)
+            .toList();
       }
       return [];
     } on DioException catch (e) {
@@ -106,7 +113,7 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listarContratos({String? tenantId}) async {
+  Future<List<AdminContratoModel>> listarContratos({String? tenantId}) async {
     try {
       final queryParams = <String, dynamic>{};
       if (tenantId != null) queryParams['tenantId'] = tenantId;
@@ -116,7 +123,10 @@ class AdminRemoteDataSource {
         queryParameters: queryParams,
       );
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+        return (response.data as List)
+            .whereType<Map<String, dynamic>>()
+            .map(AdminContratoModel.fromJson)
+            .toList();
       }
       return [];
     } on DioException catch (e) {
@@ -124,7 +134,7 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<Map<String, dynamic>> cadastrarContrato({
+  Future<AdminContratoModel> cadastrarContrato({
     required String tenantId,
     required String numero,
     required String objeto,
@@ -152,7 +162,7 @@ class AdminRemoteDataSource {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return Map<String, dynamic>.from(response.data);
+        return AdminContratoModel.fromJson(Map<String, dynamic>.from(response.data));
       }
       throw Exception('Falha ao cadastrar contrato');
     } on DioException catch (e) {
@@ -160,13 +170,16 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listarEventosContrato(String contratoId) async {
+  Future<List<AdminContratoEventoModel>> listarEventosContrato(String contratoId) async {
     try {
       final response = await _dioClient.dio.get(
         ApiConstants.adminContratoEventosEndpoint(contratoId),
       );
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+        return (response.data as List)
+            .whereType<Map<String, dynamic>>()
+            .map(AdminContratoEventoModel.fromJson)
+            .toList();
       }
       return [];
     } on DioException catch (e) {
@@ -174,7 +187,7 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<Map<String, dynamic>> adicionarEventoContrato({
+  Future<AdminContratoEventoModel> adicionarEventoContrato({
     required String contratoId,
     required String tipo,
     required String descricao,
@@ -192,7 +205,7 @@ class AdminRemoteDataSource {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return Map<String, dynamic>.from(response.data);
+        return AdminContratoEventoModel.fromJson(Map<String, dynamic>.from(response.data));
       }
       throw Exception('Falha ao adicionar evento');
     } on DioException catch (e) {
@@ -200,11 +213,14 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listarCatalogoModulos() async {
+  Future<List<AdminModuloModel>> listarCatalogoModulos() async {
     try {
       final response = await _dioClient.dio.get(ApiConstants.adminModulosCatalogoEndpoint);
       if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
+        return (response.data as List)
+            .whereType<Map<String, dynamic>>()
+            .map(AdminModuloModel.fromJson)
+            .toList();
       }
       return [];
     } on DioException catch (e) {

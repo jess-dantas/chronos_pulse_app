@@ -169,13 +169,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               // Cards de Métricas
               if (adminProvider.isLoading)
                 const Center(child: CircularProgressIndicator())
+              else if (metrics == null)
+                Container()
               else
                 Row(
                   children: [
                     Expanded(
                       child: _MetricCard(
                         titulo: 'Empresas Ativas',
-                        valor: '${metrics['empresasAtivas'] ?? 0}',
+                        valor: '${metrics.empresasAtivas}',
                         icono: Icons.business,
                         cor: Colors.blue,
                         onTap: () => Navigator.push(
@@ -188,7 +190,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Expanded(
                       child: _MetricCard(
                         titulo: 'Total Colaboradores',
-                        valor: '${metrics['totalColaboradores'] ?? 0}',
+                        valor: '${metrics.totalColaboradores}',
                         icono: Icons.people,
                         cor: Colors.green,
                         onTap: () => Navigator.push(
@@ -201,7 +203,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Expanded(
                       child: _MetricCard(
                         titulo: 'Contratos Ativos',
-                        valor: '${metrics['contratosAtivos'] ?? 0}',
+                        valor: '${metrics.contratosAtivos}',
                         icono: Icons.description,
                         cor: Colors.orange,
                         onTap: () => Navigator.push(
@@ -253,7 +255,7 @@ class _MetricCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: cor.withOpacity(0.1),
+                    color: cor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icono, color: cor, size: 24),

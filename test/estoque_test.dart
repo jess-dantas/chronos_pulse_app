@@ -83,5 +83,83 @@ void main() {
       expect(req.itens.length, 1);
       expect(req.itens.first.quantidadeSolicitada, 5.0);
     });
+
+    test('EstoqueSaldoModel normaliza valores monetários pt-BR', () {
+      final saldo = EstoqueSaldoModel.fromJson({
+        'id': 'saldo-003',
+        'almoxarifadoId': 'almox-001',
+        'materialId': 'mat-001',
+        'quantidadeAtual': '12,5',
+        'custoMedioUnitario': '28,50',
+        'valorTotal': '356,25',
+        'estoqueMinimo': '10',
+      });
+
+      expect(saldo.quantidadeAtual, 12.5);
+      expect(saldo.custoMedioUnitario, 28.50);
+      expect(saldo.valorTotal, 356.25);
+      expect(saldo.estoqueMinimo, 10.0);
+    });
+
+    test('MaterialModel aceita estoqueMinimo como num ou string', () {
+      final material = MaterialModel.fromJson({
+        'id': 'mat-002',
+        'grupoId': 'grp-002',
+        'descricao': 'Grafite',
+        'estoqueMinimo': '7,5',
+      });
+
+      expect(material.estoqueMinimo, 7.5);
+    });
+
+    test('EntradaEstoqueRequestDTO serializa campos corretamente', () {
+      final dto = EntradaEstoqueRequestDTO(
+        almoxarifadoId: 'almox-001',
+        materialId: 'mat-001',
+        quantidade: 10.0,
+        valorUnitario: 28.50,
+        lote: 'LOT-2026',
+        dataValidade: '2027-01-01',
+        documentoReferencia: 'NF 123',
+      );
+
+      final json = dto.toJson();
+      expect(json['almoxarifadoId'], 'almox-001');
+      expect(json['quantidade'], 10.0);
+      expect(json['valorUnitario'], 28.50);
+      expect(json['lote'], 'LOT-2026');
+      expect(json['dataValidade'], '2027-01-01');
+      expect(json['documentoReferencia'], 'NF 123');
+    });
+
+    test('SaidaEstoqueRequestDTO omite campos nulos', () {
+      final dto = SaidaEstoqueRequestDTO(
+        almoxarifadoId: 'almox-001',
+        materialId: 'mat-001',
+        quantidade: 3.0,
+      );
+
+      final json = dto.toJson();
+      expect(json['quantidade'], 3.0);
+      expect(json.containsKey('lote'), isFalse);
+      expect(json.containsKey('documentoReferencia'), isFalse);
+    });
+
+    test('CriarRequisicaoRequestDTO omite campos opcionais vazios', () {
+      final dto = CriarRequisicaoRequestDTO(
+        almoxarifadoId: 'almox-001',
+        justificativa: 'Uso interno',
+        itens: [
+          RequisicaoItemModel(materialId: 'mat-001', quantidadeSolicitada: 2.0),
+        ],
+      );
+
+      final json = dto.toJson();
+      expect(json['almoxarifadoId'], 'almox-001');
+      expect(json.containsKey('departamento'), isFalse);
+      expect(json['justificativa'], 'Uso interno');
+      expect((json['itens'] as List).length, 1);
+      expect((json['itens'] as List).first['quantidadeSolicitada'], 2.0);
+    });
   });
 }

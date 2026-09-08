@@ -147,6 +147,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
           "https://s3.amazonaws.com/chronos-pulse/fotos/ponto_padrao.jpg";
 
       if (!kIsWeb) {
+        if (!mounted) return;
         final fotoCapturada = await Navigator.push<String>(
           context,
           MaterialPageRoute(builder: (context) => const CameraScreen()),
@@ -597,7 +598,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .primaryContainer
-                            .withOpacity(0.5),
+                            .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -662,7 +663,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                         ),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: cor.withOpacity(0.15),
+                            backgroundColor: cor.withValues(alpha: 0.15),
                             child: Icon(Icons.access_time, color: cor),
                           ),
                           title: Text(

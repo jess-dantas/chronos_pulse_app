@@ -6,6 +6,9 @@ class PatrimonioProvider extends ChangeNotifier {
   final PatrimonioRepository _repository;
 
   List<PatrimonioModel> _bens = [];
+  int _pagina = 0;
+  bool _hasMore = false;
+  bool _carregandoMais = false;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -13,6 +16,8 @@ class PatrimonioProvider extends ChangeNotifier {
 
   List<PatrimonioModel> get bens => _bens;
   bool get isLoading => _isLoading;
+  bool get hasMore => _hasMore;
+  bool get carregandoMais => _carregandoMais;
   String? get errorMessage => _errorMessage;
 
   Future<void> carregarBens() async {
@@ -21,11 +26,32 @@ class PatrimonioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _bens = await _repository.getBens();
+      final pagina = await _repository.getBens(page: 0, size: 50);
+      _bens = pagina.items;
+      _pagina = 0;
+      _hasMore = pagina.hasMore;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> carregarMaisBens() async {
+    if (_isLoading || _carregandoMais || !_hasMore) return;
+    _carregandoMais = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final pagina = await _repository.getBens(page: _pagina + 1, size: 50);
+      _bens = [..._bens, ...pagina.items];
+      _pagina += 1;
+      _hasMore = pagina.hasMore;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _carregandoMais = false;
       notifyListeners();
     }
   }

@@ -30,9 +30,7 @@ class MaterialModel {
       codigoCatmat: json['codigoCatmat'],
       descricao: json['descricao'] ?? '',
       unidadeMedida: json['unidadeMedida'] ?? 'UN',
-      estoqueMinimo: json['estoqueMinimo'] != null
-          ? (json['estoqueMinimo'] as num).toDouble()
-          : null,
+      estoqueMinimo: _toDouble(json['estoqueMinimo']),
       controlaLoteValidade: json['controlaLoteValidade'] ?? false,
       ativo: json['ativo'] ?? true,
     );
@@ -113,11 +111,9 @@ class EstoqueSaldoModel {
       estoqueMinimo != null && quantidadeAtual < (estoqueMinimo ?? 0);
 
   factory EstoqueSaldoModel.fromJson(Map<String, dynamic> json) {
-    final double qtd = (json['quantidadeAtual'] as num?)?.toDouble() ?? 0.0;
-    final double custo = (json['custoMedioUnitario'] as num?)?.toDouble() ?? 0.0;
-    final double total = json['valorTotal'] != null
-        ? (json['valorTotal'] as num).toDouble()
-        : (qtd * custo);
+    final double qtd = _toDouble(json['quantidadeAtual']) ?? 0.0;
+    final double custo = _toDouble(json['custoMedioUnitario']) ?? 0.0;
+    final double total = _toDouble(json['valorTotal']) ?? (qtd * custo);
 
     return EstoqueSaldoModel(
       id: json['id'] ?? '',
@@ -132,9 +128,7 @@ class EstoqueSaldoModel {
       quantidadeAtual: qtd,
       custoMedioUnitario: custo,
       valorTotal: total,
-      estoqueMinimo: json['estoqueMinimo'] != null
-          ? (json['estoqueMinimo'] as num).toDouble()
-          : null,
+      estoqueMinimo: _toDouble(json['estoqueMinimo']),
     );
   }
 }
@@ -162,8 +156,8 @@ class RequisicaoItemModel {
       materialId: json['materialId'] ?? '',
       materialDescricao: json['materialDescricao'],
       unidadeMedida: json['unidadeMedida'] ?? 'UN',
-      quantidadeSolicitada: (json['quantidadeSolicitada'] as num?)?.toDouble() ?? 0.0,
-      quantidadeAtendida: (json['quantidadeAtendida'] as num?)?.toDouble() ?? 0.0,
+      quantidadeSolicitada: _toDouble(json['quantidadeSolicitada']) ?? 0.0,
+      quantidadeAtendida: _toDouble(json['quantidadeAtendida']) ?? 0.0,
     );
   }
 
@@ -304,4 +298,10 @@ class CriarRequisicaoRequestDTO {
       'itens': itens.map((item) => item.toJson()).toList(),
     };
   }
+}
+
+double? _toDouble(dynamic valor) {
+  if (valor == null) return null;
+  if (valor is num) return valor.toDouble();
+  return double.tryParse(valor.toString().replaceAll(',', '.'));
 }

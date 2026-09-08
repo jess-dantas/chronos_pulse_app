@@ -171,7 +171,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(Icons.edit_calendar, color: Theme.of(context).colorScheme.primary),
@@ -242,7 +242,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
 
                   // Tipo de Marcação
                   DropdownButtonFormField<String>(
-                    value: _tipoRegistro,
+                    initialValue: _tipoRegistro,
                     decoration: InputDecoration(
                       labelText: 'Tipo de Marcação *',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -262,7 +262,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
 
                   // Combo Obrigatório com as 8 Justificativas Padronizadas
                   DropdownButtonFormField<String>(
-                    value: _justificativaSelecionada,
+                    initialValue: _justificativaSelecionada,
                     isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Justificativa Legal * (Obrigatória)',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/utils/csv_export.dart';
+import '../../data/models/estoque_models.dart';
 import '../providers/estoque_provider.dart';
 import 'dialogs/nova_entrada_dialog.dart';
 import 'dialogs/nova_saida_dialog.dart';
@@ -99,7 +101,7 @@ class EstoqueSaldosTab extends StatelessWidget {
                           isDense: true,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        value: estoqueProvider.selectedAlmoxarifadoId,
+                        initialValue: estoqueProvider.selectedAlmoxarifadoId,
                         items: [
                           const DropdownMenuItem(
                             value: null,
@@ -141,6 +143,11 @@ class EstoqueSaldosTab extends StatelessWidget {
                               builder: (_) => const NovaSaidaDialog(),
                             );
                           },
+                        ),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.file_download_outlined, size: 18),
+                          label: const Text('CSV'),
+                          onPressed: () => _exportarSaldosCsv(context, estoqueProvider.saldos),
                         ),
                       ],
                     ),
@@ -299,7 +306,7 @@ class _MetricCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: color, size: 26),
@@ -327,6 +334,58 @@ class _MetricCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<void> _exportarSaldosCsv(BuildContext context, List<EstoqueSaldoModel> saldos) async {
+  if (saldos.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sem saldos para exportar.')),
+      );
+    }
+    return;
+  }
+
+  final currencyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+  final numberFormat = NumberFormat('#,##0.000', 'pt_BR');
+
+  final exportado = await CsvExport.exportar(
+    arquivoNome: 'estoque_saldos_${DateTime.now().toIso8601String().substring(0, 10)}.csv',
+    cabecalho: const [
+      'Almoxarifado',
+      'Código CATMAT',
+      'Item / Descrição',
+      'Und.',
+      'Lote',
+      'Validade',
+      'Saldo Físico',
+      'Custo Médio (PMP)',
+      'Valor Total',
+      'Estoque Mínimo',
+      'Situação',
+    ],
+    linhas: saldos.map((s) {
+      return [
+        s.almoxarifadoNome ?? '',
+        s.codigoCatmat ?? '',
+        s.materialDescricao ?? '',
+        s.unidadeMedida ?? '',
+        s.lote ?? '',
+        s.dataValidade ?? '',
+        numberFormat.format(s.quantidadeAtual),
+        currencyFormat.format(s.custoMedioUnitario),
+        currencyFormat.format(s.valorTotal),
+        s.estoqueMinimo != null ? numberFormat.format(s.estoqueMinimo!) : '',
+        s.isAbaixoMinimo ? 'ABAIXO DO MÍNIMO' : 'OK',
+      ];
+    }).toList(),
+  );
+
+  if (context.mounted && exportado) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('CSV exportado com sucesso.')),
     );
   }
 }

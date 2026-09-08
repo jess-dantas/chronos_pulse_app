@@ -123,11 +123,11 @@ class _AdminModulosScreenState extends State<AdminModulosScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: empresas.map((e) {
-                    final nome = e['nome'] ?? 'Sem nome';
-                    final cnpj = e['cnpj'];
+                    final nome = e.nome.isEmpty ? 'Sem nome' : e.nome;
+                    final cnpj = e.cnpj;
                     return DropdownMenuItem<String?>(
-                      value: e['id']?.toString(),
-                      child: Text(cnpj != null ? '$nome ($cnpj)' : nome),
+                      value: e.id,
+                      child: Text(cnpj.isNotEmpty ? '$nome ($cnpj)' : nome),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -143,7 +143,7 @@ class _AdminModulosScreenState extends State<AdminModulosScreen> {
                 const SizedBox(height: 24),
                 if (_mensagem != null)
                   Card(
-                    color: (_mensagem!.contains('Erro') ? Colors.red : Colors.green).withOpacity(0.1),
+                    color: (_mensagem!.contains('Erro') ? Colors.red : Colors.green).withValues(alpha: 0.1),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(_mensagem!),
@@ -168,17 +168,17 @@ class _AdminModulosScreenState extends State<AdminModulosScreen> {
                     )
                   else
                     ...catalogo.map((modulo) => _ModuloTile(
-                          codigo: modulo['codigo']?.toString() ?? '',
-                          nome: modulo['nome']?.toString() ?? '',
-                          descricao: modulo['descricao']?.toString(),
-                          ativo: modulo['ativo'] == true,
-                          selecionado: _selecionados.contains(modulo['codigo']?.toString()),
+                          codigo: modulo.codigo,
+                          nome: modulo.nome,
+                          descricao: modulo.descricao,
+                          ativo: modulo.ativo,
+                          selecionado: _selecionados.contains(modulo.codigo),
                           onChanged: (sel) {
                             setState(() {
                               if (sel) {
-                                _selecionados.add(modulo['codigo']?.toString() ?? '');
+                                _selecionados.add(modulo.codigo);
                               } else {
-                                _selecionados.remove(modulo['codigo']?.toString());
+                                _selecionados.remove(modulo.codigo);
                               }
                               _mensagem = null;
                             });
@@ -231,7 +231,7 @@ class _ModuloTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: selecionado
-              ? (AppTheme.isDark(context) ? AppTheme.lilasBorder(context) : Colors.deepPurple.withOpacity(0.5))
+              ? (AppTheme.isDark(context) ? AppTheme.lilasBorder(context) : Colors.deepPurple.withValues(alpha: 0.5))
               : Colors.grey.shade300,
         ),
       ),

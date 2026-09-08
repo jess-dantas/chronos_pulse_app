@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'core/network/dio_client.dart';
+import 'core/security/session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
@@ -33,6 +34,8 @@ import 'features/frota/presentation/providers/frota_provider.dart';
 import 'features/protocolo/data/datasources/protocolo_remote_datasource.dart';
 import 'features/protocolo/data/repositories/protocolo_repository.dart';
 import 'features/protocolo/presentation/providers/protocolo_provider.dart';
+import 'features/privacidade/data/privacidade_datasource.dart';
+import 'features/privacidade/presentation/providers/privacidade_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,7 +80,26 @@ void main() async {
   final protocoloRepository =
       ProtocoloRepository(remoteDataSource: protocoloRemoteDataSource);
 
+  final privacidadeProvider = PrivacidadeProvider(PrivacidadeDataSource(dioClient));
+
   final authProvider = AuthProvider(authRepository);
+
+  dioClient.onRefreshToken = () async {
+    final refreshToken = await SessionStorage.readToken(AuthProvider.keyRefreshToken);
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    try {
+      final novo = await authRepository.refreshToken(refreshToken);
+      await SessionStorage.writeToken(AuthProvider.keyAccessToken, novo.token);
+      if (novo.refreshToken != null && novo.refreshToken!.isNotEmpty) {
+        await SessionStorage.writeToken(AuthProvider.keyRefreshToken, novo.refreshToken!);
+      }
+      authProvider.restaurarSessaoAposRefresh(novo);
+      return true;
+    } catch (_) {
+      await authProvider.logout();
+      return false;
+    }
+  };
 
   runApp(
     MultiProvider(
@@ -91,6 +113,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
         ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
         ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
+        ChangeNotifierProvider.value(value: privacidadeProvider),
       ],
       child: ChronosPulseApp(authProvider: authProvider),
     ),
