@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/csv_export.dart';
 import '../../data/models/patrimonio_models.dart';
 import '../providers/patrimonio_provider.dart';
+import 'desfazimento_screen.dart';
 import 'dialogs/novo_bem_dialog.dart';
 
 class PatrimonioHomeScreen extends StatefulWidget {
@@ -92,6 +93,15 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.remove_circle_outline),
+            tooltip: 'Desfazimento de Bens',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DesfazimentoScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Exportar CSV',
@@ -187,20 +197,20 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Tombamento: ${bem.tombamento ?? '—'} | Categoria: ${bem.categoria ?? '—'}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                 ),
                                 if (bem.localizacao != null) ...[
                                   const SizedBox(height: 2),
                                   Text(
                                     'Local: ${bem.localizacao}',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                   ),
                                 ],
                                 if (bem.valorAquisicao != null) ...[
                                   const SizedBox(height: 2),
                                   Text(
                                     'Valor: R\$ ${bem.valorAquisicao}',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                   ),
                                 ],
                               ],

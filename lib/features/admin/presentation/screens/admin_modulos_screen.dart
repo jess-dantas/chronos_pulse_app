@@ -248,7 +248,7 @@ class _ModuloTile extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: descricao != null && descricao!.isNotEmpty
-            ? Text(descricao!, style: TextStyle(color: Colors.grey[600], fontSize: 12))
+            ? Text(descricao!, style: TextStyle(color: Colors.grey[700], fontSize: 12))
             : null,
       ),
     );

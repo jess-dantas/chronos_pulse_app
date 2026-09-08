@@ -259,13 +259,13 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
                 const SizedBox(height: 4),
                 Text(
                   'Placa: ${v.placa} | Tipo: ${v.tipo ?? '—'} | Combustível: ${v.combustivel ?? '—'}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                 ),
                 if (v.odometroAtual != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     'Odômetro: ${_fmtNum(v.odometroAtual)} km',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                 ],
               ],
@@ -369,13 +369,13 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
                 const SizedBox(height: 4),
                 Text(
                   '${_fmtNum(a.litros)} L × R\$ ${_fmtNum(a.valorLitro, 4)} = R\$ ${_fmtNum(a.valorTotal, 2)}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                 ),
                 if (a.dataHora.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     a.dataHora.replaceFirst('T', ' '),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                 ],
               ],

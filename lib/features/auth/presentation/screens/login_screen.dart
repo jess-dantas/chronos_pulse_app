@@ -98,6 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               'assets/images/logo.png',
                               height: 80,
                               fit: BoxFit.contain,
+                              semanticLabel: 'Logo Chronos Pulse',
                               errorBuilder: (context, error, stackTrace) => Container(
                                 width: 64,
                                 height: 64,

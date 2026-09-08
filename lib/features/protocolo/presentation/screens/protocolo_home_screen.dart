@@ -227,20 +227,20 @@ class _ProtocoloHomeScreenState extends State<ProtocoloHomeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${p.numeroProtocolo} • ${p.tipo}',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                 ),
                 if (p.remetente != null && p.remetente!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     'Remetente: ${p.remetente}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                 ],
                 if (p.dataProtocolo != null && p.dataProtocolo!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     'Protocolado em: ${p.dataProtocolo!.replaceFirst('T', ' ').substring(0, 16)}',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[700], fontSize: 13),
                   ),
                 ],
               ],

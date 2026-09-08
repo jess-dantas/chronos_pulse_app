@@ -45,6 +45,7 @@ class LandingScreen extends StatelessWidget {
                 width: 36,
                 height: 36,
                 fit: BoxFit.contain,
+                semanticLabel: 'Logo Chronos Pulse',
                 errorBuilder: (_, __, ___) => Container(
                   width: 36,
                   height: 36,

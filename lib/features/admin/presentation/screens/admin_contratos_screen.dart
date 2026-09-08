@@ -38,14 +38,17 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
     );
   }
 
-  void _abrirDialogDetalhes(AdminContratoModel contrato, String? nomeEmpresa) {
-    showDialog(
+  Future<void> _abrirDialogDetalhes(AdminContratoModel contrato, String? nomeEmpresa) async {
+    final refresh = await showDialog<bool>(
       context: context,
       builder: (_) => _ContratoDetalhesDialog(
         contrato: contrato,
         nomeEmpresa: nomeEmpresa,
       ),
     );
+    if (refresh == true && mounted) {
+      context.read<AdminProvider>().carregarContratos();
+    }
   }
 
   @override
@@ -155,7 +158,37 @@ class _AdminContratosScreenState extends State<AdminContratosScreen> {
                                 Text(
                                   'Vigência: ${c.dataInicio ?? '?'} a ${c.dataFim ?? '?'} | '
                                   'Valor Mensal: R\$ ${c.valorMensal}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Empenhado: R\$ ${c.valorEmpenhado} | '
+                                        'Saldo: R\$ ${c.saldo}',
+                                        style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                                      ),
+                                    ),
+                                    if (c.statusVigencia != null) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: _vigenciaCor(c.statusVigencia!).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          _rotuloVigencia(c),
+                                          style: TextStyle(
+                                            color: _vigenciaCor(c.statusVigencia!),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -204,6 +237,10 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
   final _objetoController = TextEditingController();
   final _valorMensalController = TextEditingController();
   final _valorTotalController = TextEditingController();
+  final _valorEmpenhadoController = TextEditingController();
+  final _valorLiquidadoController = TextEditingController();
+  final _empenhoNumeroController = TextEditingController();
+  final _avisoDiasController = TextEditingController();
   final _observacoesController = TextEditingController();
   DateTime? _dataInicio;
   DateTime? _dataFim;
@@ -223,6 +260,10 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
     _objetoController.dispose();
     _valorMensalController.dispose();
     _valorTotalController.dispose();
+    _valorEmpenhadoController.dispose();
+    _valorLiquidadoController.dispose();
+    _empenhoNumeroController.dispose();
+    _avisoDiasController.dispose();
     _observacoesController.dispose();
     super.dispose();
   }
@@ -268,6 +309,18 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
         dataFim: _dataFim!.toIso8601String().substring(0, 10),
         valorMensal: double.tryParse(_valorMensalController.text.replaceAll(',', '.')) ?? 0,
         valorTotal: double.tryParse(_valorTotalController.text.replaceAll(',', '.')) ?? 0,
+        valorEmpenhado: _valorEmpenhadoController.text.trim().isNotEmpty
+            ? double.tryParse(_valorEmpenhadoController.text.replaceAll(',', '.'))
+            : null,
+        valorLiquidado: _valorLiquidadoController.text.trim().isNotEmpty
+            ? double.tryParse(_valorLiquidadoController.text.replaceAll(',', '.'))
+            : null,
+        empenhoNumero: _empenhoNumeroController.text.trim().isNotEmpty
+            ? _empenhoNumeroController.text.trim()
+            : null,
+        vencimentoAvisoDias: _avisoDiasController.text.trim().isNotEmpty
+            ? int.tryParse(_avisoDiasController.text)
+            : null,
         observacoes: _observacoesController.text.trim().isNotEmpty
             ? _observacoesController.text.trim()
             : null,
@@ -435,6 +488,61 @@ class _CadastrarContratoDialogState extends State<_CadastrarContratoDialog> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _valorEmpenhadoController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Valor Empenhado (R\$)',
+                            hintText: 'Opcional',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _valorLiquidadoController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Valor Liquidado (R\$)',
+                            hintText: 'Opcional',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _empenhoNumeroController,
+                          decoration: InputDecoration(
+                            labelText: 'Nº do Empenho',
+                            hintText: 'Opcional',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _avisoDiasController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Aviso de Vencimento (dias)',
+                            hintText: 'Padrão: 30',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _observacoesController,
                     maxLines: 2,
@@ -562,9 +670,28 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
                       ),
                       _infoLinha('Valor Mensal', 'R\$ ${c.valorMensal}'),
                       _infoLinha('Valor Total', 'R\$ ${c.valorTotal}'),
+                      if (c.empenhoNumero != null)
+                        _infoLinha('Nº do Empenho', c.empenhoNumero!),
+                      _infoLinha('Valor Empenhado', 'R\$ ${c.valorEmpenhado}'),
+                      _infoLinha('Valor Liquidado', 'R\$ ${c.valorLiquidado}'),
+                      _infoLinha(
+                        'Saldo',
+                        'R\$ ${c.saldo}',
+                      ),
+                      _infoLinha('Vigência', _rotuloVigencia(c)),
                       _infoLinha('Status', c.status ?? 'ATIVO'),
                       if (c.observacoes != null)
                         _infoLinha('Observações', c.observacoes!),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            icon: const Icon(Icons.payments_outlined, size: 18),
+                            label: const Text('Lançar Liquidação'),
+                            onPressed: () => _abrirDialogLiquidacao(),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -617,7 +744,7 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
             width: 120,
             child: Text(
               rotulo,
-              style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+              style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(child: Text(valor)),
@@ -655,7 +782,7 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
             if (e.dataHora != null)
               Text(
                 e.dataHora!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(color: Colors.grey[700], fontSize: 12),
               ),
           ],
         ),
@@ -682,6 +809,186 @@ class _ContratoDetalhesDialogState extends State<_ContratoDetalhesDialog> {
       context: context,
       builder: (_) => _NovoEventoDialog(contratoId: contratoId),
     );
+  }
+
+  Future<void> _abrirDialogLiquidacao() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => _LancarLiquidacaoDialog(contratoId: widget.contrato.id),
+    );
+    if (ok == true && mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+}
+
+class _LancarLiquidacaoDialog extends StatefulWidget {
+  final String contratoId;
+
+  const _LancarLiquidacaoDialog({required this.contratoId});
+
+  @override
+  State<_LancarLiquidacaoDialog> createState() => _LancarLiquidacaoDialogState();
+}
+
+class _LancarLiquidacaoDialogState extends State<_LancarLiquidacaoDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _valorLiquidadoController = TextEditingController();
+  final _valorEmpenhadoController = TextEditingController();
+  final _empenhoNumeroController = TextEditingController();
+  final _avisoDiasController = TextEditingController();
+  bool _isEnviando = false;
+
+  @override
+  void dispose() {
+    _valorLiquidadoController.dispose();
+    _valorEmpenhadoController.dispose();
+    _empenhoNumeroController.dispose();
+    _avisoDiasController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _salvar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isEnviando = true);
+    try {
+      final adminProvider = context.read<AdminProvider>();
+      final ok = await adminProvider.atualizarSaldoContrato(
+        contratoId: widget.contratoId,
+        valorLiquidado:
+            double.tryParse(_valorLiquidadoController.text.replaceAll(',', '.'))?.toDouble(),
+        valorEmpenhado: _valorEmpenhadoController.text.trim().isNotEmpty
+            ? double.tryParse(_valorEmpenhadoController.text.replaceAll(',', '.'))
+            : null,
+        empenhoNumero: _empenhoNumeroController.text.trim().isNotEmpty
+            ? _empenhoNumeroController.text.trim()
+            : null,
+        vencimentoAvisoDias: _avisoDiasController.text.trim().isNotEmpty
+            ? int.tryParse(_avisoDiasController.text)
+            : null,
+      );
+      if (!mounted) return;
+      if (!ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(adminProvider.errorMessage ?? 'Erro ao lançar liquidação.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isEnviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Lançar Liquidação'),
+      content: SizedBox(
+        width: 480,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _valorLiquidadoController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Valor Liquidado (R\$) *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) {
+                    if (v == null || double.tryParse(v.replaceAll(',', '.')) == null) {
+                      return 'Informe um valor válido';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _valorEmpenhadoController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Valor Empenhado (R\$)',
+                    hintText: 'Opcional',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _empenhoNumeroController,
+                  decoration: InputDecoration(
+                    labelText: 'Nº do Empenho',
+                    hintText: 'Opcional',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _avisoDiasController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Aviso de Vencimento (dias)',
+                    hintText: 'Padrão: 30',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isEnviando ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isEnviando ? null : _salvar,
+          child: _isEnviando
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Salvar'),
+        ),
+      ],
+    );
+  }
+}
+
+Color _vigenciaCor(String v) {
+  switch (v) {
+    case 'VENCENDO':
+      return Colors.orange;
+    case 'VENCIDO':
+      return Colors.red;
+    default:
+      return Colors.green;
+  }
+}
+
+String _rotuloVigencia(AdminContratoModel c) {
+  final d = c.diasParaVencimento;
+  switch (c.statusVigencia) {
+    case 'VENCENDO':
+      return 'VENCENDO (${d ?? '?'}d)';
+    case 'VENCIDO':
+      return 'VENCIDO';
+    default:
+      return d != null ? 'VIGENTE (${d}d)' : 'VIGENTE';
   }
 }
 

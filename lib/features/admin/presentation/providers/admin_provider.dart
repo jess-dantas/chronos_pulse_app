@@ -92,6 +92,10 @@ class AdminProvider extends ChangeNotifier {
     required String dataFim,
     required double valorMensal,
     required double valorTotal,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
     String? observacoes,
   }) async {
     _isLoading = true;
@@ -107,6 +111,10 @@ class AdminProvider extends ChangeNotifier {
         dataFim: dataFim,
         valorMensal: valorMensal,
         valorTotal: valorTotal,
+        valorEmpenhado: valorEmpenhado,
+        valorLiquidado: valorLiquidado,
+        empenhoNumero: empenhoNumero,
+        vencimentoAvisoDias: vencimentoAvisoDias,
         observacoes: observacoes,
       );
       await carregarContratos();
@@ -114,6 +122,31 @@ class AdminProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> atualizarSaldoContrato({
+    required String contratoId,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
+  }) async {
+    _errorMessage = null;
+    try {
+      await _repository.atualizarSaldoContrato(
+        contratoId: contratoId,
+        valorEmpenhado: valorEmpenhado,
+        valorLiquidado: valorLiquidado,
+        empenhoNumero: empenhoNumero,
+        vencimentoAvisoDias: vencimentoAvisoDias,
+      );
+      await carregarContratos();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
     }

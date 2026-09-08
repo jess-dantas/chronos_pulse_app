@@ -19,6 +19,17 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
   final _quantidadeController = TextEditingController();
   final _docReferenciaController = TextEditingController();
   final _loteController = TextEditingController();
+  final _observacaoController = TextEditingController();
+  String _motivoBaixa = 'USO';
+
+  static const _motivosBaixa = <(String, String, IconData)>[
+    ('USO', 'Uso / Requisição', Icons.inventory),
+    ('VENCIMENTO', 'Perda por Vencimento', Icons.event_busy),
+    ('OBSOLESCENCIA', 'Obsolescência', Icons.update_disabled),
+    ('PERDA', 'Perda', Icons.report_gmailerrorred),
+    ('QUEBRA', 'Quebra', Icons.broken_image_outlined),
+    ('OUTROS', 'Outros', Icons.more_horiz),
+  ];
 
   @override
   void initState() {
@@ -37,6 +48,7 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
     _quantidadeController.dispose();
     _docReferenciaController.dispose();
     _loteController.dispose();
+    _observacaoController.dispose();
     super.dispose();
   }
 
@@ -127,12 +139,49 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
                 TextFormField(
                   controller: _docReferenciaController,
                   decoration: const InputDecoration(
-                    labelText: 'Motivo / Destino / Termo de Entrega',
+                    labelText: 'Destino / Termo de Entrega',
                     hintText: 'Ex: Secretaria de Educação - Termo nº 12/2026',
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) =>
-                      val == null || val.isEmpty ? 'Informe o motivo ou destino' : null,
+                      val == null || val.isEmpty ? 'Informe o destino' : null,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    labelText: 'Motivo da Baixa',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  initialValue: _motivoBaixa,
+                  items: _motivosBaixa.map((m) {
+                    return DropdownMenuItem(
+                      value: m.$1,
+                      child: Text('${m.$3}  ${m.$2}'),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _motivoBaixa = val ?? 'USO'),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _observacaoController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: _motivoBaixa == 'USO'
+                        ? 'Observação (Opcional)'
+                        : 'Observação (Obrigatória)',
+                    hintText: _motivoBaixa == 'USO'
+                        ? 'Informações complementares'
+                        : 'Justifique a perda / obsolescência para o registro contábil',
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (val) {
+                    if (_motivoBaixa != 'USO' &&
+                        (val == null || val.trim().isEmpty)) {
+                      return 'Obrigatório para baixa por ${_motivoBaixa == 'VENCIMENTO' ? 'vencimento' : _motivoBaixa.toLowerCase()}';
+                    }
+                    return null;
+                  },
                 ),
               ],
             ),
@@ -157,6 +206,8 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
               quantidade: double.parse(_quantidadeController.text.replaceAll(',', '.')),
               lote: _loteController.text.trim(),
               documentoReferencia: _docReferenciaController.text.trim(),
+              motivoBaixa: _motivoBaixa,
+              observacao: _observacaoController.text.trim(),
             );
 
             final sucesso = await estoqueProvider.registrarSaida(dto);

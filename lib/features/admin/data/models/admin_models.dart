@@ -39,6 +39,13 @@ class AdminContratoModel {
   final String? dataFim;
   final double valorMensal;
   final double valorTotal;
+  final double valorEmpenhado;
+  final double valorLiquidado;
+  final double saldo;
+  final String? empenhoNumero;
+  final int? diasParaVencimento;
+  final String? statusVigencia;
+  final int? vencimentoAvisoDias;
   final String? status;
   final String? observacoes;
 
@@ -51,9 +58,19 @@ class AdminContratoModel {
     this.dataFim,
     this.valorMensal = 0,
     this.valorTotal = 0,
+    this.valorEmpenhado = 0,
+    this.valorLiquidado = 0,
+    this.saldo = 0,
+    this.empenhoNumero,
+    this.diasParaVencimento,
+    this.statusVigencia,
+    this.vencimentoAvisoDias,
     this.status,
     this.observacoes,
   });
+
+  bool get temAlertaVigencia =>
+      statusVigencia == 'VENCENDO' || ((diasParaVencimento ?? 0) < 0);
 
   factory AdminContratoModel.fromJson(Map<String, dynamic> json) {
     double numOuZero(dynamic v) {
@@ -71,6 +88,13 @@ class AdminContratoModel {
       dataFim: json['dataFim']?.toString(),
       valorMensal: numOuZero(json['valorMensal']),
       valorTotal: numOuZero(json['valorTotal']),
+      valorEmpenhado: numOuZero(json['valorEmpenhado']),
+      valorLiquidado: numOuZero(json['valorLiquidado']),
+      saldo: numOuZero(json['saldo']),
+      empenhoNumero: json['empenhoNumero']?.toString(),
+      diasParaVencimento: (json['diasParaVencimento'] as num?)?.toInt(),
+      statusVigencia: json['statusVigencia']?.toString(),
+      vencimentoAvisoDias: (json['vencimentoAvisoDias'] as num?)?.toInt(),
       status: json['status']?.toString(),
       observacoes: json['observacoes']?.toString(),
     );

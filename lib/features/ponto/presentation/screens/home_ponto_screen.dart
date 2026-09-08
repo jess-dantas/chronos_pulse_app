@@ -427,7 +427,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                                       ? usuario.email
                                       : usuario.role,
                                   style: TextStyle(
-                                    color: Colors.grey[600],
+                                    color: Colors.grey[700],
                                     fontSize: 13,
                                   ),
                                 ),

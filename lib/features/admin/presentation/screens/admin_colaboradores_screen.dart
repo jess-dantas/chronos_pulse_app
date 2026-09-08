@@ -116,7 +116,7 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                   children: [
                     Text(
                       'Total: ${lista.length} colaborador(es) em todas as empresas',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
                     ),
                     Wrap(
                       spacing: 12,
@@ -264,7 +264,7 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${c.email ?? 'Sem e-mail'} • CPF: ${c.cpf.isEmpty ? '—' : c.cpf}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
                                 ),
                               ],
                             ),
