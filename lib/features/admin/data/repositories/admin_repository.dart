@@ -71,6 +71,10 @@ class AdminRepository {
     required String dataFim,
     required double valorMensal,
     required double valorTotal,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
     String? observacoes,
   }) {
     return _remoteDataSource.cadastrarContrato(
@@ -81,7 +85,27 @@ class AdminRepository {
       dataFim: dataFim,
       valorMensal: valorMensal,
       valorTotal: valorTotal,
+      valorEmpenhado: valorEmpenhado,
+      valorLiquidado: valorLiquidado,
+      empenhoNumero: empenhoNumero,
+      vencimentoAvisoDias: vencimentoAvisoDias,
       observacoes: observacoes,
+    );
+  }
+
+  Future<AdminContratoModel> atualizarSaldoContrato({
+    required String contratoId,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
+  }) {
+    return _remoteDataSource.atualizarSaldoContrato(
+      contratoId: contratoId,
+      valorEmpenhado: valorEmpenhado,
+      valorLiquidado: valorLiquidado,
+      empenhoNumero: empenhoNumero,
+      vencimentoAvisoDias: vencimentoAvisoDias,
     );
   }
 

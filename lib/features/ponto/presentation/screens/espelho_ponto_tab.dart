@@ -241,7 +241,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Horas Trabalhadas', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            Text('Horas Trabalhadas', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
                             Text(totalHorasStr, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
                           ],
@@ -259,7 +259,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Ajustes Manuais', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            Text('Ajustes Manuais', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
                             Text(
                               totalAjustesMes.toString(),
@@ -284,7 +284,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Dias com Registro', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            Text('Dias com Registro', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
                             Text(
                               batidasPorDia.keys.length.toString(),
@@ -355,7 +355,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
-                                          color: isFimDeSemana ? Colors.grey[600] : null,
+                                          color: isFimDeSemana ? Colors.grey[700] : null,
                                         ),
                                       ),
                                       Text(

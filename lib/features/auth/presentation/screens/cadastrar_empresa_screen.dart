@@ -103,6 +103,7 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
                             'assets/images/logo.png',
                             height: 70,
                             fit: BoxFit.contain,
+                            semanticLabel: 'Logo Chronos Pulse',
                             errorBuilder: (context, error, stackTrace) => Container(
                               width: 56,
                               height: 56,

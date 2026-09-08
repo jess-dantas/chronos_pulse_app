@@ -174,7 +174,7 @@ class _RequisicaoCard extends StatelessWidget {
           padding: const EdgeInsets.only(top: 4.0),
           child: Text(
             'Almoxarifado: ${requisicao.almoxarifadoNome ?? "-"} | Itens: ${requisicao.itens.length}',
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            style: TextStyle(color: Colors.grey[700], fontSize: 13),
           ),
         ),
         children: [

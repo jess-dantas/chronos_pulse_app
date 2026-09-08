@@ -139,7 +139,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             const SizedBox(height: 4),
                             Text(
                               'Bem-vindo, ${usuario?.nome.isNotEmpty == true ? usuario!.nome : 'Administrador'}',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              style: TextStyle(color: Colors.grey[700], fontSize: 14),
                             ),
                           ],
                         ),
@@ -271,7 +271,7 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               titulo,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              style: TextStyle(color: Colors.grey[700], fontSize: 13),
             ),
           ],
         ),

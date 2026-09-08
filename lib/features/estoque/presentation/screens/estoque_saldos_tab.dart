@@ -224,7 +224,12 @@ class EstoqueSaldosTab extends StatelessWidget {
                                     if (saldo.codigoCatmat != null)
                                       Text(
                                         'CATMAT: ${saldo.codigoCatmat}',
-                                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                        style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                                      ),
+                                    if (saldo.codigoBarras != null && saldo.codigoBarras!.isNotEmpty)
+                                      Text(
+                                        'Cód. Barras: ${saldo.codigoBarras}',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                                       ),
                                   ],
                                 ),
@@ -244,11 +249,32 @@ class EstoqueSaldosTab extends StatelessWidget {
                           DataCell(Text(currencyFormat.format(saldo.custoMedioUnitario))),
                           DataCell(Text(currencyFormat.format(saldo.valorTotal), style: const TextStyle(fontWeight: FontWeight.w600))),
                           DataCell(
-                            Text(
-                              saldo.lote != null && saldo.lote!.isNotEmpty
-                                  ? '${saldo.lote}${saldo.dataValidade != null ? " (${saldo.dataValidade})" : ""}'
-                                  : 'Geral',
-                              style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  saldo.lote != null && saldo.lote!.isNotEmpty
+                                      ? '${saldo.lote}${saldo.dataValidade != null ? " (${saldo.dataValidade})" : ""}'
+                                      : 'Geral',
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                                ),
+                                if (saldo.isVencido) ...[
+                                  const SizedBox(width: 8),
+                                  const _ValidadeBadge(
+                                    texto: 'VENCIDO',
+                                    cor: Colors.red,
+                                    tooltip: 'Validade expirada',
+                                  ),
+                                ] else if (saldo.diasParaVencer != null &&
+                                    saldo.diasParaVencer! <= 30) ...[
+                                  const SizedBox(width: 8),
+                                  _ValidadeBadge(
+                                    texto: 'VENCE EM ${saldo.diasParaVencer} D',
+                                    cor: Colors.orange,
+                                    tooltip: 'Vence em ${saldo.diasParaVencer} dias',
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           DataCell(
@@ -275,6 +301,37 @@ class EstoqueSaldosTab extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ValidadeBadge extends StatelessWidget {
+  final String texto;
+  final Color cor;
+  final String tooltip;
+
+  const _ValidadeBadge({required this.texto, required this.cor, required this.tooltip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: cor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: cor.withValues(alpha: 0.6)),
+        ),
+        child: Text(
+          texto,
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.bold,
+            color: cor,
+          ),
         ),
       ),
     );
@@ -319,7 +376,7 @@ class _MetricCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
@@ -356,6 +413,7 @@ Future<void> _exportarSaldosCsv(BuildContext context, List<EstoqueSaldoModel> sa
     cabecalho: const [
       'Almoxarifado',
       'Código CATMAT',
+      'Código Barras',
       'Item / Descrição',
       'Und.',
       'Lote',
@@ -365,11 +423,13 @@ Future<void> _exportarSaldosCsv(BuildContext context, List<EstoqueSaldoModel> sa
       'Valor Total',
       'Estoque Mínimo',
       'Situação',
+      'Situação Validade',
     ],
     linhas: saldos.map((s) {
       return [
         s.almoxarifadoNome ?? '',
         s.codigoCatmat ?? '',
+        s.codigoBarras ?? '',
         s.materialDescricao ?? '',
         s.unidadeMedida ?? '',
         s.lote ?? '',
@@ -379,6 +439,11 @@ Future<void> _exportarSaldosCsv(BuildContext context, List<EstoqueSaldoModel> sa
         currencyFormat.format(s.valorTotal),
         s.estoqueMinimo != null ? numberFormat.format(s.estoqueMinimo!) : '',
         s.isAbaixoMinimo ? 'ABAIXO DO MÍNIMO' : 'OK',
+        s.isVencido
+            ? 'VENCIDO'
+            : (s.diasParaVencer != null && s.diasParaVencer! <= 30
+                ? 'VENCE EM ${s.diasParaVencer} DIAS'
+                : 'OK'),
       ];
     }).toList(),
   );

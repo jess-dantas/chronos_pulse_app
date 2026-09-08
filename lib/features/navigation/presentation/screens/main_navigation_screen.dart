@@ -146,6 +146,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                       'assets/images/logo.png',
                       height: 36,
                       fit: BoxFit.contain,
+                      semanticLabel: 'Logo Chronos Pulse',
                       errorBuilder: (_, __, ___) => const Icon(Icons.hub, color: Colors.deepPurple),
                     ),
                   ),

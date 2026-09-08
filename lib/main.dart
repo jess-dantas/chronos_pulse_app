@@ -26,8 +26,11 @@ import 'features/admin/data/repositories/admin_repository.dart';
 import 'features/admin/presentation/providers/admin_provider.dart';
 import 'features/admin/presentation/screens/admin_navigation_screen.dart';
 import 'features/patrimonio/data/datasources/patrimonio_remote_datasource.dart';
+import 'features/patrimonio/data/datasources/desfazimento_remote_datasource.dart';
 import 'features/patrimonio/data/repositories/patrimonio_repository.dart';
+import 'features/patrimonio/data/repositories/desfazimento_repository.dart';
 import 'features/patrimonio/presentation/providers/patrimonio_provider.dart';
+import 'features/patrimonio/presentation/providers/desfazimento_provider.dart';
 import 'features/frota/data/datasources/frota_remote_datasource.dart';
 import 'features/frota/data/repositories/frota_repository.dart';
 import 'features/frota/presentation/providers/frota_provider.dart';
@@ -73,6 +76,10 @@ void main() async {
   final patrimonioRepository =
       PatrimonioRepository(remoteDataSource: patrimonioRemoteDataSource);
 
+  final desfazimentoRemoteDataSource = DesfazimentoRemoteDataSource(dioClient);
+  final desfazimentoRepository =
+      DesfazimentoRepository(remoteDataSource: desfazimentoRemoteDataSource);
+
   final frotaRemoteDataSource = FrotaRemoteDataSource(dioClient);
   final frotaRepository = FrotaRepository(remoteDataSource: frotaRemoteDataSource);
 
@@ -111,6 +118,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
         ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
         ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
+        ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
         ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
         ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
         ChangeNotifierProvider.value(value: privacidadeProvider),

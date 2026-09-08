@@ -189,7 +189,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
                             ),
                             Text(
                               'Inclusão ou correção de marcação de ponto',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700]),
                             ),
                           ],
                         ),
@@ -284,7 +284,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
                             ),
                             Text(
                               j.descricao,
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],

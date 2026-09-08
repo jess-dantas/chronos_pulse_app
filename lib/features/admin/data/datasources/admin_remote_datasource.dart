@@ -142,6 +142,10 @@ class AdminRemoteDataSource {
     required String dataFim,
     required double valorMensal,
     required double valorTotal,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
     String? observacoes,
   }) async {
     try {
@@ -153,6 +157,11 @@ class AdminRemoteDataSource {
         'dataFim': dataFim,
         'valorMensal': valorMensal,
         'valorTotal': valorTotal,
+        if (valorEmpenhado != null) 'valorEmpenhado': valorEmpenhado,
+        if (valorLiquidado != null) 'valorLiquidado': valorLiquidado,
+        if (empenhoNumero != null && empenhoNumero.isNotEmpty)
+          'empenhoNumero': empenhoNumero,
+        if (vencimentoAvisoDias != null) 'vencimentoAvisoDias': vencimentoAvisoDias,
         if (observacoes != null) 'observacoes': observacoes,
       };
 
@@ -167,6 +176,36 @@ class AdminRemoteDataSource {
       throw Exception('Falha ao cadastrar contrato');
     } on DioException catch (e) {
       throw Exception(e.response?.data?['message'] ?? 'Erro ao cadastrar contrato');
+    }
+  }
+
+  Future<AdminContratoModel> atualizarSaldoContrato({
+    required String contratoId,
+    double? valorEmpenhado,
+    double? valorLiquidado,
+    String? empenhoNumero,
+    int? vencimentoAvisoDias,
+  }) async {
+    try {
+      final payload = {
+        if (valorEmpenhado != null) 'valorEmpenhado': valorEmpenhado,
+        if (valorLiquidado != null) 'valorLiquidado': valorLiquidado,
+        if (empenhoNumero != null && empenhoNumero.isNotEmpty)
+          'empenhoNumero': empenhoNumero,
+        if (vencimentoAvisoDias != null) 'vencimentoAvisoDias': vencimentoAvisoDias,
+      };
+
+      final response = await _dioClient.dio.patch(
+        ApiConstants.adminContratoSaldoEndpoint(contratoId),
+        data: payload,
+      );
+
+      if (response.statusCode == 200) {
+        return AdminContratoModel.fromJson(Map<String, dynamic>.from(response.data));
+      }
+      throw Exception('Falha ao atualizar saldo do contrato');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Erro ao atualizar saldo do contrato');
     }
   }
 

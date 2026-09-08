@@ -247,20 +247,20 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 'CNPJ: ${e.cnpj.isEmpty ? '—' : e.cnpj}',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                style: TextStyle(color: Colors.grey[700], fontSize: 13),
                               ),
                               if (e.responsavelNome != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   'Responsável: ${e.responsavelNome}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                 ),
                               ],
                               if (e.responsavelEmail != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   'Email: ${e.responsavelEmail}',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
                                 ),
                               ],
                             ],

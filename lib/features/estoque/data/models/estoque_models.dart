@@ -4,6 +4,7 @@ class MaterialModel {
   final String grupoId;
   final String? grupoNome;
   final String? codigoCatmat;
+  final String? codigoBarras;
   final String descricao;
   final String unidadeMedida;
   final double? estoqueMinimo;
@@ -15,6 +16,7 @@ class MaterialModel {
     required this.grupoId,
     this.grupoNome,
     this.codigoCatmat,
+    this.codigoBarras,
     required this.descricao,
     required this.unidadeMedida,
     this.estoqueMinimo,
@@ -28,6 +30,7 @@ class MaterialModel {
       grupoId: json['grupoId'] ?? '',
       grupoNome: json['grupoNome'],
       codigoCatmat: json['codigoCatmat'],
+      codigoBarras: json['codigoBarras'],
       descricao: json['descricao'] ?? '',
       unidadeMedida: json['unidadeMedida'] ?? 'UN',
       estoqueMinimo: _toDouble(json['estoqueMinimo']),
@@ -41,6 +44,7 @@ class MaterialModel {
       'id': id,
       'grupoId': grupoId,
       'codigoCatmat': codigoCatmat,
+      'codigoBarras': codigoBarras,
       'descricao': descricao,
       'unidadeMedida': unidadeMedida,
       'estoqueMinimo': estoqueMinimo,
@@ -84,6 +88,7 @@ class EstoqueSaldoModel {
   final String? materialDescricao;
   final String? unidadeMedida;
   final String? codigoCatmat;
+  final String? codigoBarras;
   final String? lote;
   final String? dataValidade;
   final double quantidadeAtual;
@@ -99,6 +104,7 @@ class EstoqueSaldoModel {
     this.materialDescricao,
     this.unidadeMedida,
     this.codigoCatmat,
+    this.codigoBarras,
     this.lote,
     this.dataValidade,
     required this.quantidadeAtual,
@@ -109,6 +115,25 @@ class EstoqueSaldoModel {
 
   bool get isAbaixoMinimo =>
       estoqueMinimo != null && quantidadeAtual < (estoqueMinimo ?? 0);
+
+  DateTime? get dataValidadeDateTime {
+    if (dataValidade == null || dataValidade!.isEmpty) return null;
+    return DateTime.tryParse(dataValidade!);
+  }
+
+  bool get isVencido {
+    final data = dataValidadeDateTime;
+    if (data == null) return false;
+    final hoje = DateTime.now();
+    return data.isBefore(DateTime(hoje.year, hoje.month, hoje.day));
+  }
+
+  int? get diasParaVencer {
+    final data = dataValidadeDateTime;
+    if (data == null || isVencido) return null;
+    final hoje = DateTime.now();
+    return data.difference(DateTime(hoje.year, hoje.month, hoje.day)).inDays;
+  }
 
   factory EstoqueSaldoModel.fromJson(Map<String, dynamic> json) {
     final double qtd = _toDouble(json['quantidadeAtual']) ?? 0.0;
@@ -123,6 +148,7 @@ class EstoqueSaldoModel {
       materialDescricao: json['materialDescricao'],
       unidadeMedida: json['unidadeMedida'] ?? 'UN',
       codigoCatmat: json['codigoCatmat'],
+      codigoBarras: json['codigoBarras'],
       lote: json['lote'],
       dataValidade: json['dataValidade'],
       quantidadeAtual: qtd,
@@ -225,6 +251,8 @@ class EntradaEstoqueRequestDTO {
   final String? lote;
   final String? dataValidade;
   final String? documentoReferencia;
+  final String? tipoTermo;
+  final String? numeroTermo;
 
   EntradaEstoqueRequestDTO({
     required this.almoxarifadoId,
@@ -234,6 +262,8 @@ class EntradaEstoqueRequestDTO {
     this.lote,
     this.dataValidade,
     this.documentoReferencia,
+    this.tipoTermo,
+    this.numeroTermo,
   });
 
   Map<String, dynamic> toJson() {
@@ -246,6 +276,8 @@ class EntradaEstoqueRequestDTO {
       if (dataValidade != null && dataValidade!.isNotEmpty) 'dataValidade': dataValidade,
       if (documentoReferencia != null && documentoReferencia!.isNotEmpty)
         'documentoReferencia': documentoReferencia,
+      if (tipoTermo != null && tipoTermo!.isNotEmpty) 'tipoTermo': tipoTermo,
+      if (numeroTermo != null && numeroTermo!.isNotEmpty) 'numeroTermo': numeroTermo,
     };
   }
 }
@@ -256,6 +288,8 @@ class SaidaEstoqueRequestDTO {
   final double quantidade;
   final String? lote;
   final String? documentoReferencia;
+  final String? motivoBaixa;
+  final String? observacao;
 
   SaidaEstoqueRequestDTO({
     required this.almoxarifadoId,
@@ -263,6 +297,8 @@ class SaidaEstoqueRequestDTO {
     required this.quantidade,
     this.lote,
     this.documentoReferencia,
+    this.motivoBaixa,
+    this.observacao,
   });
 
   Map<String, dynamic> toJson() {
@@ -273,6 +309,8 @@ class SaidaEstoqueRequestDTO {
       if (lote != null && lote!.isNotEmpty) 'lote': lote,
       if (documentoReferencia != null && documentoReferencia!.isNotEmpty)
         'documentoReferencia': documentoReferencia,
+      if (motivoBaixa != null && motivoBaixa!.isNotEmpty) 'motivoBaixa': motivoBaixa,
+      if (observacao != null && observacao!.isNotEmpty) 'observacao': observacao,
     };
   }
 }
