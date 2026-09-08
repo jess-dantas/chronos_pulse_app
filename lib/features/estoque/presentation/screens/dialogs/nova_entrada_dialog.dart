@@ -55,7 +55,7 @@ class _NovaEntradaDialogState extends State<NovaEntradaDialog> {
                     labelText: 'Almoxarifado',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedAlmoxarifadoId,
+                  initialValue: _selectedAlmoxarifadoId,
                   items: estoqueProvider.almoxarifados.map((a) {
                     return DropdownMenuItem(value: a.id, child: Text(a.nome));
                   }).toList(),
@@ -68,7 +68,7 @@ class _NovaEntradaDialogState extends State<NovaEntradaDialog> {
                     labelText: 'Material / Item',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedMaterialId,
+                  initialValue: _selectedMaterialId,
                   items: estoqueProvider.materiais.map((m) {
                     final catmat = m.codigoCatmat != null ? '[${m.codigoCatmat}] ' : '';
                     return DropdownMenuItem(

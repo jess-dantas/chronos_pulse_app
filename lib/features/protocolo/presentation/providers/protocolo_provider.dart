@@ -6,6 +6,9 @@ class ProtocoloProvider extends ChangeNotifier {
   final ProtocoloRepository _repository;
 
   List<ProtocoloModel> _protocolos = [];
+  int _pagina = 0;
+  bool _hasMore = false;
+  bool _carregandoMais = false;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -15,6 +18,8 @@ class ProtocoloProvider extends ChangeNotifier {
   List<ProtocoloModel> get protocolosRecebido =>
       _protocolos.where((p) => p.status == 'RECEBIDO').toList();
   bool get isLoading => _isLoading;
+  bool get hasMore => _hasMore;
+  bool get carregandoMais => _carregandoMais;
   String? get errorMessage => _errorMessage;
 
   Future<void> carregarProtocolos() async {
@@ -23,11 +28,32 @@ class ProtocoloProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _protocolos = await _repository.getProtocolos();
+      final pagina = await _repository.getProtocolos(page: 0, size: 50);
+      _protocolos = pagina.items;
+      _pagina = 0;
+      _hasMore = pagina.hasMore;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> carregarMaisProtocolos() async {
+    if (_isLoading || _carregandoMais || !_hasMore) return;
+    _carregandoMais = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final pagina = await _repository.getProtocolos(page: _pagina + 1, size: 50);
+      _protocolos = [..._protocolos, ...pagina.items];
+      _pagina += 1;
+      _hasMore = pagina.hasMore;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      _carregandoMais = false;
       notifyListeners();
     }
   }

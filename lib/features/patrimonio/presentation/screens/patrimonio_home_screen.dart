@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/csv_export.dart';
+import '../../data/models/patrimonio_models.dart';
 import '../providers/patrimonio_provider.dart';
 import 'dialogs/novo_bem_dialog.dart';
 
@@ -30,6 +32,51 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
     }
   }
 
+  Future<void> _exportarCsv(List<PatrimonioModel> bens) async {
+    if (bens.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sem bens para exportar.')),
+        );
+      }
+      return;
+    }
+    final exportado = await CsvExport.exportar(
+      arquivoNome: 'patrimonio_${DateTime.now().toIso8601String().substring(0, 10)}.csv',
+      cabecalho: const [
+        'Tombamento',
+        'Descrição',
+        'Categoria',
+        'Estado',
+        'Localização',
+        'Data de Aquisição',
+        'Valor de Aquisição (R\$)',
+        'Responsável',
+        'Nota Fiscal',
+        'Observações',
+      ],
+      linhas: bens.map((b) {
+        return [
+          b.tombamento ?? '',
+          b.descricao,
+          b.categoria ?? '',
+          b.estado,
+          b.localizacao ?? '',
+          b.dataAquisicao ?? '',
+          b.valorAquisicao ?? '',
+          b.responsavelNome ?? '',
+          b.numeroNotaFiscal ?? '',
+          b.observacoes ?? '',
+        ];
+      }).toList(),
+    );
+    if (mounted && exportado) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV exportado com sucesso.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PatrimonioProvider>();
@@ -45,6 +92,11 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Exportar CSV',
+            onPressed: () => _exportarCsv(provider.bens),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
@@ -95,9 +147,26 @@ class _PatrimonioHomeScreenState extends State<PatrimonioHomeScreen> {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
-                      itemCount: provider.bens.length,
+                      itemCount: provider.bens.length + (provider.hasMore ? 1 : 0),
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
+                        if (index >= provider.bens.length) {
+                          return Center(
+                            child: OutlinedButton.icon(
+                              onPressed: provider.carregandoMais
+                                  ? null
+                                  : () => context.read<PatrimonioProvider>().carregarMaisBens(),
+                              icon: provider.carregandoMais
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.expand_more),
+                              label: const Text('Carregar mais bens'),
+                            ),
+                          );
+                        }
                         final bem = provider.bens[index];
                         return Card(
                           elevation: 1,

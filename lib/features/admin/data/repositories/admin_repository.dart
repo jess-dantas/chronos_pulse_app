@@ -1,4 +1,5 @@
 import '../datasources/admin_remote_datasource.dart';
+import '../models/admin_models.dart';
 
 class AdminRepository {
   final AdminRemoteDataSource _remoteDataSource;
@@ -6,15 +7,15 @@ class AdminRepository {
   AdminRepository({required AdminRemoteDataSource remoteDataSource})
       : _remoteDataSource = remoteDataSource;
 
-  Future<Map<String, dynamic>> buscarDashboard() {
+  Future<AdminDashboardModel> buscarDashboard() {
     return _remoteDataSource.buscarDashboard();
   }
 
-  Future<List<Map<String, dynamic>>> listarEmpresas() {
+  Future<List<AdminEmpresaModel>> listarEmpresas() {
     return _remoteDataSource.listarEmpresas();
   }
 
-  Future<List<Map<String, dynamic>>> listarColaboradores() {
+  Future<List<AdminColaboradorModel>> listarColaboradores() {
     return _remoteDataSource.listarColaboradores();
   }
 
@@ -58,11 +59,11 @@ class AdminRepository {
     return _remoteDataSource.atualizarEmpresa(id: id, nome: nome, ativo: ativo);
   }
 
-  Future<List<Map<String, dynamic>>> listarContratos({String? tenantId}) {
+  Future<List<AdminContratoModel>> listarContratos({String? tenantId}) {
     return _remoteDataSource.listarContratos(tenantId: tenantId);
   }
 
-  Future<Map<String, dynamic>> cadastrarContrato({
+  Future<AdminContratoModel> cadastrarContrato({
     required String tenantId,
     required String numero,
     required String objeto,
@@ -84,11 +85,11 @@ class AdminRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>> listarEventosContrato(String contratoId) {
+  Future<List<AdminContratoEventoModel>> listarEventosContrato(String contratoId) {
     return _remoteDataSource.listarEventosContrato(contratoId);
   }
 
-  Future<Map<String, dynamic>> adicionarEventoContrato({
+  Future<AdminContratoEventoModel> adicionarEventoContrato({
     required String contratoId,
     required String tipo,
     required String descricao,
@@ -100,7 +101,7 @@ class AdminRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>> listarCatalogoModulos() {
+  Future<List<AdminModuloModel>> listarCatalogoModulos() {
     return _remoteDataSource.listarCatalogoModulos();
   }
 

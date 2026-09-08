@@ -340,7 +340,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
 
                           return Container(
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            color: isFimDeSemana ? Theme.of(context).colorScheme.surface.withOpacity(0.4) : null,
+                            color: isFimDeSemana ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.4) : null,
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -397,10 +397,10 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: cor.withOpacity(0.12),
+                                                  color: cor.withValues(alpha: 0.12),
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: isAjuste ? Colors.deepPurple : cor.withOpacity(0.4),
+                                                    color: isAjuste ? Colors.deepPurple : cor.withValues(alpha: 0.4),
                                                     width: isAjuste ? 1.5 : 1,
                                                   ),
                                                 ),

@@ -3,10 +3,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/data/listas_govbr.dart';
 import '../../../../../core/widgets/acessos_modulos_card.dart';
+import '../../../data/models/admin_models.dart';
 import '../../providers/admin_provider.dart';
 
 class AdminEditarColaboradorDialog extends StatefulWidget {
-  final Map<String, dynamic> colaborador;
+  final AdminColaboradorModel colaborador;
 
   const AdminEditarColaboradorDialog({super.key, required this.colaborador});
 
@@ -38,21 +39,19 @@ class _AdminEditarColaboradorDialogState extends State<AdminEditarColaboradorDia
   void initState() {
     super.initState();
     final c = widget.colaborador;
-    _nomeController = TextEditingController(text: c['nome']?.toString() ?? '');
-    _cpfController = TextEditingController(text: c['cpf']?.toString() ?? '');
-    _emailController = TextEditingController(text: c['email']?.toString() ?? '');
-    _matriculaController = TextEditingController(text: c['matricula']?.toString() ?? '');
-    _cargo = (c['cargo']?.toString() ?? '').isNotEmpty ? c['cargo'].toString() : null;
-    _departamento = (c['departamento']?.toString() ?? '').isNotEmpty
-        ? c['departamento'].toString()
-        : null;
-    _dataNascimento = _parseDate(c['dataNascimento']) ?? DateTime(1995, 1, 1);
-    _dataAdmissao = _parseDate(c['dataAdmissao']) ?? DateTime.now();
-    _dataDesligamento = _parseDate(c['dataDesligamento']);
-    _acessoEstoque = c['acessoEstoque'] == true;
-    _acessoPatrimonio = c['acessoPatrimonio'] == true;
-    _acessoFrota = c['acessoFrota'] == true;
-    _acessoProtocolo = c['acessoProtocolo'] == true;
+    _nomeController = TextEditingController(text: c.nome);
+    _cpfController = TextEditingController(text: c.cpf);
+    _emailController = TextEditingController(text: c.email ?? '');
+    _matriculaController = TextEditingController(text: c.matricula ?? '');
+    _cargo = (c.cargo?.trim() ?? '').isNotEmpty ? c.cargo : null;
+    _departamento = (c.departamento?.trim() ?? '').isNotEmpty ? c.departamento : null;
+    _dataNascimento = _parseDate(c.dataNascimento) ?? DateTime(1995, 1, 1);
+    _dataAdmissao = _parseDate(c.dataAdmissao) ?? DateTime.now();
+    _dataDesligamento = _parseDate(c.dataDesligamento);
+    _acessoEstoque = c.acessoEstoque;
+    _acessoPatrimonio = c.acessoPatrimonio;
+    _acessoFrota = c.acessoFrota;
+    _acessoProtocolo = c.acessoProtocolo;
   }
 
   DateTime? _parseDate(dynamic raw) {
@@ -116,7 +115,7 @@ class _AdminEditarColaboradorDialogState extends State<AdminEditarColaboradorDia
     final dateFormat = DateFormat('yyyy-MM-dd');
 
     final sucesso = await provider.atualizarColaborador(
-      id: widget.colaborador['id'].toString(),
+      id: widget.colaborador.id,
       nome: _nomeController.text.trim(),
       emailCorporativo: _emailController.text.trim().isEmpty
           ? null

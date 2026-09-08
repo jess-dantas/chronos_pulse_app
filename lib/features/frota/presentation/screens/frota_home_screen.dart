@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/csv_export.dart';
 import '../providers/frota_provider.dart';
 import 'dialogs/novo_abastecimento_dialog.dart';
 import 'dialogs/novo_veiculo_dialog.dart';
@@ -41,6 +42,95 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
     if (ok == true && mounted) context.read<FrotaProvider>().carregarTudo();
   }
 
+  Future<void> _exportarCsv(FrotaProvider provider) async {
+    if (_tabController.index == 0) {
+      if (provider.veiculos.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sem veículos para exportar.')),
+          );
+        }
+        return;
+      }
+      final exportado = await CsvExport.exportar(
+        arquivoNome: 'frota_veiculos_${DateTime.now().toIso8601String().substring(0, 10)}.csv',
+        cabecalho: const [
+          'Placa',
+          'Renavam',
+          'Marca',
+          'Modelo',
+          'Ano Fabricação',
+          'Ano Modelo',
+          'Tipo',
+          'Combustível',
+          'Status',
+          'Odômetro (km)',
+          'Ativo',
+        ],
+        linhas: provider.veiculos.map((v) {
+          return [
+            v.placa,
+            v.renavam ?? '',
+            v.marca ?? '',
+            v.modelo ?? '',
+            v.anoFabricacao?.toString() ?? '',
+            v.anoModelo?.toString() ?? '',
+            v.tipo ?? '',
+            v.combustivel ?? '',
+            v.status,
+            v.odometroAtual != null ? _fmtNum(v.odometroAtual) : '',
+            v.ativo ? 'SIM' : 'NÃO',
+          ];
+        }).toList(),
+      );
+      if (mounted && exportado) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('CSV exportado com sucesso.')),
+        );
+      }
+      return;
+    }
+
+    if (provider.abastecimentos.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sem abastecimentos para exportar.')),
+        );
+      }
+      return;
+    }
+    final exportado = await CsvExport.exportar(
+      arquivoNome: 'frota_abastecimentos_${DateTime.now().toIso8601String().substring(0, 10)}.csv',
+      cabecalho: const [
+        'Data/Hora',
+        'Veículo (Placa)',
+        'Litros',
+        'Valor por Litro (R\$)',
+        'Valor Total (R\$)',
+        'Odômetro (km)',
+        'Posto',
+        'Observações',
+      ],
+      linhas: provider.abastecimentos.map((a) {
+        return [
+          a.dataHora.replaceFirst('T', ' '),
+          a.veiculoPlaca,
+          _fmtNum(a.litros),
+          _fmtNum(a.valorLitro, 4),
+          _fmtNum(a.valorTotal, 2),
+          a.odometroKm != null ? _fmtNum(a.odometroKm) : '',
+          a.posto ?? '',
+          a.observacoes ?? '',
+        ];
+      }).toList(),
+    );
+    if (mounted && exportado) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV exportado com sucesso.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FrotaProvider>();
@@ -55,6 +145,13 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
           ],
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Exportar CSV da aba atual',
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () => _exportarCsv(provider),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -122,9 +219,26 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: provider.veiculos.length,
+      itemCount: provider.veiculos.length + (provider.hasMoreVeiculos ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
+        if (index >= provider.veiculos.length) {
+          return Center(
+            child: OutlinedButton.icon(
+              onPressed: provider.carregandoMaisVeiculos
+                  ? null
+                  : () => context.read<FrotaProvider>().carregarMaisVeiculos(),
+              icon: provider.carregandoMaisVeiculos
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.expand_more),
+              label: const Text('Carregar mais veículos'),
+            ),
+          );
+        }
         final v = provider.veiculos[index];
         return Card(
           elevation: 1,
@@ -150,7 +264,7 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
                 if (v.odometroAtual != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Odômetro: ${v.odometroAtual} km',
+                    'Odômetro: ${_fmtNum(v.odometroAtual)} km',
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],
@@ -159,7 +273,7 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: (v.status == 'ATIVO' ? Colors.green : Colors.orange).withOpacity(0.1),
+                color: (v.status == 'ATIVO' ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -215,9 +329,26 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: provider.abastecimentos.length,
+      itemCount: provider.abastecimentos.length + (provider.hasMoreAbastecimentos ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
+        if (index >= provider.abastecimentos.length) {
+          return Center(
+            child: OutlinedButton.icon(
+              onPressed: provider.carregandoMaisAbastecimentos
+                  ? null
+                  : () => context.read<FrotaProvider>().carregarMaisAbastecimentos(),
+              icon: provider.carregandoMaisAbastecimentos
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.expand_more),
+              label: const Text('Carregar mais abastecimentos'),
+            ),
+          );
+        }
         final a = provider.abastecimentos[index];
         return Card(
           elevation: 1,
@@ -225,7 +356,7 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: CircleAvatar(
-              backgroundColor: Colors.orange.withOpacity(0.1),
+              backgroundColor: Colors.orange.withValues(alpha: 0.1),
               child: const Icon(Icons.local_gas_station, color: Colors.orange),
             ),
             title: Text(
@@ -237,7 +368,7 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
               children: [
                 const SizedBox(height: 4),
                 Text(
-                  '${a.litros} L × R\$ ${a.valorLitro} = R\$ ${a.valorTotal}',
+                  '${_fmtNum(a.litros)} L × R\$ ${_fmtNum(a.valorLitro, 4)} = R\$ ${_fmtNum(a.valorTotal, 2)}',
                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                 ),
                 if (a.dataHora.isNotEmpty) ...[
@@ -254,4 +385,9 @@ class _FrotaHomeScreenState extends State<FrotaHomeScreen>
       },
     );
   }
+}
+
+String _fmtNum(double? valor, [int casas = 1]) {
+  if (valor == null) return '—';
+  return valor.toStringAsFixed(casas).replaceAll('.', ',');
 }

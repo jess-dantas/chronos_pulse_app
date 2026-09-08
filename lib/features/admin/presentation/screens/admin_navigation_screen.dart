@@ -9,6 +9,7 @@ import '../screens/admin_colaboradores_screen.dart';
 import '../screens/admin_contratos_screen.dart';
 import '../screens/admin_alterar_senha_screen.dart';
 import '../screens/admin_modulos_screen.dart';
+import '../../../privacidade/presentation/screens/privacidade_screen.dart';
 
 class _AdminNavItem {
   final Widget screen;
@@ -70,6 +71,12 @@ class _AdminNavigationScreenState extends State<AdminNavigationScreen> {
       label: 'Alterar Senha',
       icon: Icons.password_outlined,
       selectedIcon: Icons.password,
+    ),
+    _AdminNavItem(
+      screen: PrivacidadeScreen(),
+      label: 'Privacidade',
+      icon: Icons.privacy_tip_outlined,
+      selectedIcon: Icons.privacy_tip,
     ),
   ];
 

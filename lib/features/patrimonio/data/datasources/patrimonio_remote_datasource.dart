@@ -1,5 +1,6 @@
 import 'package:chronos_pulse_app/core/constants/api_constants.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
+import 'package:chronos_pulse_app/core/network/paginated_response.dart';
 import '../models/patrimonio_models.dart';
 
 class PatrimonioRemoteDataSource {
@@ -7,21 +8,17 @@ class PatrimonioRemoteDataSource {
 
   PatrimonioRemoteDataSource(this._dioClient);
 
-  Future<List<PatrimonioModel>> getBens() async {
-    final queryParams = <String, dynamic>{'page': 0, 'size': 100};
+  Future<PaginatedResponse<PatrimonioModel>> getBens({int page = 0, int size = 50}) async {
+    final queryParams = <String, dynamic>{'page': page, 'size': size};
     final response = await _dioClient.dio.get(
       ApiConstants.patrimonioEndpoint,
       queryParameters: queryParams,
     );
     if (response.statusCode == 200) {
-      final data = response.data;
-      if (data is List) {
-        return data.map((e) => PatrimonioModel.fromJson(e)).toList();
-      }
-      if (data is Map) {
-        final content = data['content'] as List? ?? [];
-        return content.map((e) => PatrimonioModel.fromJson(e)).toList();
-      }
+      return PaginatedResponse.from(
+        response.data,
+        (itens) => itens.map(PatrimonioModel.fromJson).toList(),
+      );
     }
     throw Exception('Falha ao carregar bens patrimoniais');
   }

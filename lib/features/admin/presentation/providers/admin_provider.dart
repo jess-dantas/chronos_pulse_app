@@ -1,24 +1,25 @@
 import 'package:flutter/foundation.dart';
+import '../../data/models/admin_models.dart';
 import '../../data/repositories/admin_repository.dart';
 
 class AdminProvider extends ChangeNotifier {
   final AdminRepository _repository;
 
-  Map<String, dynamic> _metrics = {};
-  List<Map<String, dynamic>> _contratos = [];
-  List<Map<String, dynamic>> _empresas = [];
-  List<Map<String, dynamic>> _colaboradores = [];
-  List<Map<String, dynamic>> _modulosCatalogo = [];
+  AdminDashboardModel? _metrics;
+  List<AdminContratoModel> _contratos = [];
+  List<AdminEmpresaModel> _empresas = [];
+  List<AdminColaboradorModel> _colaboradores = [];
+  List<AdminModuloModel> _modulosCatalogo = [];
   bool _isLoading = false;
   String? _errorMessage;
 
   AdminProvider(this._repository);
 
-  Map<String, dynamic> get metrics => _metrics;
-  List<Map<String, dynamic>> get contratos => _contratos;
-  List<Map<String, dynamic>> get empresas => _empresas;
-  List<Map<String, dynamic>> get colaboradores => _colaboradores;
-  List<Map<String, dynamic>> get modulosCatalogo => _modulosCatalogo;
+  AdminDashboardModel? get metrics => _metrics;
+  List<AdminContratoModel> get contratos => _contratos;
+  List<AdminEmpresaModel> get empresas => _empresas;
+  List<AdminColaboradorModel> get colaboradores => _colaboradores;
+  List<AdminModuloModel> get modulosCatalogo => _modulosCatalogo;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -29,6 +30,7 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       _metrics = await _repository.buscarDashboard();
+
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -117,13 +119,13 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<List<Map<String, dynamic>>> listarEventosContrato(String contratoId) async {
+  Future<List<AdminContratoEventoModel>> listarEventosContrato(String contratoId) async {
     try {
       return await _repository.listarEventosContrato(contratoId);
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 
@@ -185,7 +187,7 @@ class AdminProvider extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/admin_models.dart';
 import '../providers/admin_provider.dart';
 import 'dialogs/admin_editar_colaborador_dialog.dart';
 import 'dialogs/admin_novo_colaborador_dialog.dart';
@@ -36,15 +37,15 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
     );
   }
 
-  Future<void> _editarColaborador(Map<String, dynamic> colaborador) async {
+  Future<void> _editarColaborador(AdminColaboradorModel colaborador) async {
     await showDialog<void>(
       context: context,
       builder: (context) => AdminEditarColaboradorDialog(colaborador: colaborador),
     );
   }
 
-  Future<void> _excluirColaborador(Map<String, dynamic> colaborador) async {
-    final nome = colaborador['nome']?.toString() ?? 'este colaborador';
+  Future<void> _excluirColaborador(AdminColaboradorModel colaborador) async {
+    final nome = colaborador.nome.isNotEmpty ? colaborador.nome : 'este colaborador';
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -69,7 +70,7 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
     if (confirmar != true || !mounted) return;
 
     final provider = context.read<AdminProvider>();
-    final sucesso = await provider.excluirColaborador(colaborador['id'].toString());
+    final sucesso = await provider.excluirColaborador(colaborador.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -89,7 +90,7 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
 
     final filtrados = _filtro == 'Todos'
         ? lista
-        : lista.where((c) => c['ativo'] == true).toList();
+        : lista.where((c) => c.ativo).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -185,22 +186,22 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final c = filtrados[index];
-                      final ativo = c['ativo'] == true;
-                      final acessoEstoque = c['acessoEstoque'] == true;
+                      final ativo = c.ativo;
+                      final acessoEstoque = c.acessoEstoque;
                       return Card(
                         elevation: 1,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: CircleAvatar(
-                            backgroundColor: (ativo ? Colors.green : Colors.red).withOpacity(0.1),
+                            backgroundColor: (ativo ? Colors.green : Colors.red).withValues(alpha: 0.1),
                             child: Icon(
                               Icons.person,
                               color: ativo ? Colors.green : Colors.red,
                             ),
                           ),
                           title: Text(
-                            c['nome']?.toString() ?? 'Sem nome',
+                            c.nome.isNotEmpty ? c.nome : 'Sem nome',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Padding(
@@ -211,22 +212,22 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                                 Wrap(
                                   spacing: 12,
                                   children: [
-                                    if (c['tenantNome'] != null)
+                                    if (c.tenantNome != null)
                                       _chip(
                                         Icon(Icons.business, size: 14),
-                                        c['tenantNome'].toString(),
+                                        c.tenantNome!,
                                         Colors.blue,
                                       ),
-                                    if (c['matricula'] != null)
+                                    if (c.matricula != null)
                                       _chip(
                                         Icon(Icons.badge, size: 14),
-                                        'Mat. ${c['matricula']}',
+                                        'Mat. ${c.matricula}',
                                         Colors.deepPurple,
                                       ),
-                                    if (c['cargo'] != null)
+                                    if (c.cargo != null)
                                       _chip(
                                         Icon(Icons.work_outline, size: 14),
-                                        c['cargo'].toString(),
+                                        c.cargo!,
                                         Colors.orange.shade800,
                                       ),
                                     _chip(
@@ -234,35 +235,35 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                                       acessoEstoque ? 'Estoque' : 'Sem estoque',
                                       acessoEstoque ? Colors.teal : Colors.grey,
                                     ),
-                                    if (c['acessoPatrimonio'] == true)
+                                    if (c.acessoPatrimonio)
                                       _chip(
                                         Icon(Icons.inventory_2, size: 14),
                                         'Patrimônio',
                                         Colors.indigo,
                                       ),
-                                    if (c['acessoFrota'] == true)
+                                    if (c.acessoFrota)
                                       _chip(
                                         Icon(Icons.directions_bus, size: 14),
                                         'Frota',
                                         Colors.teal.shade700,
                                       ),
-                                    if (c['acessoProtocolo'] == true)
+                                    if (c.acessoProtocolo)
                                       _chip(
                                         Icon(Icons.folder_shared, size: 14),
                                         'Protocolo',
                                         Colors.cyan.shade700,
                                       ),
-                                    if (c['dataDesligamento'] != null)
+                                    if (c.dataDesligamento != null)
                                       _chip(
                                         Icon(Icons.event_busy, size: 14),
-                                        'Desligado em ${c['dataDesligamento']}',
+                                        'Desligado em ${c.dataDesligamento}',
                                         Colors.red,
                                       ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${c['email'] ?? 'Sem e-mail'} • CPF: ${c['cpf'] ?? '—'}',
+                                  '${c.email ?? 'Sem e-mail'} • CPF: ${c.cpf.isEmpty ? '—' : c.cpf}',
                                   style: TextStyle(color: Colors.grey[600], fontSize: 12),
                                 ),
                               ],
@@ -274,10 +275,10 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (ativo ? Colors.green : Colors.red).withOpacity(0.1),
+                                  color: (ativo ? Colors.green : Colors.red).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: (ativo ? Colors.green : Colors.red).withOpacity(0.3),
+                                    color: (ativo ? Colors.green : Colors.red).withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Text(
@@ -317,7 +318,7 @@ class _AdminColaboradoresScreenState extends State<AdminColaboradoresScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: cor.withOpacity(0.1),
+        color: cor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

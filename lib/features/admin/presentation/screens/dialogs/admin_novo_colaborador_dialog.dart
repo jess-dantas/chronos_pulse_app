@@ -4,10 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../../../core/data/listas_govbr.dart';
 import '../../../../../core/utils/cpf_input_formatter.dart';
 import '../../../../../core/widgets/acessos_modulos_card.dart';
+import '../../../data/models/admin_models.dart';
 import '../../providers/admin_provider.dart';
 
 class AdminNovoColaboradorDialog extends StatefulWidget {
-  final List<Map<String, dynamic>> empresas;
+  final List<AdminEmpresaModel> empresas;
 
   const AdminNovoColaboradorDialog({super.key, this.empresas = const []});
 
@@ -333,9 +334,9 @@ class _AdminNovoColaboradorDialogState extends State<AdminNovoColaboradorDialog>
                             ),
                             ...widget.empresas.map(
                               (e) => DropdownMenuItem<String?>(
-                                value: e['id']?.toString(),
+                                value: e.id,
                                 child: Text(
-                                  e['nome']?.toString() ?? e['id']?.toString() ?? '—',
+                                  e.nome.isNotEmpty ? e.nome : e.id,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),

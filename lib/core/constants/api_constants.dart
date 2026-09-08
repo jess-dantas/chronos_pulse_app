@@ -2,42 +2,46 @@ import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 class ApiConstants {
+  // Deve ser informada no build/produção: --dart-define=API_URL=https://seu-host/api/v1
+  static const String _envUrl = String.fromEnvironment('API_URL', defaultValue: '');
+
+  /// Indica se a URL da API foi fornecida via --dart-define (build reproduzível).
+  static bool get apiUrlInformada => _envUrl.isNotEmpty;
+
   static String get baseUrl {
     // 0. Variável de ambiente informada em tempo de compilação (--dart-define=API_URL=...)
-    const String envUrl = String.fromEnvironment('API_URL', defaultValue: '');
-    if (envUrl.isNotEmpty) {
-      return envUrl;
+    if (_envUrl.isNotEmpty) {
+      return _envUrl;
     }
 
-    // 1. Se estiver rodando na WEB
+    if (kReleaseMode) {
+      return 'https://chronos-pulse.onrender.com/api/v1';
+    }
+
+    // 1. Se estiver rodando na WEB (debug)
     if (kIsWeb) {
-      return kReleaseMode
-          ? 'https://chronos-pulse.onrender.com/api/v1'
-          : 'http://localhost:8080/api/v1';
+      return 'http://localhost:8080/api/v1';
     }
 
-    // 2. Se estiver rodando no Android (Emulador usa 10.0.2.2, dispositivo físico usa IP da máquina)
+    // 2. Emulador Android usa 10.0.2.2; simulador iOS usa localhost
     try {
       if (Platform.isAndroid) {
         const bool isEmulator = bool.fromEnvironment('EMULATOR', defaultValue: false);
         return isEmulator
             ? 'http://10.0.2.2:8080/api/v1'
-            : 'http://192.168.1.14:8080/api/v1';
+            : 'http://localhost:8080/api/v1';
       }
 
-      // 3. iOS — dispositivo físico precisa do IP da máquina (simulador usa localhost)
       if (Platform.isIOS) {
         const bool isSimulator = bool.fromEnvironment('SIMULATOR', defaultValue: false);
-        return isSimulator
-            ? 'http://localhost:8080/api/v1'
-            : 'http://192.168.1.14:8080/api/v1';
+        return isSimulator ? 'http://localhost:8080/api/v1' : 'http://localhost:8080/api/v1';
       }
     } catch (_) {
       // Fallback para ambientes sem suporte a Platform
       return 'http://localhost:8080/api/v1';
     }
 
-    // 4. Desktop / Fallback
+    // 3. Desktop / Fallback (não é destino de produção)
     return 'http://localhost:8080/api/v1';
   }
 
@@ -83,4 +87,9 @@ class ApiConstants {
 
   // Módulo Protocolo
   static const String protocoloEndpoint = '/protocolo';
+
+  // LGPD / Privacidade
+  static const String privacidadePoliticaEndpoint = '/privacidade/politica';
+  static const String privacidadeMeusDadosEndpoint = '/privacidade/meus-dados';
+  static const String privacidadeConsentimentoEndpoint = '/privacidade/consentimento';
 }

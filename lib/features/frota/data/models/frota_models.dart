@@ -9,7 +9,7 @@ class FrotaVeiculoModel {
   final String? tipo;
   final String? combustivel;
   final String status;
-  final String? odometroAtual;
+  final double? odometroAtual;
   final String? observacoes;
   final bool ativo;
 
@@ -41,7 +41,7 @@ class FrotaVeiculoModel {
       tipo: json['tipo']?.toString(),
       combustivel: json['combustivel']?.toString(),
       status: json['status']?.toString() ?? 'ATIVO',
-      odometroAtual: json['odometroAtual']?.toString(),
+      odometroAtual: _toDouble(json['odometroAtual']),
       observacoes: json['observacoes']?.toString(),
       ativo: json['ativo'] ?? true,
     );
@@ -53,10 +53,10 @@ class AbastecimentoModel {
   final String veiculoId;
   final String veiculoPlaca;
   final String dataHora;
-  final String litros;
-  final String valorLitro;
-  final String valorTotal;
-  final String? odometroKm;
+  final double litros;
+  final double valorLitro;
+  final double valorTotal;
+  final double? odometroKm;
   final String? posto;
   final String? observacoes;
 
@@ -79,12 +79,18 @@ class AbastecimentoModel {
       veiculoId: json['veiculoId']?.toString() ?? '',
       veiculoPlaca: json['veiculoPlaca']?.toString() ?? '',
       dataHora: json['dataHora']?.toString() ?? '',
-      litros: json['litros']?.toString() ?? '0',
-      valorLitro: json['valorLitro']?.toString() ?? '0',
-      valorTotal: json['valorTotal']?.toString() ?? '0',
-      odometroKm: json['odometroKm']?.toString(),
+      litros: _toDouble(json['litros']) ?? 0,
+      valorLitro: _toDouble(json['valorLitro']) ?? 0,
+      valorTotal: _toDouble(json['valorTotal']) ?? 0,
+      odometroKm: _toDouble(json['odometroKm']),
       posto: json['posto']?.toString(),
       observacoes: json['observacoes']?.toString(),
     );
   }
+}
+
+double? _toDouble(dynamic valor) {
+  if (valor == null) return null;
+  if (valor is num) return valor.toDouble();
+  return double.tryParse(valor.toString().replaceAll(',', '.'));
 }

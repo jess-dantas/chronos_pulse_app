@@ -32,6 +32,7 @@ dependencies:
 
   # Persistência de Sessão
   shared_preferences: ^2.3.0
+  flutter_secure_storage: ^11.0.0
 
   # Formatação de Datas
   intl: ^0.20.0

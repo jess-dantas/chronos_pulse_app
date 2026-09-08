@@ -5,6 +5,12 @@ class DioClient {
   late final Dio dio;
   String? _authToken;
 
+  /// Chamado quando uma requisição autenticada recebe 401.
+  /// Deve renovar o token (e persistir) e retornar `true` se teve sucesso.
+  Future<bool> Function()? onRefreshToken;
+
+  Future<bool>? _refreshing;
+
   DioClient({String? initialToken}) {
     _authToken = initialToken;
     dio = Dio(
@@ -27,10 +33,32 @@ class DioClient {
           }
           return handler.next(options);
         },
-        onError: (DioException error, ErrorInterceptorHandler handler) {
+        onError: (DioException error, ErrorInterceptorHandler handler) async {
+          // Apenas requisições autenticadas que ainda não tentaram refresh.
+          final jaRetentou = error.requestOptions.extra['_retry'] == true;
+          final ehEndpointRefresh = _ehEndpointRefresh(error.requestOptions.path);
+          final temToken =
+              (_authToken != null && _authToken!.isNotEmpty);
+
+          if (error.response?.statusCode == 401 && !jaRetentou && !ehEndpointRefresh && temToken) {
+            final renovado = await (_refreshing ??= _renovarToken());
+            if (renovado) {
+              try {
+                final opcoes = error.requestOptions;
+                opcoes.headers['Authorization'] = 'Bearer $_authToken';
+                opcoes.extra['_retry'] = true;
+                final resposta = await dio.fetch(opcoes);
+                return handler.resolve(resposta);
+              } catch (_) {
+                // segue para o tratamento de erro abaixo
+              }
+            }
+          }
+
           String userFriendlyMessage;
           if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
-            userFriendlyMessage = 'Acesso não autorizado ou credenciais inválidas.';
+            userFriendlyMessage =
+                'Acesso não autorizado ou credenciais inválidas.';
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout) {
@@ -63,6 +91,23 @@ class DioClient {
         },
       ),
     );
+  }
+
+  Future<bool> _renovarToken() async {
+    try {
+      final callback = onRefreshToken;
+      if (callback == null) return false;
+      return await callback();
+    } catch (_) {
+      return false;
+    } finally {
+      _refreshing = null;
+    }
+  }
+
+  bool _ehEndpointRefresh(String path) {
+    final endpoint = ApiConstants.refreshTokenEndpoint;
+    return path.endsWith(endpoint) || path.endsWith('$endpoint/');
   }
 
   void updateToken(String? token) {

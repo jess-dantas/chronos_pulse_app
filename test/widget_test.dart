@@ -20,6 +20,10 @@ import 'package:chronos_pulse_app/main.dart';
 
 void main() {
   testWidgets('Renderiza Landing Page inicial deslogada com descrição, módulos e botão Login', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     final dioClient = DioClient();
     final authRemoteDataSource = AuthRemoteDataSource(dioClient);
     final authRepository = AuthRepository(

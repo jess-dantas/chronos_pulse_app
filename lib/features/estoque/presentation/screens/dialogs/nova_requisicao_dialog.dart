@@ -74,7 +74,7 @@ class _NovaRequisicaoDialogState extends State<NovaRequisicaoDialog> {
                     labelText: 'Almoxarifado de Origem',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedAlmoxarifadoId,
+                  initialValue: _selectedAlmoxarifadoId,
                   items: estoqueProvider.almoxarifados.map((a) {
                     return DropdownMenuItem(value: a.id, child: Text(a.nome));
                   }).toList(),
@@ -122,7 +122,7 @@ class _NovaRequisicaoDialogState extends State<NovaRequisicaoDialog> {
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
-                        value: _tempMaterialId,
+                        initialValue: _tempMaterialId,
                         items: estoqueProvider.materiais.map((m) {
                           return DropdownMenuItem(
                             value: m.id,

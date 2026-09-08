@@ -65,7 +65,7 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
                     labelText: 'Almoxarifado',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedAlmoxarifadoId,
+                  initialValue: _selectedAlmoxarifadoId,
                   items: estoqueProvider.almoxarifados.map((a) {
                     return DropdownMenuItem(value: a.id, child: Text(a.nome));
                   }).toList(),
@@ -78,7 +78,7 @@ class _NovaSaidaDialogState extends State<NovaSaidaDialog> {
                     labelText: 'Material / Item',
                     border: OutlineInputBorder(),
                   ),
-                  value: _selectedMaterialId,
+                  initialValue: _selectedMaterialId,
                   items: estoqueProvider.materiais.map((m) {
                     return DropdownMenuItem(
                       value: m.id,

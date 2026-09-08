@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../data/models/admin_models.dart';
 import '../providers/admin_provider.dart';
 import 'admin_nova_empresa_screen.dart';
 
@@ -34,9 +35,9 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
     }
   }
 
-  Future<void> _editarEmpresa(Map<String, dynamic> empresa) async {
+  Future<void> _editarEmpresa(AdminEmpresaModel empresa) async {
     final nomeController = TextEditingController(
-      text: empresa['nome']?.toString() ?? '',
+      text: empresa.nome,
     );
     final formKey = GlobalKey<FormState>();
 
@@ -80,7 +81,7 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
 
     final provider = context.read<AdminProvider>();
     final sucesso = await provider.atualizarEmpresa(
-      id: empresa['id'].toString(),
+      id: empresa.id,
       nome: nomeController.text.trim(),
     );
     if (mounted) {
@@ -95,8 +96,8 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
     }
   }
 
-  Future<void> _alternarAtivo(Map<String, dynamic> empresa, bool ativo) async {
-    final nome = empresa['nome']?.toString() ?? 'esta empresa';
+  Future<void> _alternarAtivo(AdminEmpresaModel empresa, bool ativo) async {
+    final nome = empresa.nome.isNotEmpty ? empresa.nome : 'esta empresa';
     final novoEstado = !ativo;
     final confirmar = await showDialog<bool>(
       context: context,
@@ -128,7 +129,7 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
 
     final provider = context.read<AdminProvider>();
     final sucesso = await provider.atualizarEmpresa(
-      id: empresa['id'].toString(),
+      id: empresa.id,
       ativo: novoEstado,
     );
     if (mounted) {
@@ -226,18 +227,18 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final e = empresas[index];
-                      final ativo = e['ativo'] == true;
+                      final ativo = e.ativo;
                       return Card(
                         elevation: 1,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: CircleAvatar(
-                            backgroundColor: Colors.blue.withOpacity(0.1),
+                            backgroundColor: Colors.blue.withValues(alpha: 0.1),
                             child: const Icon(Icons.business, color: Colors.blue),
                           ),
                           title: Text(
-                            e['nome'] ?? 'Sem nome',
+                            e.nome.isNotEmpty ? e.nome : 'Sem nome',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Column(
@@ -245,20 +246,20 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
                             children: [
                               const SizedBox(height: 4),
                               Text(
-                                'CNPJ: ${e['cnpj'] ?? '—'}',
+                                'CNPJ: ${e.cnpj.isEmpty ? '—' : e.cnpj}',
                                 style: TextStyle(color: Colors.grey[600], fontSize: 13),
                               ),
-                              if (e['responsavelNome'] != null) ...[
+                              if (e.responsavelNome != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Responsável: ${e['responsavelNome']}',
+                                  'Responsável: ${e.responsavelNome}',
                                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                                 ),
                               ],
-                              if (e['responsavelEmail'] != null) ...[
+                              if (e.responsavelEmail != null) ...[
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Email: ${e['responsavelEmail']}',
+                                  'Email: ${e.responsavelEmail}',
                                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                                 ),
                               ],
@@ -270,10 +271,10 @@ class _AdminEmpresasScreenState extends State<AdminEmpresasScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: (ativo ? Colors.green : Colors.red).withOpacity(0.1),
+                                  color: (ativo ? Colors.green : Colors.red).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: (ativo ? Colors.green : Colors.red).withOpacity(0.3),
+                                    color: (ativo ? Colors.green : Colors.red).withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Text(

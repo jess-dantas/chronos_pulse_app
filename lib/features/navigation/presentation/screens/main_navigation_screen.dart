@@ -9,6 +9,7 @@ import '../../../frota/presentation/screens/frota_home_screen.dart';
 import '../../../patrimonio/presentation/screens/patrimonio_home_screen.dart';
 import '../../../ponto/presentation/screens/home_ponto_screen.dart';
 import '../../../protocolo/presentation/screens/protocolo_home_screen.dart';
+import '../../../privacidade/presentation/screens/privacidade_screen.dart';
 
 class _NavigationItem {
   final Widget screen;
@@ -109,6 +110,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: 'Protocolo',
           icon: Icons.assignment_outlined,
           selectedIcon: Icons.assignment,
+        ),
+      );
+    }
+
+    // 7. Privacidade & LGPD (sempre disponível para usuários autenticados)
+    if (usuario != null) {
+      items.add(
+        const _NavigationItem(
+          screen: PrivacidadeScreen(),
+          label: 'Privacidade',
+          icon: Icons.privacy_tip_outlined,
+          selectedIcon: Icons.privacy_tip,
         ),
       );
     }
