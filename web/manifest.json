@@ -1,11 +1,11 @@
 {
-    "name": "Chronos Pulse",
+    "name": "Chronos Pulse - Suíte de Gestão Pública Integrada & Corporativa",
     "short_name": "Chronos Pulse",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Chronos Pulse - Gestão Pública de Ponto e Almoxarifado",
+    "description": "Chronos Pulse - Suíte de Gestão Pública Integrada & Corporativa",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

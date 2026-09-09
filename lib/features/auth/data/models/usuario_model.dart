@@ -54,9 +54,12 @@ class UsuarioModel {
   bool get temModuloPonto => isGestorPlataforma || _temModulo('PONTO');
   bool get temModuloRh => isGestorPlataforma || _temModulo('RECURSOS_HUMANOS');
   bool get temModuloEstoque => isGestorPlataforma || _temModulo('ESTOQUE');
+  bool get temModuloCompras => isGestorPlataforma || _temModulo('COMPRAS');
+  bool get temModuloLicitacoes => isGestorPlataforma || _temModulo('LICITACOES');
   bool get temModuloPatrimonio => isGestorPlataforma || _temModulo('PATRIMONIO');
   bool get temModuloFrota => isGestorPlataforma || _temModulo('FROTA');
   bool get temModuloProtocolo => isGestorPlataforma || _temModulo('PROTOCOLO');
+  bool get temModuloTransparencia => isGestorPlataforma || _temModulo('TRANSPARENCIA');
 
   bool _temModulo(String codigo) => modulos.contains(codigo);
 

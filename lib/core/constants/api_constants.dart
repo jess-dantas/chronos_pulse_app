@@ -66,6 +66,32 @@ class ApiConstants {
   static const String estoqueSaidaEndpoint = '/estoque/movimentacoes/saida';
   static const String estoqueRequisicoesEndpoint = '/estoque/requisicoes';
 
+  // Módulo Compras & Fornecedores
+  static const String comprasFornecedoresEndpoint = '/compras/fornecedores';
+  static const String comprasPedidosEndpoint = '/compras/pedidos';
+  static const String comprasNfeEndpoint = '/compras/nfe';
+  static const String comprasNfeReceberEndpoint = '/compras/nfe/receber';
+  static const String comprasNfeImportarXmlEndpoint = '/compras/nfe/importar-xml';
+  static const String comprasNfeConsultarSefazEndpoint = '/compras/nfe/consultar-sefaz';
+  static const String comprasPrecosEndpoint = '/compras/precos';
+  static const String comprasRequisicoesEndpoint = '/compras/requisicoes';
+  static String comprasRequisicaoCancelarEndpoint(String id) => '/compras/requisicoes/$id/cancelar';
+  static const String comprasCotacoesEndpoint = '/compras/cotacoes';
+  static String comprasCotacaoPropostasEndpoint(String id) => '/compras/cotacoes/$id/propostas';
+  static String comprasCotacaoConcluirEndpoint(String id) => '/compras/cotacoes/$id/concluir';
+  static String comprasCotacaoCancelarEndpoint(String id) => '/compras/cotacoes/$id/cancelar';
+  static String comprasCotacaoGerarPedidosEndpoint(String id) => '/compras/cotacoes/$id/gerar-pedidos';
+
+  // Módulo Licitações & Contratações (Lei 14.133/2021)
+  static const String licitacoesEndpoint = '/licitacoes';
+  static String licitacaoDetalheEndpoint(String id) => '/licitacoes/$id';
+  static String licitacaoPublicarEndpoint(String id) => '/licitacoes/$id/publicar';
+  static String licitacaoPropostasEndpoint(String id) => '/licitacoes/$id/propostas';
+  static String licitacaoAdjudicarEndpoint(String id) => '/licitacoes/$id/adjudicar';
+  static String licitacaoHomologarEndpoint(String id) => '/licitacoes/$id/homologar';
+  static String licitacaoCancelarEndpoint(String id) => '/licitacoes/$id/cancelar';
+  static String licitacaoGerarPedidosEndpoint(String id) => '/licitacoes/$id/gerar-pedidos';
+
   // Módulo Admin (Gestão de Contratos e Métricas)
   static const String adminDashboardEndpoint = '/admin/dashboard';
   static const String adminContratosEndpoint = '/admin/contratos';
@@ -81,11 +107,28 @@ class ApiConstants {
 
   // Módulo Patrimônio
   static const String patrimonioEndpoint = '/patrimonio';
+  static String patrimonioAtualizarEndpoint(String id) => '/patrimonio/$id';
+  static String patrimonioDesativarEndpoint(String id) => '/patrimonio/$id';
+  static String patrimonioBuscarEndpoint(String termo) => '/patrimonio/buscar?q=$termo';
+  static String patrimonioQrcodeEndpoint(String codigo) => '/patrimonio/qrcode/$codigo';
   static const String patrimonioDesfazimentosEndpoint = '/patrimonio/desfazimentos';
   static String patrimonioAprovarDesfazimentoEndpoint(String id) =>
       '/patrimonio/desfazimentos/$id/aprovar';
   static String patrimonioCancelarDesfazimentoEndpoint(String id) =>
       '/patrimonio/desfazimentos/$id';
+  static const String patrimonioInventariosEndpoint = '/patrimonio/inventarios';
+  static String patrimonioInventarioConferirEndpoint(String id) =>
+      '/patrimonio/inventarios/$id/conferir';
+  static String patrimonioInventarioFinalizarEndpoint(String id) =>
+      '/patrimonio/inventarios/$id/finalizar';
+  static String patrimonioInventarioCancelarEndpoint(String id) =>
+      '/patrimonio/inventarios/$id';
+  static String patrimonioInventarioDetalheEndpoint(String id) => '/patrimonio/inventarios/$id';
+  static const String patrimonioTransferenciasEndpoint = '/patrimonio/transferencias';
+  static String patrimonioTransferenciaConfirmarEndpoint(String id) =>
+      '/patrimonio/transferencias/$id/confirmar';
+  static String patrimonioTransferenciaCancelarEndpoint(String id) =>
+      '/patrimonio/transferencias/$id';
 
   // Módulo Frota
   static const String frotaVeiculosEndpoint = '/frota/veiculos';
@@ -93,6 +136,13 @@ class ApiConstants {
 
   // Módulo Protocolo
   static const String protocoloEndpoint = '/protocolo';
+
+  // Módulo Portal da Transparência (LC 131/2009) + BI
+  static const String transparenciaResumoEndpoint = '/transparencia/resumo';
+  static String transparenciaDespesasMensaisEndpoint(int ano) => '/transparencia/despesas-mensais?ano=$ano';
+  static const String transparenciaPublicacoesEndpoint = '/transparencia/publicacoes';
+  static String transparenciaPublicacaoPublicarEndpoint(String id) => '/transparencia/publicacoes/$id/publicar';
+  static String transparenciaPublicacaoDeleteEndpoint(String id) => '/transparencia/publicacoes/$id';
 
   // LGPD / Privacidade
   static const String privacidadePoliticaEndpoint = '/privacidade/politica';

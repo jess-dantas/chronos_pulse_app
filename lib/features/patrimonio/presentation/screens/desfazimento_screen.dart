@@ -96,30 +96,34 @@ class _DesfazimentoScreenState extends State<DesfazimentoScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<DesfazimentoProvider>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.remove_circle_outline, color: Colors.deepPurple),
-            SizedBox(width: 8),
-            Text('Desfazimento de Bens'),
-          ],
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () => context.read<DesfazimentoProvider>().carregarSolicitacoes(),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Row(
+            children: [
+              const Icon(Icons.remove_circle_outline, color: Colors.deepPurple),
+              const SizedBox(width: 8),
+              Text(
+                'Desfazimento de Bens',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Atualizar',
+                onPressed: () => context.read<DesfazimentoProvider>().carregarSolicitacoes(),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Nova Solicitação'),
+                onPressed: _abrirNovaSolicitacao,
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _abrirNovaSolicitacao,
-        icon: const Icon(Icons.add),
-        label: const Text('Nova Solicitação'),
-      ),
-      body: provider.isLoading
+        ),
+        Expanded(
+          child: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : provider.errorMessage != null
               ? Center(
@@ -185,6 +189,8 @@ class _DesfazimentoScreenState extends State<DesfazimentoScreen> {
                         return _card(d);
                       },
                     ),
+        ),
+      ],
     );
   }
 

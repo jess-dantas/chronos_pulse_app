@@ -1,32 +1,53 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../data/models/patrimonio_models.dart';
 import '../../providers/patrimonio_provider.dart';
 
-class NovoBemDialog extends StatefulWidget {
-  const NovoBemDialog({super.key});
+class EditarBemDialog extends StatefulWidget {
+  final PatrimonioModel bem;
+
+  const EditarBemDialog({super.key, required this.bem});
 
   @override
-  State<NovoBemDialog> createState() => _NovoBemDialogState();
+  State<EditarBemDialog> createState() => _EditarBemDialogState();
 }
 
-class _NovoBemDialogState extends State<NovoBemDialog> {
+class _EditarBemDialogState extends State<EditarBemDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _tombamentoCtrl = TextEditingController();
-  final _descricaoCtrl = TextEditingController();
-  final _categoriaCtrl = TextEditingController();
-  final _localizacaoCtrl = TextEditingController();
-  final _responsavelCtrl = TextEditingController();
-  final _notaFiscalCtrl = TextEditingController();
-  final _valorCtrl = TextEditingController();
-  final _dataCtrl = TextEditingController();
-  final _vidaUtilCtrl = TextEditingController();
-  final _inicioDepreciacaoCtrl = TextEditingController();
-  final _observacoesCtrl = TextEditingController();
+  late final TextEditingController _tombamentoCtrl;
+  late final TextEditingController _descricaoCtrl;
+  late final TextEditingController _categoriaCtrl;
+  late final TextEditingController _localizacaoCtrl;
+  late final TextEditingController _responsavelCtrl;
+  late final TextEditingController _notaFiscalCtrl;
+  late final TextEditingController _valorCtrl;
+  late final TextEditingController _dataCtrl;
+  late final TextEditingController _vidaUtilCtrl;
+  late final TextEditingController _inicioDepreciacaoCtrl;
+  late final TextEditingController _observacoesCtrl;
 
-  String _estado = 'BOM';
+  late String _estado;
   bool _salvando = false;
 
   static const _estados = ['NOVO', 'OTIMO', 'BOM', 'REGULAR', 'INSERVIVEL'];
+
+  @override
+  void initState() {
+    super.initState();
+    final bem = widget.bem;
+    _tombamentoCtrl = TextEditingController(text: bem.tombamento ?? '');
+    _descricaoCtrl = TextEditingController(text: bem.descricao);
+    _categoriaCtrl = TextEditingController(text: bem.categoria ?? '');
+    _localizacaoCtrl = TextEditingController(text: bem.localizacao ?? '');
+    _responsavelCtrl = TextEditingController(text: bem.responsavelNome ?? '');
+    _notaFiscalCtrl = TextEditingController(text: bem.numeroNotaFiscal ?? '');
+    _valorCtrl = TextEditingController(text: bem.valorAquisicao ?? '');
+    _dataCtrl = TextEditingController(text: bem.dataAquisicao ?? '');
+    _vidaUtilCtrl = TextEditingController(text: bem.vidaUtilMeses ?? '');
+    _inicioDepreciacaoCtrl = TextEditingController(text: bem.dataInicioDepreciacao ?? '');
+    _observacoesCtrl = TextEditingController(text: bem.observacoes ?? '');
+    _estado = bem.estado;
+  }
 
   @override
   void dispose() {
@@ -48,7 +69,8 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _salvando = true);
 
-    final ok = await context.read<PatrimonioProvider>().criarBem(
+    final ok = await context.read<PatrimonioProvider>().atualizarBem(
+          id: widget.bem.id,
           tombamento: _tombamentoCtrl.text,
           descricao: _descricaoCtrl.text,
           categoria: _categoriaCtrl.text,
@@ -75,9 +97,9 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Novo Bem Patrimonial'),
+      title: Text('Editar Bem — ${widget.bem.tombamento ?? widget.bem.descricao}'),
       content: SizedBox(
-        width: 520,
+        width: 560,
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -174,6 +196,19 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
                     ),
                   ],
                 ),
+                if (widget.bem.vidaUtilMeses != null) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Depreciação atual: taxa ${widget.bem.taxaDepreciacaoMensal ?? '—'}/mês, '
+                      'acumulado R\$ ${widget.bem.valorDepreciado ?? '0'} '
+                      '(valor atual R\$ ${widget.bem.valorAtual ?? widget.bem.valorAquisicao ?? '0'}). '
+                      'Os valores são recalculados ao salvar.',
+                      style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _observacoesCtrl,

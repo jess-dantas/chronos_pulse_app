@@ -5,11 +5,14 @@ import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../colaborador/presentation/screens/colaboradores_screen.dart';
 import '../../../estoque/presentation/screens/estoque_home_screen.dart';
+import '../../../compras/presentation/screens/compras_home_screen.dart';
+import '../../../licitacoes/presentation/screens/licitacoes_home_screen.dart';
 import '../../../frota/presentation/screens/frota_home_screen.dart';
 import '../../../patrimonio/presentation/screens/patrimonio_home_screen.dart';
 import '../../../ponto/presentation/screens/home_ponto_screen.dart';
 import '../../../protocolo/presentation/screens/protocolo_home_screen.dart';
 import '../../../privacidade/presentation/screens/privacidade_screen.dart';
+import '../../../transparencia/presentation/screens/transparencia_home_screen.dart';
 
 class _NavigationItem {
   final Widget screen;
@@ -78,7 +81,31 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       );
     }
 
-    // 4. Módulo de Patrimônio (usuários com módulo PATRIMONIO ativo)
+    // 4. Módulo de Compras & Fornecedores (usuários com módulo COMPRAS ativo)
+    if (usuario != null && usuario.temModuloCompras) {
+      items.add(
+        const _NavigationItem(
+          screen: ComprasHomeScreen(),
+          label: 'Compras',
+          icon: Icons.shopping_cart_outlined,
+          selectedIcon: Icons.shopping_cart,
+        ),
+      );
+    }
+
+    // 5. Módulo de Licitações & Contratações (usuários com módulo LICITACOES ativo)
+    if (usuario != null && usuario.temModuloLicitacoes) {
+      items.add(
+        const _NavigationItem(
+          screen: LicitacoesHomeScreen(),
+          label: 'Licitações',
+          icon: Icons.gavel_outlined,
+          selectedIcon: Icons.gavel,
+        ),
+      );
+    }
+
+    // 5. Módulo de Patrimônio (usuários com módulo PATRIMONIO ativo)
     if (usuario != null && usuario.temModuloPatrimonio) {
       items.add(
         const _NavigationItem(
@@ -110,6 +137,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: 'Protocolo',
           icon: Icons.assignment_outlined,
           selectedIcon: Icons.assignment,
+        ),
+      );
+    }
+
+    // 7. Portal da Transparência (usuários com módulo TRANSPARENCIA ativo)
+    if (usuario != null && usuario.temModuloTransparencia) {
+      items.add(
+        const _NavigationItem(
+          screen: TransparenciaHomeScreen(),
+          label: 'Transparência',
+          icon: Icons.public_outlined,
+          selectedIcon: Icons.public,
         ),
       );
     }
