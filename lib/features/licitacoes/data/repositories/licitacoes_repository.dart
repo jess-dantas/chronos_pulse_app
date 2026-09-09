@@ -25,6 +25,9 @@ class LicitacoesRepository {
   Future<LicitacaoModel> homologarLicitacao(String id) =>
       _remoteDataSource.homologarLicitacao(id);
 
+  Future<LicitacaoModel> publicarPncp(String id) =>
+      _remoteDataSource.publicarPncp(id);
+
   Future<void> cancelarLicitacao(String id) => _remoteDataSource.cancelarLicitacao(id);
 
   Future<List<Map<String, dynamic>>> gerarPedidos(String id) =>

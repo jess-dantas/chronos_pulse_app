@@ -210,6 +210,8 @@ class _LicitacoesListaTab extends StatelessWidget {
                                           _adjudicar(context, l);
                                         } else if (acao == 'homologar') {
                                           _homologar(context, l);
+                                        } else if (acao == 'publicarPncp') {
+                                          _publicarPncp(context, l);
                                         } else if (acao == 'cancelar') {
                                           _cancelar(context, l);
                                         } else if (acao == 'pedidos') {
@@ -258,6 +260,15 @@ class _LicitacoesListaTab extends StatelessWidget {
                                             child: ListTile(
                                               leading: Icon(Icons.verified_outlined),
                                               title: Text('Homologar'),
+                                              dense: true,
+                                            ),
+                                          ),
+                                        if (l.emDisputa && !l.pncpPublicado)
+                                          const PopupMenuItem(
+                                            value: 'publicarPncp',
+                                            child: ListTile(
+                                              leading: Icon(Icons.public),
+                                              title: Text('Publicar aviso no PNCP'),
                                               dense: true,
                                             ),
                                           ),
@@ -539,6 +550,14 @@ void exibirDetalhesLicitacao(BuildContext context, LicitacaoModel l) {
               if (l.observacoes != null && l.observacoes!.isNotEmpty)
                 _LinhaInfo(label: 'Observações', valor: l.observacoes!),
               _LinhaInfo(label: 'Pedido gerado', valor: l.pedidoGerado ? 'Sim' : 'Não'),
+              if (l.pncpStatus != 'NAO_PUBLICADO')
+                _LinhaInfo(label: 'PNCP', valor: l.pncpStatusLabel),
+              if (l.pncpProtocolo != null && l.pncpProtocolo!.isNotEmpty)
+                _LinhaInfo(label: 'Protocolo PNCP', valor: l.pncpProtocolo!),
+              if (l.pncpPublicadoEm != null && l.pncpPublicadoEm!.isNotEmpty)
+                _LinhaInfo(label: 'Publicado em', valor: l.pncpPublicadoEmFormatado),
+              if (l.pncpErro != null && l.pncpErro!.isNotEmpty)
+                _LinhaInfo(label: 'Erro PNCP', valor: l.pncpErro!),
               if (l.criadoEm != null && l.criadoEm!.isNotEmpty)
                 _LinhaInfo(label: 'Criado em', valor: l.criadoEm!),
               const Divider(),
@@ -1211,6 +1230,39 @@ Future<void> _homologar(BuildContext context, LicitacaoModel l) async {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ok ? 'Licitação homologada.' : 'Falha ao homologar.')),
+      );
+    }
+  }
+}
+
+Future<void> _publicarPncp(BuildContext context, LicitacaoModel l) async {
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Publicar aviso no PNCP'),
+      content: Text(
+          'Publicar o aviso da licitação ${l.numero} no Portal Nacional de '
+          'Contratações Públicas (PNCP)? O protocolo será registrado na licitação.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Não'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Publicar'),
+        ),
+      ],
+    ),
+  );
+  if (confirmar == true && context.mounted) {
+    final ok = await context.read<LicitacoesProvider>().publicarPncp(l.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              ok ? 'Aviso publicado no PNCP.' : 'Falha ao publicar aviso no PNCP.'),
+        ),
       );
     }
   }
