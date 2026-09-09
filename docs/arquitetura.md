@@ -52,4 +52,4 @@ Os providers são registrados em `main.dart` no `MultiProvider` e injetados via 
 1. `initializeDateFormatting('pt_BR')` e carrega o tema salvo.
 2. Instancia `DioClient` e **todos** os datasources/repositories/providers.
 3. `MultiProvider` expõe theme, auth, colaborador, estoque, ponto, admin, patrimonio, frota e protocolo.
-4. `AuthWrapper` redireciona: não autenticado → `LandingScreen`; plataforma → `AdminNavigationScreen`; demais → `MainNavigationScreen`.
+4. `AppRouter` (go_router) redireciona: não autenticado → `LandingScreen`/rotas públicas; plataforma → `AdminShell` (`/admin/...`); demais → `MainShell` (`/painel/...`).

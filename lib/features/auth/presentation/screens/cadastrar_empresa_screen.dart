@@ -45,7 +45,8 @@ class _CadastrarEmpresaScreenState extends State<CadastrarEmpresaScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Após o cadastro o usuário já fica autenticado; o AppRouter
+      // redireciona automaticamente para o painel/área administrativa.
     } else if (!sucesso && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

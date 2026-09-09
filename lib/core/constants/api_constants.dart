@@ -90,6 +90,7 @@ class ApiConstants {
   static String licitacaoAdjudicarEndpoint(String id) => '/licitacoes/$id/adjudicar';
   static String licitacaoHomologarEndpoint(String id) => '/licitacoes/$id/homologar';
   static String licitacaoCancelarEndpoint(String id) => '/licitacoes/$id/cancelar';
+  static String licitacaoPublicarPncpEndpoint(String id) => '/licitacoes/$id/publicar-pncp';
   static String licitacaoGerarPedidosEndpoint(String id) => '/licitacoes/$id/gerar-pedidos';
   static String licitacaoPlanejamentoEndpoint(String id) => '/licitacoes/$id/planejamento';
   static String licitacaoEtpEndpoint(String id) => '/licitacoes/$id/planejamento/etp';

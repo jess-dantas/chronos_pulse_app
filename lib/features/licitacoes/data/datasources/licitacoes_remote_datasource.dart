@@ -53,6 +53,12 @@ class LicitacoesRemoteDataSource {
     return _licitacaoFromResponse(response.statusCode, response.data, 'homologar a licitação');
   }
 
+  Future<LicitacaoModel> publicarPncp(String id) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.licitacaoPublicarPncpEndpoint(id));
+    return _licitacaoFromResponse(response.statusCode, response.data, 'publicar o aviso no PNCP');
+  }
+
   Future<void> cancelarLicitacao(String id) async {
     final response = await _dioClient.dio
         .post(ApiConstants.licitacaoCancelarEndpoint(id));

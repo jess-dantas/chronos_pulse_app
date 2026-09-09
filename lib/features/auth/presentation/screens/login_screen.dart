@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/auth_provider.dart';
-import 'recuperar_senha_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,11 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _senhaController.text,
     );
 
-    if (sucesso && mounted) {
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    } else if (!sucesso && mounted) {
+    // Após o login, o AppRouter redireciona automaticamente o usuário
+    // autenticado para o painel (ou área administrativa).
+    if (!sucesso && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.errorMessage ?? 'Erro ao realizar login.'),
@@ -219,11 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 8),
                         TextButton(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const RecuperarSenhaScreen(),
-                              ),
-                            );
+                            context.go('/recuperar-senha');
                           },
                           child: const Text('Esqueci minha senha'),
                         ),

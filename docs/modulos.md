@@ -35,7 +35,7 @@ A ordem é fixa; cada item é adicionado sob condição:
 
 ## Painel Admin Plataforma → Módulos
 
-`AdminNavigationScreen` exibe o item **Módulos** (`AdminModulosScreen`), que lista as empresas e permite **ativar/desativar** módulos, chamando:
+`AdminShell` exibe o item **Módulos** (`AdminModulosScreen`), que lista as empresas e permite **ativar/desativar** módulos, chamando:
 
 - `GET /api/v1/admin/modulos` → catálogo
 - `GET /api/v1/admin/empresas/{tenantId}/modulos` → ativos da empresa
