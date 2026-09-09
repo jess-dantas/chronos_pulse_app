@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../auth/presentation/screens/cadastrar_empresa_screen.dart';
-import '../../../auth/presentation/screens/login_screen.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
   void _navigateToLogin(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
-    );
+    context.go('/login');
   }
 
   void _navigateToCadastro(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const CadastrarEmpresaScreen(),
-      ),
-    );
+    context.go('/cadastro');
   }
 
   @override
