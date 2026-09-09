@@ -91,6 +91,13 @@ class ApiConstants {
   static String licitacaoHomologarEndpoint(String id) => '/licitacoes/$id/homologar';
   static String licitacaoCancelarEndpoint(String id) => '/licitacoes/$id/cancelar';
   static String licitacaoGerarPedidosEndpoint(String id) => '/licitacoes/$id/gerar-pedidos';
+  static String licitacaoPlanejamentoEndpoint(String id) => '/licitacoes/$id/planejamento';
+  static String licitacaoEtpEndpoint(String id) => '/licitacoes/$id/planejamento/etp';
+  static String licitacaoEtpAprovarEndpoint(String id) => '/licitacoes/$id/planejamento/etp/aprovar';
+  static String licitacaoTrEndpoint(String id) => '/licitacoes/$id/planejamento/tr';
+  static String licitacaoTrAprovarEndpoint(String id) => '/licitacoes/$id/planejamento/tr/aprovar';
+  static String licitacaoEditalEndpoint(String id) => '/licitacoes/$id/planejamento/edital';
+  static String licitacaoEditalPublicarEndpoint(String id) => '/licitacoes/$id/planejamento/edital/publicar';
 
   // Módulo Admin (Gestão de Contratos e Métricas)
   static const String adminDashboardEndpoint = '/admin/dashboard';

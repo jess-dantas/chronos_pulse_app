@@ -1,5 +1,6 @@
 import '../datasources/licitacoes_remote_datasource.dart';
 import '../models/licitacoes_models.dart';
+import '../models/planejamento_licitacao_models.dart';
 
 class LicitacoesRepository {
   final LicitacoesRemoteDataSource _remoteDataSource;
@@ -28,4 +29,25 @@ class LicitacoesRepository {
 
   Future<List<Map<String, dynamic>>> gerarPedidos(String id) =>
       _remoteDataSource.gerarPedidos(id);
+
+  Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) =>
+      _remoteDataSource.getPlanejamento(id);
+
+  Future<PlanejamentoLicitacaoModel> salvarEtp(String id, EtpDTO dto) =>
+      _remoteDataSource.salvarEtp(id, dto);
+
+  Future<PlanejamentoLicitacaoModel> aprovarEtp(String id, AprovacaoDocumentoDTO dto) =>
+      _remoteDataSource.aprovarEtp(id, dto);
+
+  Future<PlanejamentoLicitacaoModel> salvarTr(String id, TrDTO dto) =>
+      _remoteDataSource.salvarTr(id, dto);
+
+  Future<PlanejamentoLicitacaoModel> aprovarTr(String id, AprovacaoDocumentoDTO dto) =>
+      _remoteDataSource.aprovarTr(id, dto);
+
+  Future<PlanejamentoLicitacaoModel> salvarEdital(String id, EditalDTO dto) =>
+      _remoteDataSource.salvarEdital(id, dto);
+
+  Future<PlanejamentoLicitacaoModel> publicarEdital(String id) =>
+      _remoteDataSource.publicarEdital(id);
 }
