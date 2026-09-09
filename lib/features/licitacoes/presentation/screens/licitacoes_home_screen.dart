@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../compras/presentation/providers/compras_provider.dart';
 import '../../../estoque/presentation/providers/estoque_provider.dart';
 import '../../data/models/licitacoes_models.dart';
+import '../../data/models/planejamento_licitacao_models.dart';
 import '../providers/licitacoes_provider.dart';
+import 'planejamento_licitacao_dialog.dart';
 
 final NumberFormat _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
@@ -22,7 +24,7 @@ class _LicitacoesHomeScreenState extends State<LicitacoesHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<LicitacoesProvider>().carregarTudo();
       context.read<ComprasProvider>().carregarTudo();
@@ -65,6 +67,15 @@ class _LicitacoesHomeScreenState extends State<LicitacoesHomeScreen>
               icon: Icon(Icons.edit_note),
               text: 'Propostas',
             ),
+            Tab(
+              icon: Badge(
+                isLabelVisible: licitacoesProvider
+                    .planejamentosEmElaboracaoPendentes,
+                label: Text('${licitacoesProvider.planejamentosPendentes.length}'),
+                child: const Icon(Icons.folder_shared_outlined),
+              ),
+              text: 'Planejamento',
+            ),
           ],
         ),
       ),
@@ -73,6 +84,7 @@ class _LicitacoesHomeScreenState extends State<LicitacoesHomeScreen>
         children: const [
           _LicitacoesListaTab(),
           _LicitacoesPropostasTab(),
+          _LicitacoesPlanejamentoTab(),
         ],
       ),
     );
@@ -382,6 +394,126 @@ class _LicitacoesPropostasTab extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _LicitacoesPlanejamentoTab extends StatelessWidget {
+  const _LicitacoesPlanejamentoTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<LicitacoesProvider>();
+    final emElaboracao =
+        provider.licitacoes.where((l) => l.emElaboracao).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Row(
+            children: [
+              _MetricChip(
+                icon: Icons.folder_shared_outlined,
+                label: '${emElaboracao.length} em elaboração',
+                cor: const Color(0xFF8D6E63),
+              ),
+              const SizedBox(width: 8),
+              _MetricChip(
+                icon: Icons.campaign_outlined,
+                label: '${provider.planejamentosPendentes.length} sem edital publicado',
+                cor: const Color(0xFFEF6C00),
+              ),
+            ],
+          ),
+        ),
+        if (provider.errorMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              provider.errorMessage!,
+              style: TextStyle(color: Colors.red.shade700),
+            ),
+          ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () => context.read<LicitacoesProvider>().carregarPlanejamentos(),
+            child: emElaboracao.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 120),
+                      Icon(Icons.folder_shared_outlined,
+                          size: 56, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          'Nenhuma licitação em elaboração.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 88),
+                    itemCount: emElaboracao.length,
+                    itemBuilder: (context, index) {
+                      final l = emElaboracao[index];
+                      final planejamento = provider.planejamento(l.id);
+                      final etapa = planejamento == null
+                          ? 'ETP não elaborado'
+                          : planejamento.edital?.publicado == true
+                              ? 'Edital publicado'
+                              : _etapaAtual(planejamento);
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                const Color(0xFF8D6E63).withValues(alpha: 0.12),
+                            child: const Icon(Icons.folder_shared_outlined,
+                                color: Color(0xFF8D6E63)),
+                          ),
+                          title: Text(l.numero),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${l.modalidadeLabel} · ${l.tipoJulgamentoLabel}',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700]),
+                              ),
+                              Text(
+                                'Etapa: $etapa',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700]),
+                              ),
+                            ],
+                          ),
+                          trailing: FilledButton.tonalIcon(
+                            onPressed: () =>
+                                exibirDialogPlanejamento(context, l),
+                            icon: const Icon(Icons.folder_shared_outlined,
+                                size: 16),
+                            label: const Text('Planejamento'),
+                          ),
+                          onTap: () => exibirDialogPlanejamento(context, l),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _etapaAtual(PlanejamentoLicitacaoModel planejamento) {
+    if (planejamento.etp == null) return 'ETP não elaborado';
+    if (!planejamento.etp!.aprovado) return 'ETP em rascunho';
+    if (planejamento.tr == null) return 'Elabore o Termo de Referência';
+    if (!planejamento.tr!.aprovado) return 'TR em rascunho';
+    if (planejamento.edital == null) return 'Elabore o edital';
+    return 'Edital em elaboração';
   }
 }
 
