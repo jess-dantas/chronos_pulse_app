@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2)
-![Tests](https://img.shields.io/badge/tests-91%20verdes-brightgreen)
+![Tests](https://img.shields.io/badge/tests-100%20verdes-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS multi-tenant de gestão pública. O menu é **dinâmico**: cada item aparece conforme os módulos contratados pela empresa (logada no login/perfil do backend).
@@ -58,7 +58,7 @@ flutter run -d web-server --web-port 3000
 ## Android (emulador ou dispositivo físico)
 flutter run
 
-# 4. Corra os testes (91 testes)
+# 4. Corra os testes (100 testes)
 flutter test
 
 # 5. Build de produção (web)

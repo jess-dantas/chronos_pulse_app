@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'core/network/dio_client.dart';
+import 'core/telemetry/telemetry_interceptor.dart';
+import 'core/telemetry/telemetry_service.dart';
 import 'core/security/session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
@@ -62,6 +66,12 @@ void main() async {
   final temaInicial = await ThemeProvider.carregarTema();
 
   final dioClient = DioClient();
+
+  // Telemetria & Observabilidade (R27): fila em memória + envio em lote.
+  final telemetryService = TelemetryService(dioClient: dioClient);
+  dioClient.dio.interceptors.add(
+    TelemetryInterceptor(telemetryService: telemetryService),
+  );
 
   final authRemoteDataSource = AuthRemoteDataSource(dioClient);
   final authRepository = AuthRepository(
@@ -124,7 +134,7 @@ void main() async {
   final transparenciaRepository =
       TransparenciaRepository(remoteDataSource: transparenciaRemoteDataSource);
 
-  final authProvider = AuthProvider(authRepository);
+  final authProvider = AuthProvider(authRepository, telemetria: telemetryService);
 
   dioClient.onRefreshToken = () async {
     final refreshToken = await SessionStorage.readToken(AuthProvider.keyRefreshToken);
@@ -143,29 +153,38 @@ void main() async {
     }
   };
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
-        ChangeNotifierProvider.value(value: authProvider),
-        ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
-        ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
-        ChangeNotifierProvider(create: (_) => ComprasProvider(comprasRepository)),
-        ChangeNotifierProvider(create: (_) => LicitacoesProvider(licitacoesRepository)),
-        ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
-        ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
-        ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
-        ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
-        ChangeNotifierProvider(create: (_) => InventarioProvider(inventarioRepository)),
-        ChangeNotifierProvider(create: (_) => TransferenciaProvider(transferenciaRepository)),
-        ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
-        ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
-        ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
-        ChangeNotifierProvider.value(value: privacidadeProvider),
-      ],
-      child: ChronosPulseApp(authProvider: authProvider),
-    ),
-  );
+  runZonedGuarded(() {
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      telemetryService.registrarErroDeUi(details.exception, details.stack);
+    };
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
+          ChangeNotifierProvider.value(value: authProvider),
+          ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
+          ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
+          ChangeNotifierProvider(create: (_) => ComprasProvider(comprasRepository)),
+          ChangeNotifierProvider(create: (_) => LicitacoesProvider(licitacoesRepository)),
+          ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
+          ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
+          ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
+          ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
+          ChangeNotifierProvider(create: (_) => InventarioProvider(inventarioRepository)),
+          ChangeNotifierProvider(create: (_) => TransferenciaProvider(transferenciaRepository)),
+          ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
+          ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
+          ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
+          ChangeNotifierProvider.value(value: privacidadeProvider),
+        ],
+        child: ChronosPulseApp(authProvider: authProvider),
+      ),
+    );
+  }, (erro, stack) {
+    // Erros assíncronos não capturados pelo framework também viram UI_ERRO.
+    telemetryService.registrarErroDeUi(erro, stack);
+  });
 }
 
 class ChronosPulseApp extends StatefulWidget {

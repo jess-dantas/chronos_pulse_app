@@ -144,6 +144,9 @@ class ApiConstants {
   static String transparenciaPublicacaoPublicarEndpoint(String id) => '/transparencia/publicacoes/$id/publicar';
   static String transparenciaPublicacaoDeleteEndpoint(String id) => '/transparencia/publicacoes/$id';
 
+  // Módulo Telemetria & Observabilidade (R27)
+  static const String telemetriaEventosEndpoint = '/telemetria/eventos';
+
   // LGPD / Privacidade
   static const String privacidadePoliticaEndpoint = '/privacidade/politica';
   static const String privacidadeMeusDadosEndpoint = '/privacidade/meus-dados';

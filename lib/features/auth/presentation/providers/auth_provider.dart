@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/security/session_storage.dart';
+import '../../../../core/telemetry/telemetry_service.dart';
 import '../../data/models/usuario_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
+  final TelemetryService? _telemetria;
   UsuarioModel? _usuario;
   bool _isLoading = false;
   String? _errorMessage;
@@ -34,7 +36,8 @@ class AuthProvider extends ChangeNotifier {
   String? _motivoEncerramento;
   int _ultimaAtividade = 0;
 
-  AuthProvider(this._authRepository);
+  AuthProvider(this._authRepository, {TelemetryService? telemetria})
+      : _telemetria = telemetria;
 
   UsuarioModel? get usuario => _usuario;
   bool get isAuthenticated => _usuario != null && _usuario!.token.isNotEmpty;
@@ -176,6 +179,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       registrarAtividade();
+      _telemetria?.registrarLoginSucesso();
       return true;
     } catch (e) {
       _isLoading = false;
