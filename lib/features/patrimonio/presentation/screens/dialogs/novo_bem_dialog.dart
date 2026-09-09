@@ -19,6 +19,8 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
   final _notaFiscalCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
   final _dataCtrl = TextEditingController();
+  final _vidaUtilCtrl = TextEditingController();
+  final _inicioDepreciacaoCtrl = TextEditingController();
   final _observacoesCtrl = TextEditingController();
 
   String _estado = 'BOM';
@@ -36,6 +38,8 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
     _notaFiscalCtrl.dispose();
     _valorCtrl.dispose();
     _dataCtrl.dispose();
+    _vidaUtilCtrl.dispose();
+    _inicioDepreciacaoCtrl.dispose();
     _observacoesCtrl.dispose();
     super.dispose();
   }
@@ -54,6 +58,8 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
           numeroNotaFiscal: _notaFiscalCtrl.text,
           valorAquisicao: _valorCtrl.text,
           dataAquisicao: _dataCtrl.text,
+          vidaUtilMeses: _vidaUtilCtrl.text,
+          dataInicioDepreciacao: _inicioDepreciacaoCtrl.text,
           observacoes: _observacoesCtrl.text,
         );
     if (!mounted) return;
@@ -138,6 +144,32 @@ class _NovoBemDialogState extends State<NovoBemDialog> {
                       child: TextFormField(
                         controller: _dataCtrl,
                         decoration: const InputDecoration(labelText: 'Data Aquisição (AAAA-MM-DD)'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _vidaUtilCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Vida Útil (meses)',
+                          prefixIcon: Icon(Icons.timelapse),
+                          hintText: 'Ex.: 60',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _inicioDepreciacaoCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Início Depreciação (AAAA-MM-DD)',
+                          hintText: 'Padrão: data de aquisição',
+                        ),
                       ),
                     ),
                   ],

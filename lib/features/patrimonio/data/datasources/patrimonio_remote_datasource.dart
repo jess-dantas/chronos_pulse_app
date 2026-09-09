@@ -23,6 +23,20 @@ class PatrimonioRemoteDataSource {
     throw Exception('Falha ao carregar bens patrimoniais');
   }
 
+  Future<List<PatrimonioModel>> buscarBens(String termo) async {
+    final response = await _dioClient.dio.get(
+      ApiConstants.patrimonioBuscarEndpoint(termo),
+    );
+    if (response.statusCode == 200) {
+      final itens = (response.data as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PatrimonioModel.fromJson)
+          .toList();
+      return itens;
+    }
+    throw Exception('Falha ao buscar bens patrimoniais');
+  }
+
   Future<PatrimonioModel> criarBem(Map<String, dynamic> payload) async {
     final response = await _dioClient.dio.post(
       ApiConstants.patrimonioEndpoint,
@@ -32,5 +46,35 @@ class PatrimonioRemoteDataSource {
       return PatrimonioModel.fromJson(response.data);
     }
     throw Exception('Falha ao cadastrar bem patrimonial');
+  }
+
+  Future<PatrimonioModel> atualizarBem(String id, Map<String, dynamic> payload) async {
+    final response = await _dioClient.dio.put(
+      ApiConstants.patrimonioAtualizarEndpoint(id),
+      data: payload,
+    );
+    if (response.statusCode == 200) {
+      return PatrimonioModel.fromJson(response.data);
+    }
+    throw Exception('Falha ao atualizar bem patrimonial');
+  }
+
+  Future<void> desativarBem(String id) async {
+    final response = await _dioClient.dio.delete(
+      ApiConstants.patrimonioDesativarEndpoint(id),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Falha ao inativar bem patrimonial');
+    }
+  }
+
+  Future<PatrimonioModel> buscarPorQrCode(String codigo) async {
+    final response = await _dioClient.dio.get(
+      ApiConstants.patrimonioQrcodeEndpoint(codigo),
+    );
+    if (response.statusCode == 200) {
+      return PatrimonioModel.fromJson(response.data);
+    }
+    throw Exception('Bem não encontrado no código informado');
   }
 }

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'core/network/dio_client.dart';
+import 'core/telemetry/telemetry_interceptor.dart';
+import 'core/telemetry/telemetry_service.dart';
 import 'core/security/session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
@@ -16,6 +20,12 @@ import 'features/colaborador/presentation/providers/colaborador_provider.dart';
 import 'features/estoque/data/datasources/estoque_remote_datasource.dart';
 import 'features/estoque/data/repositories/estoque_repository.dart';
 import 'features/estoque/presentation/providers/estoque_provider.dart';
+import 'features/compras/data/datasources/compras_remote_datasource.dart';
+import 'features/compras/data/repositories/compras_repository.dart';
+import 'features/compras/presentation/providers/compras_provider.dart';
+import 'features/licitacoes/data/datasources/licitacoes_remote_datasource.dart';
+import 'features/licitacoes/data/repositories/licitacoes_repository.dart';
+import 'features/licitacoes/presentation/providers/licitacoes_provider.dart';
 import 'features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'features/ponto/data/repositories/ponto_repository.dart';
@@ -27,10 +37,16 @@ import 'features/admin/presentation/providers/admin_provider.dart';
 import 'features/admin/presentation/screens/admin_navigation_screen.dart';
 import 'features/patrimonio/data/datasources/patrimonio_remote_datasource.dart';
 import 'features/patrimonio/data/datasources/desfazimento_remote_datasource.dart';
+import 'features/patrimonio/data/datasources/inventario_remote_datasource.dart';
+import 'features/patrimonio/data/datasources/transferencia_remote_datasource.dart';
 import 'features/patrimonio/data/repositories/patrimonio_repository.dart';
 import 'features/patrimonio/data/repositories/desfazimento_repository.dart';
+import 'features/patrimonio/data/repositories/inventario_repository.dart';
+import 'features/patrimonio/data/repositories/transferencia_repository.dart';
 import 'features/patrimonio/presentation/providers/patrimonio_provider.dart';
 import 'features/patrimonio/presentation/providers/desfazimento_provider.dart';
+import 'features/patrimonio/presentation/providers/inventario_provider.dart';
+import 'features/patrimonio/presentation/providers/transferencia_provider.dart';
 import 'features/frota/data/datasources/frota_remote_datasource.dart';
 import 'features/frota/data/repositories/frota_repository.dart';
 import 'features/frota/presentation/providers/frota_provider.dart';
@@ -39,6 +55,9 @@ import 'features/protocolo/data/repositories/protocolo_repository.dart';
 import 'features/protocolo/presentation/providers/protocolo_provider.dart';
 import 'features/privacidade/data/privacidade_datasource.dart';
 import 'features/privacidade/presentation/providers/privacidade_provider.dart';
+import 'features/transparencia/data/datasources/transparencia_remote_datasource.dart';
+import 'features/transparencia/data/repositories/transparencia_repository.dart';
+import 'features/transparencia/presentation/providers/transparencia_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +66,12 @@ void main() async {
   final temaInicial = await ThemeProvider.carregarTema();
 
   final dioClient = DioClient();
+
+  // Telemetria & Observabilidade (R27): fila em memória + envio em lote.
+  final telemetryService = TelemetryService(dioClient: dioClient);
+  dioClient.dio.interceptors.add(
+    TelemetryInterceptor(telemetryService: telemetryService),
+  );
 
   final authRemoteDataSource = AuthRemoteDataSource(dioClient);
   final authRepository = AuthRepository(
@@ -61,6 +86,14 @@ void main() async {
   final estoqueRemoteDataSource = EstoqueRemoteDataSource(dioClient);
   final estoqueRepository =
       EstoqueRepository(remoteDataSource: estoqueRemoteDataSource);
+
+  final comprasRemoteDataSource = ComprasRemoteDataSource(dioClient);
+  final comprasRepository =
+      ComprasRepository(remoteDataSource: comprasRemoteDataSource);
+
+  final licitacoesRemoteDataSource = LicitacoesRemoteDataSource(dioClient);
+  final licitacoesRepository =
+      LicitacoesRepository(remoteDataSource: licitacoesRemoteDataSource);
 
   final pontoLocalDataSource = PontoLocalDataSource();
   final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
@@ -80,6 +113,14 @@ void main() async {
   final desfazimentoRepository =
       DesfazimentoRepository(remoteDataSource: desfazimentoRemoteDataSource);
 
+  final inventarioRemoteDataSource = InventarioRemoteDataSource(dioClient);
+  final inventarioRepository =
+      InventarioRepository(remoteDataSource: inventarioRemoteDataSource);
+
+  final transferenciaRemoteDataSource = TransferenciaRemoteDataSource(dioClient);
+  final transferenciaRepository =
+      TransferenciaRepository(remoteDataSource: transferenciaRemoteDataSource);
+
   final frotaRemoteDataSource = FrotaRemoteDataSource(dioClient);
   final frotaRepository = FrotaRepository(remoteDataSource: frotaRemoteDataSource);
 
@@ -89,7 +130,11 @@ void main() async {
 
   final privacidadeProvider = PrivacidadeProvider(PrivacidadeDataSource(dioClient));
 
-  final authProvider = AuthProvider(authRepository);
+  final transparenciaRemoteDataSource = TransparenciaRemoteDataSource(dioClient);
+  final transparenciaRepository =
+      TransparenciaRepository(remoteDataSource: transparenciaRemoteDataSource);
+
+  final authProvider = AuthProvider(authRepository, telemetria: telemetryService);
 
   dioClient.onRefreshToken = () async {
     final refreshToken = await SessionStorage.readToken(AuthProvider.keyRefreshToken);
@@ -108,24 +153,38 @@ void main() async {
     }
   };
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
-        ChangeNotifierProvider.value(value: authProvider),
-        ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
-        ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
-        ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
-        ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
-        ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
-        ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
-        ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
-        ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
-        ChangeNotifierProvider.value(value: privacidadeProvider),
-      ],
-      child: ChronosPulseApp(authProvider: authProvider),
-    ),
-  );
+  runZonedGuarded(() {
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      telemetryService.registrarErroDeUi(details.exception, details.stack);
+    };
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
+          ChangeNotifierProvider.value(value: authProvider),
+          ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
+          ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
+          ChangeNotifierProvider(create: (_) => ComprasProvider(comprasRepository)),
+          ChangeNotifierProvider(create: (_) => LicitacoesProvider(licitacoesRepository)),
+          ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
+          ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
+          ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
+          ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
+          ChangeNotifierProvider(create: (_) => InventarioProvider(inventarioRepository)),
+          ChangeNotifierProvider(create: (_) => TransferenciaProvider(transferenciaRepository)),
+          ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
+          ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
+          ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
+          ChangeNotifierProvider.value(value: privacidadeProvider),
+        ],
+        child: ChronosPulseApp(authProvider: authProvider),
+      ),
+    );
+  }, (erro, stack) {
+    // Erros assíncronos não capturados pelo framework também viram UI_ERRO.
+    telemetryService.registrarErroDeUi(erro, stack);
+  });
 }
 
 class ChronosPulseApp extends StatefulWidget {

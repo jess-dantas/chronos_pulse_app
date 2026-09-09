@@ -214,7 +214,7 @@ class LandingScreen extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 750),
                 child: Text(
-                  'O Chronos Pulse unifica o registro eletrônico de ponto inteligente com a gestão completa de almoxarifado público e controle patrimonial contábil, garantindo total conformidade legal e suporte offline.',
+                  'Do registro eletrônico de ponto inteligente ao controle patrimonial contábil, passando por estoque (PMP), compras, licitações (Lei 14.133/2021), frota, protocolo e o Portal da Transparência (LC 131/2009) com BI — uma suíte completa, modular e em conformidade legal, com suporte offline.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontSize: isDesktop ? 18 : 15,
@@ -513,6 +513,51 @@ class LandingScreen extends StatelessWidget {
                           'Acompanhamento completo da tramitação processual em tempo real.',
                         ],
                       ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.shopping_cart_outlined,
+                        color: const Color(0xFF4F46E5),
+                        tag: 'MÓDULO DE COMPRAS',
+                        title: 'Fornecedores, Pedidos & NF-e',
+                        features: [
+                          'Cadastro de fornecedores com validação e consulta pública de CNPJ.',
+                          'Pedidos de compra com fornecedor, itens e valores negociados.',
+                          'Entrada de materiais vinculada à NF-e com consulta SEFAZ e importação de XML.',
+                          'Requisições de compra com cotação de preços e propostas de fornecedores.',
+                          'Banco de preços com histórico de valores para futuras contratações.',
+                        ],
+                      ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.gavel,
+                        color: const Color(0xFFD97706),
+                        tag: 'MÓDULO DE LICITAÇÕES',
+                        title: 'Contratações na Lei 14.133/2021',
+                        features: [
+                          'Conformidade integral com a Lei 14.133/2021 (Nova Lei de Licitações).',
+                          'Modalidades adequadas a cada contratação pública.',
+                          'Julgamento por menor preço com propostas de participantes.',
+                          'Fluxo completo: publicar, receber propostas, adjudicar e homologar.',
+                          'Emissão de Autorização de Fornecimento (AF) e vínculo com pedidos.',
+                        ],
+                      ),
+                      _buildModuleDetailCard(
+                        context,
+                        width: cardWidth,
+                        icon: Icons.public,
+                        color: const Color(0xFF059669),
+                        tag: 'PORTAL DA TRANSPARÊNCIA',
+                        title: 'Transparência Ativa & BI (LC 131/2009)',
+                        features: [
+                          'Publicação das despesas da gestão conforme a LC 131/2009 (transparência ativa).',
+                          'Painel consolidado de indicadores: contratos, despesas, estoque, patrimônio e frota.',
+                          'Execução mensal de despesas com fontes: NF-e, combustível e pedidos.',
+                          'Publicações por competência com divulgação, edição e remoção.',
+                          'Relatórios gerenciais (BI) para gestores, auditores e cidadãos.',
+                        ],
+                      ),
                     ],
                   );
                 },
@@ -745,7 +790,7 @@ class LandingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Entre com suas credenciais ou cadastre sua empresa para gerenciar batidas de ponto, estoques e requisições públicas.',
+                    'Entre com suas credenciais ou cadastre sua empresa para gerenciar ponto, estoque, patrimônio, frota, compras, licitações, protocolo e a publicação das despesas no Portal da Transparência.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
