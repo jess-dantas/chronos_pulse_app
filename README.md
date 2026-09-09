@@ -5,6 +5,7 @@
 ![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2)
+![Tests](https://img.shields.io/badge/tests-91%20verdes-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS multi-tenant de gestão pública. O menu é **dinâmico**: cada item aparece conforme os módulos contratados pela empresa (logada no login/perfil do backend).
@@ -20,44 +21,81 @@ Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS m
 | Ponto Eletrônico | `PONTO` | `HomePontoScreen` |
 | Colaboradores (RH) | `RECURSOS_HUMANOS` | `ColaboradoresScreen` |
 | Estoque & Almoxarifado | `ESTOQUE` | `EstoqueHomeScreen` |
+| Compras & Fornecedores | `COMPRAS` | `ComprasHomeScreen` |
+| Licitações & Contratações | `LICITACOES` | `LicitacoesHomeScreen` |
 | Patrimônio Público | `PATRIMONIO` | `PatrimonioHomeScreen` |
 | Gestão de Frota | `FROTA` | `FrotaHomeScreen` |
 | Protocolo Eletrônico | `PROTOCOLO` | `ProtocoloHomeScreen` |
+| Portal da Transparência & BI (LC 131/2009) | `TRANSPARENCIA` | `TransparenciaHomeScreen` |
 
-O painel **Admin Plataforma** (`AdminNavigationScreen`) também ganhou a tela **Módulos**, usada para ativar/desativar módulos por empresa.
+O painel **Admin Plataforma** (`AdminNavigationScreen`) também ganhou a tela **Módulos**, usada para ativar/desativar módulos por empresa. **Privacidade & LGPD** e os ajustes de perfil ficam sempre disponíveis para usuários autenticados.
 
 ---
 
-## Início Rápido
+## Como subir o app
+
+### Pré-requisitos
+
+- **Flutter 3.x** com **Dart 3.x** instalados (`flutter doctor` sem pendências críticas)
+- **Backend Chronos Pulse no ar** (seguir o README do projeto `chronos-pulse` — subida com/sem Docker)
+- Para **web**: navegador Chrome (ou usar `web-server`)
+- Para **Android**: emulador ou dispositivo físico com depuração habilitada
+
+### Passo a passo
 
 ```bash
-# Web (com o backend em http://localhost:8080)
-flutter run -d chrome
-# ou servidor web em porta específica
-flutter run -d web-server --web-port 3000
+# 1. Instale as dependências
+flutter pub get
 
-# Android (emulador ou dispositivo físico)
+# 2. (Recomendado) Valide o código antes de subir
+flutter analyze
+
+# 3. Suba o app
+## Web (abre no Chrome automático)
+flutter run -d chrome
+## Web (servidor em porta específica, ex.: porta 3000)
+flutter run -d web-server --web-port 3000
+## Android (emulador ou dispositivo físico)
 flutter run
 
-# Análise estática e build de produção web
-flutter analyze
+# 4. Corra os testes (91 testes)
+flutter test
+
+# 5. Build de produção (web)
 flutter build web
+```
+
+Para **web em produção** informe a URL da API em tempo de compilação (reproduzível):
+
+```bash
+flutter run -d web-server --web-port 3000 \
+  --dart-define=API_URL=https://chronos-pulse.onrender.com/api/v1
+flutter build web --dart-define=API_URL=https://chronos-pulse.onrender.com/api/v1
 ```
 
 ### Configuração da API
 
-Resolução automática em `lib/core/constants/api_constants.dart`:
+Resolução automática em `lib/core/constants/api_constants.dart` (prioridade: `--dart-define=API_URL` > release/web/plataforma):
 
 | Plataforma | Endereço padrão |
 |---|---|
-| Web | `http://localhost:8080/api/v1` |
+| API via `--dart-define=API_URL` | sobrescreve tudo (recomendado em produção) |
+| Release (web/móvel) sem `API_URL` | `https://chronos-pulse.onrender.com/api/v1` |
+| Web (debug) | `http://localhost:8080/api/v1` |
 | Android (emulador) | `http://10.0.2.2:8080/api/v1` |
 | Android (dispositivo físico) | `http://<IP_DA_MAQUINA>:8080/api/v1` |
 | iOS / Desktop | `http://localhost:8080/api/v1` |
 
+> No emulador Android a API resolve em `10.0.2.2`; em dispositivo físico use o IP local da máquina
+> (ex.: `--dart-define=API_URL=http://192.168.0.10:8080/api/v1`).
+
 ---
 
-## Credenciais de Teste (tenant de demonstração com 6 módulos)
+## Credenciais de Teste (tenant de demonstração com 9 módulos)
+
+> As credenciais de acesso **privilegiado** (fundador da empresa e Admin Plataforma)
+> **não ficam no repositório** — são entregues fora dos projetos (ver seção de acessos
+> do time / gestor de segredos).
 
 | Perfil | CPF | Senha |
 |---|---|---|
