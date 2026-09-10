@@ -72,12 +72,18 @@ jobs:
           name: release-builds
           path: build/app/outputs/**
 
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  security-push:
+    if: github.event_name == 'push'
+    permissions:
+      actions: read
+      security-events: write
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.5.1
 
-      - name: OSV-Scanner (pubspec.lock)
-        uses: google/osv-scanner-action@v2.5.1
-        with:
-          scan_args: '--recursive'
+  security-pr:
+    if: github.event_name == 'pull_request'
+    permissions:
+      actions: read
+      security-events: write
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.5.1

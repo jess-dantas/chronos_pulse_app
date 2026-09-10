@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "br.com.jess.chronos.chronos_pulse_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
