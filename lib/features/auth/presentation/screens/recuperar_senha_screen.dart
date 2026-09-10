@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
@@ -74,7 +75,7 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.of(context).pop();
+      context.go('/login');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

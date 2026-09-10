@@ -110,6 +110,10 @@ class LicitacaoModel {
   final String status;
   final bool pedidoGerado;
   final String? criadoEm;
+  final String pncpStatus;
+  final String? pncpProtocolo;
+  final String? pncpPublicadoEm;
+  final String? pncpErro;
   final List<LicitacaoItemModel> itens;
   final List<LicitacaoParticipanteModel> participantes;
   final List<LicitacaoPropostaModel> propostas;
@@ -127,6 +131,10 @@ class LicitacaoModel {
     this.status = 'EM_ELABORACAO',
     this.pedidoGerado = false,
     this.criadoEm,
+    this.pncpStatus = 'NAO_PUBLICADO',
+    this.pncpProtocolo,
+    this.pncpPublicadoEm,
+    this.pncpErro,
     this.itens = const [],
     this.participantes = const [],
     this.propostas = const [],
@@ -149,6 +157,10 @@ class LicitacaoModel {
       status: json['status']?.toString() ?? 'EM_ELABORACAO',
       pedidoGerado: json['pedidoGerado'] == true,
       criadoEm: json['criadoEm']?.toString(),
+      pncpStatus: json['pncpStatus']?.toString() ?? 'NAO_PUBLICADO',
+      pncpProtocolo: json['pncpProtocolo']?.toString(),
+      pncpPublicadoEm: json['pncpPublicadoEm']?.toString(),
+      pncpErro: json['pncpErro']?.toString(),
       itens: itensRaw is List
           ? itensRaw.map((e) => LicitacaoItemModel.fromJson(e)).toList()
           : const [],
@@ -173,6 +185,11 @@ class LicitacaoModel {
   bool get adjudicada => status == 'ADJUDICADA';
   bool get homologada => status == 'HOMOLOGADA';
   bool get cancelada => status == 'CANCELADA';
+
+  bool get pncpPublicado => pncpStatus == 'PUBLICADO';
+  bool get pncpFalhou => pncpStatus == 'FALHA';
+  String get pncpStatusLabel => _labelPncpStatus(pncpStatus);
+  String get pncpPublicadoEmFormatado => _formatDateLicit(pncpPublicadoEm);
 
   bool get cancelavel => emElaboracao || emDisputa;
   bool get publicavel => emElaboracao;
@@ -311,5 +328,16 @@ String _labelStatus(String s) {
       return 'Cancelada';
     default:
       return s;
+  }
+}
+
+String _labelPncpStatus(String s) {
+  switch (s) {
+    case 'PUBLICADO':
+      return 'Publicado no PNCP';
+    case 'FALHA':
+      return 'Falha no PNCP';
+    default:
+      return 'Não publicado no PNCP';
   }
 }

@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2)
-![Tests](https://img.shields.io/badge/tests-117%20verdes-brightgreen)
+![Tests](https://img.shields.io/badge/tests-134%20verdes-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS multi-tenant de gestão pública. O menu é **dinâmico**: cada item aparece conforme os módulos contratados pela empresa (logada no login/perfil do backend).
@@ -29,6 +29,27 @@ Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS m
 | Portal da Transparência & BI (LC 131/2009) | `TRANSPARENCIA` | `TransparenciaHomeScreen` |
 
 O painel **Admin Plataforma** (`AdminNavigationScreen`) também ganhou a tela **Módulos**, usada para ativar/desativar módulos por empresa. **Privacidade & LGPD** e os ajustes de perfil ficam sempre disponíveis para usuários autenticados.
+
+---
+
+## Rotas (Flutter Web)
+
+Navegação com **go_router** e URLs limpas em `path` (sem `#`). Áreas protegidas
+redirecionam para a landing quando o usuário está deslogado; rotas de módulos
+não contratados caem no primeiro módulo ativo do usuário.
+
+| Rota | Tela |
+|---|---|
+| `/` | `LandingScreen` |
+| `/login` | `LoginScreen` |
+| `/cadastro` | `CadastrarEmpresaScreen` |
+| `/recuperar-senha` | `RecuperarSenhaScreen` |
+| `/painel/ponto` … `/painel/privacidade` | Módulos do painel (`MainShell`) |
+| `/admin/dashboard` … `/admin/privacidade` | Área administrativa (`AdminShell`) |
+
+Configurações centrais em `lib/core/router/app_router.dart` (ordem dos módulos,
+permissões por rota e redirects) e os shells em
+`lib/features/navigation/presentation/screens/`.
 
 ---
 
@@ -58,7 +79,7 @@ flutter run -d web-server --web-port 3000
 ## Android (emulador ou dispositivo físico)
 flutter run
 
-# 4. Corra os testes (117 testes)
+# 4. Corra os testes (134 testes)
 flutter test
 
 # 5. Build de produção (web)

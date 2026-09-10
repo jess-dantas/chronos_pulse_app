@@ -158,6 +158,22 @@ class LicitacoesProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> publicarPncp(String id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.publicarPncp(id);
+      await carregarTudo();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao publicar aviso no PNCP: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> cancelarLicitacao(String id) async {
     _isLoading = true;
     _errorMessage = null;

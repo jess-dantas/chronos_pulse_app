@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
 
   # UI e Ícones
   cupertino_icons: ^1.0.8
@@ -43,6 +45,9 @@ dependencies:
   printing: ^5.15.0
   file_picker: ^12.2.0
   mobile_scanner: ^7.4.0
+
+  # Roteamento (URLs limpas no Flutter Web)
+  go_router: ^18.0.1
 
 dev_dependencies:
   flutter_test:

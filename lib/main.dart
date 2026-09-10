@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'core/network/dio_client.dart';
+import 'core/router/app_router.dart';
+import 'core/router/url_strategy.dart';
 import 'core/telemetry/telemetry_interceptor.dart';
 import 'core/telemetry/telemetry_service.dart';
 import 'core/security/session_storage.dart';
@@ -13,7 +16,6 @@ import 'core/theme/theme_provider.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
-import 'features/landing/presentation/screens/landing_screen.dart';
 import 'features/colaborador/data/datasources/colaborador_remote_datasource.dart';
 import 'features/colaborador/data/repositories/colaborador_repository.dart';
 import 'features/colaborador/presentation/providers/colaborador_provider.dart';
@@ -30,11 +32,9 @@ import 'features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'features/ponto/data/repositories/ponto_repository.dart';
 import 'features/ponto/presentation/providers/ponto_provider.dart';
-import 'features/navigation/presentation/screens/main_navigation_screen.dart';
 import 'features/admin/data/datasources/admin_remote_datasource.dart';
 import 'features/admin/data/repositories/admin_repository.dart';
 import 'features/admin/presentation/providers/admin_provider.dart';
-import 'features/admin/presentation/screens/admin_navigation_screen.dart';
 import 'features/patrimonio/data/datasources/patrimonio_remote_datasource.dart';
 import 'features/patrimonio/data/datasources/desfazimento_remote_datasource.dart';
 import 'features/patrimonio/data/datasources/inventario_remote_datasource.dart';
@@ -61,6 +61,7 @@ import 'features/transparencia/presentation/providers/transparencia_provider.dar
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  configureUrlStrategy();
   await initializeDateFormatting('pt_BR', null);
 
   final temaInicial = await ThemeProvider.carregarTema();
@@ -198,9 +199,12 @@ class ChronosPulseApp extends StatefulWidget {
 
 class _ChronosPulseAppState extends State<ChronosPulseApp>
     with WidgetsBindingObserver {
+  late final GoRouter _router;
+
   @override
   void initState() {
     super.initState();
+    _router = AppRouter.build(widget.authProvider);
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
     widget.authProvider.tryRestoreSession();
@@ -235,27 +239,33 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
       behavior: HitTestBehavior.translucent,
       onPointerDown: (_) => widget.authProvider.registrarAtividade(),
       onPointerMove: (_) => widget.authProvider.registrarAtividade(),
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: 'Chronos Pulse',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
-        home: const AuthWrapper(),
+        routerConfig: _router,
+        builder: (context, child) =>
+            _MotivoSessaoListener(child: child ?? const SizedBox.shrink()),
       ),
     );
   }
 }
 
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({super.key});
+class _MotivoSessaoListener extends StatefulWidget {
+  final Widget child;
+
+  const _MotivoSessaoListener({required this.child});
 
   @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
+  State<_MotivoSessaoListener> createState() => _MotivoSessaoListenerState();
 }
 
-class _AuthWrapperState extends State<AuthWrapper> {
-  void _mostrarMotivoEncerramento(AuthProvider authProvider) {
+class _MotivoSessaoListenerState extends State<_MotivoSessaoListener> {
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     final motivo = authProvider.consumirMotivoEncerramento();
     if (motivo != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -269,21 +279,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         );
       });
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-
-    if (!authProvider.isAuthenticated) {
-      _mostrarMotivoEncerramento(authProvider);
-      return const LandingScreen();
-    }
-
-    final usuario = authProvider.usuario;
-    if (usuario != null && usuario.isGestorPlataforma) {
-      return const AdminNavigationScreen();
-    }
-    return const MainNavigationScreen();
+    return widget.child;
   }
 }
