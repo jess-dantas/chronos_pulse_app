@@ -77,6 +77,39 @@ class LicitacoesRemoteDataSource {
     throw Exception('Falha ao gerar pedidos da licitação: ${response.statusCode}');
   }
 
+  // ============================ DISPUTA (R29) ============================
+
+  Future<LicitacaoModel> abrirDisputa(String id) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.licitacaoAbrirDisputaEndpoint(id));
+    return _licitacaoFromResponse(response.statusCode, response.data, 'abrir a disputa');
+  }
+
+  Future<LicitacaoModel> registrarLance(String id, RegistrarLanceDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.licitacaoLancesEndpoint(id), data: dto.toJson());
+    return _licitacaoFromResponse(response.statusCode, response.data, 'registrar o lance');
+  }
+
+  Future<List<LanceModel>> listarLances(String id) async {
+    final response = await _dioClient.dio
+        .get(ApiConstants.licitacaoLancesEndpoint(id));
+    if (response.statusCode == 200 && response.data is List) {
+      return (response.data as List)
+          .map((json) => LanceModel.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    throw Exception('Falha ao carregar os lances: ${response.statusCode}');
+  }
+
+  // ============================ FORMALIZAÇÃO (R30) ============================
+
+  Future<LicitacaoModel> formalizarContrato(String id, FormalizarContratoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.licitacaoFormalizarContratoEndpoint(id), data: dto.toJson());
+    return _licitacaoFromResponse(response.statusCode, response.data, 'formalizar o contrato');
+  }
+
   // ============================ PLANEJAMENTO (R28) ============================
 
   Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) async {
