@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B)
 ![Dart](https://img.shields.io/badge/Dart-3.x-0175C2)
-![Tests](https://img.shields.io/badge/tests-134%20verdes-brightgreen)
+![Tests](https://img.shields.io/badge/tests-152%20verdes-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS multi-tenant de gestão pública. O menu é **dinâmico**: cada item aparece conforme os módulos contratados pela empresa (logada no login/perfil do backend).
@@ -79,7 +79,7 @@ flutter run -d web-server --web-port 3000
 ## Android (emulador ou dispositivo físico)
 flutter run
 
-# 4. Corra os testes (134 testes)
+# 4. Corra os testes (152 testes)
 flutter test
 
 # 5. Build de produção (web)
@@ -114,16 +114,11 @@ Resolução automática em `lib/core/constants/api_constants.dart` (prioridade: 
 
 ## Credenciais de Teste (tenant de demonstração com 9 módulos)
 
-> As credenciais de acesso **privilegiado** (fundador da empresa e Admin Plataforma)
-> **não ficam no repositório** — são entregues fora dos projetos (ver seção de acessos
-> do time / gestor de segredos).
-
-| Perfil | CPF | Senha |
-|---|---|---|
-| Admin Empresa | `11111111111` | `admin123` |
-| Gestor RH | `22222222222` | `admin123` |
-| Colaborador | `12345678901` | `senha123` |
-| Colaborador Almoxarife | `98765432100` | `senha123` |
+> As credenciais de demonstração estão concentradas em
+> [`docs/credenciais.md`](docs/credenciais.md). As credenciais de acesso
+> **privilegiado** (fundador da empresa e Admin Plataforma) **não são documentadas
+> em texto plano no repositório** — são entregues fora do código (ver seção de
+> acessos do time / gestor de segredos).
 
 ---
 
@@ -133,6 +128,7 @@ Resolução automática em `lib/core/constants/api_constants.dart` (prioridade: 
 - [`docs/autenticacao.md`](docs/autenticacao.md) — Sessão JWT, refresh e persistência dos módulos
 - [`docs/modulos.md`](docs/modulos.md) — Gating do menu, getters `temModulo*` e como adicionar um novo módulo
 - [`docs/api.md`](docs/api.md) — Endpoints consumidos pelo app
+- [`docs/credenciais.md`](docs/credenciais.md) — Credenciais de demonstração (seeds)
 
 ---
 
