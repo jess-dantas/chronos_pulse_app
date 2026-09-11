@@ -33,6 +33,18 @@ class LicitacoesRepository {
   Future<List<Map<String, dynamic>>> gerarPedidos(String id) =>
       _remoteDataSource.gerarPedidos(id);
 
+  Future<LicitacaoModel> abrirDisputa(String id) =>
+      _remoteDataSource.abrirDisputa(id);
+
+  Future<LicitacaoModel> registrarLance(String id, RegistrarLanceDTO dto) =>
+      _remoteDataSource.registrarLance(id, dto);
+
+  Future<List<LanceModel>> listarLances(String id) =>
+      _remoteDataSource.listarLances(id);
+
+  Future<LicitacaoModel> formalizarContrato(String id, FormalizarContratoDTO dto) =>
+      _remoteDataSource.formalizarContrato(id, dto);
+
   Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) =>
       _remoteDataSource.getPlanejamento(id);
 
