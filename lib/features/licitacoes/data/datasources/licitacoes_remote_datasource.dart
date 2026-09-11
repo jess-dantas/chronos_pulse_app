@@ -102,6 +102,14 @@ class LicitacoesRemoteDataSource {
     throw Exception('Falha ao carregar os lances: ${response.statusCode}');
   }
 
+  // ============================ FORMALIZAÇÃO (R30) ============================
+
+  Future<LicitacaoModel> formalizarContrato(String id, FormalizarContratoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.licitacaoFormalizarContratoEndpoint(id), data: dto.toJson());
+    return _licitacaoFromResponse(response.statusCode, response.data, 'formalizar o contrato');
+  }
+
   // ============================ PLANEJAMENTO (R28) ============================
 
   Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) async {

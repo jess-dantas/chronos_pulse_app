@@ -157,6 +157,7 @@ class LicitacaoModel {
   final String? observacoes;
   final String status;
   final bool pedidoGerado;
+  final bool contratoGerado;
   final String? criadoEm;
   final String pncpStatus;
   final String? pncpProtocolo;
@@ -179,6 +180,7 @@ class LicitacaoModel {
     this.observacoes,
     this.status = 'EM_ELABORACAO',
     this.pedidoGerado = false,
+    this.contratoGerado = false,
     this.criadoEm,
     this.pncpStatus = 'NAO_PUBLICADO',
     this.pncpProtocolo,
@@ -207,6 +209,7 @@ class LicitacaoModel {
       observacoes: json['observacoes']?.toString(),
       status: json['status']?.toString() ?? 'EM_ELABORACAO',
       pedidoGerado: json['pedidoGerado'] == true,
+      contratoGerado: json['contratoGerado'] == true,
       criadoEm: json['criadoEm']?.toString(),
       pncpStatus: json['pncpStatus']?.toString() ?? 'NAO_PUBLICADO',
       pncpProtocolo: json['pncpProtocolo']?.toString(),
@@ -273,6 +276,18 @@ class LicitacaoModel {
 
   List<LicitacaoPropostaModel> get vencedores =>
       propostas.where((p) => p.vencedor).toList();
+
+  bool get formalizavel => homologada && !contratoGerado;
+
+  double get valorTotalVencedores {
+    double total = 0;
+    for (final vencedor in vencedores) {
+      final matching = itens.where((i) => i.materialId == vencedor.materialId).toList();
+      final item = matching.isEmpty ? null : matching.first;
+      total += (item?.quantidade ?? 0) * vencedor.valorUnitario;
+    }
+    return total;
+  }
 }
 
 class CadastrarLicitacaoDTO {
@@ -373,6 +388,39 @@ class RegistrarLanceDTO {
         'fornecedorId': fornecedorId,
         'valorUnitario': valorUnitario,
         if (observacao != null && observacao!.isNotEmpty) 'observacao': observacao,
+      };
+}
+
+class FormalizarContratoDTO {
+  final String dataInicio;
+  final String dataFim;
+  final String? observacoes;
+  final double? valorMensal;
+  final double? valorEmpenhado;
+  final double? valorLiquidado;
+  final String? empenhoNumero;
+  final int? vencimentoAvisoDias;
+
+  FormalizarContratoDTO({
+    required this.dataInicio,
+    required this.dataFim,
+    this.observacoes,
+    this.valorMensal,
+    this.valorEmpenhado,
+    this.valorLiquidado,
+    this.empenhoNumero,
+    this.vencimentoAvisoDias,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'dataInicio': dataInicio,
+        'dataFim': dataFim,
+        if (observacoes != null && observacoes!.isNotEmpty) 'observacoes': observacoes,
+        if (valorMensal != null) 'valorMensal': valorMensal,
+        if (valorEmpenhado != null) 'valorEmpenhado': valorEmpenhado,
+        if (valorLiquidado != null) 'valorLiquidado': valorLiquidado,
+        if (empenhoNumero != null && empenhoNumero!.isNotEmpty) 'empenhoNumero': empenhoNumero,
+        if (vencimentoAvisoDias != null) 'vencimentoAvisoDias': vencimentoAvisoDias,
       };
 }
 

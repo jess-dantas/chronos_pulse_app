@@ -42,6 +42,9 @@ class LicitacoesRepository {
   Future<List<LanceModel>> listarLances(String id) =>
       _remoteDataSource.listarLances(id);
 
+  Future<LicitacaoModel> formalizarContrato(String id, FormalizarContratoDTO dto) =>
+      _remoteDataSource.formalizarContrato(id, dto);
+
   Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) =>
       _remoteDataSource.getPlanejamento(id);
 

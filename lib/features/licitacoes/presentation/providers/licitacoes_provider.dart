@@ -268,6 +268,24 @@ class LicitacoesProvider extends ChangeNotifier {
     }
   }
 
+  // ============================ FORMALIZAÇÃO CONTRATO (R30) ============================
+
+  Future<bool> formalizarContrato(String id, FormalizarContratoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final licitacao = await _repository.formalizarContrato(id, dto);
+      _afetarLicitacao(licitacao);
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao formalizar o contrato: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // ============================ PLANEJAMENTO (R28) ============================
 
   Future<bool> salvarEtp(String licitacaoId, EtpDTO dto) =>

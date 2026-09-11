@@ -220,6 +220,8 @@ class _LicitacoesListaTab extends StatelessWidget {
                                           _cancelar(context, l);
                                         } else if (acao == 'pedidos') {
                                           _gerarPedidos(context, l);
+                                        } else if (acao == 'formalizarContrato') {
+                                          _formalizarContrato(context, l);
                                         }
                                       },
                                       itemBuilder: (_) => [
@@ -309,6 +311,15 @@ class _LicitacoesListaTab extends StatelessWidget {
                                             child: ListTile(
                                               leading: Icon(Icons.receipt_long_outlined),
                                               title: Text('Gerar pedidos'),
+                                              dense: true,
+                                            ),
+                                          ),
+                                        if (l.formalizavel)
+                                          const PopupMenuItem(
+                                            value: 'formalizarContrato',
+                                            child: ListTile(
+                                              leading: Icon(Icons.assignment_turned_in_outlined),
+                                              title: Text('Formalizar contrato'),
                                               dense: true,
                                             ),
                                           ),
@@ -583,6 +594,7 @@ void exibirDetalhesLicitacao(BuildContext context, LicitacaoModel l) {
               if (l.observacoes != null && l.observacoes!.isNotEmpty)
                 _LinhaInfo(label: 'Observações', valor: l.observacoes!),
               _LinhaInfo(label: 'Pedido gerado', valor: l.pedidoGerado ? 'Sim' : 'Não'),
+              _LinhaInfo(label: 'Contrato', valor: l.contratoGerado ? 'Formalizado' : 'Não formalizado'),
               if (l.pncpStatus != 'NAO_PUBLICADO')
                 _LinhaInfo(label: 'PNCP', valor: l.pncpStatusLabel),
               if (l.pncpProtocolo != null && l.pncpProtocolo!.isNotEmpty)
@@ -745,6 +757,15 @@ void exibirDetalhesLicitacao(BuildContext context, LicitacaoModel l) {
         ),
       ),
       actions: [
+        if (l.formalizavel)
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _formalizarContrato(context, l);
+            },
+            icon: const Icon(Icons.assignment_turned_in_outlined, size: 18),
+            label: const Text('Formalizar contrato'),
+          ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Fechar'),
@@ -1674,6 +1695,158 @@ Future<void> _gerarPedidos(BuildContext context, LicitacaoModel l) async {
       );
     }
   }
+}
+
+Future<void> _formalizarContrato(BuildContext context, LicitacaoModel l) async {
+  if (l.vencedores.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('A licitação precisa de vencedores para formalizar o contrato.')),
+    );
+    return;
+  }
+
+  final form = GlobalKey<FormState>();
+  String? dataInicio;
+  String? dataFim;
+  String observacoes = '';
+  String empenhoNumero = '';
+  String valorEmpenhado = '';
+
+  Future<void> selecionarData(String tipo) async {
+    final now = DateTime.now();
+    final data = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 3650)),
+    );
+    if (data != null) {
+      final iso = '${data.year.toString().padLeft(4, '0')}-'
+          '${data.month.toString().padLeft(2, '0')}-'
+          '${data.day.toString().padLeft(2, '0')}';
+      if (tipo == 'inicio') {
+        dataInicio = iso;
+      } else {
+        dataFim = iso;
+      }
+    }
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text('Formalizar contrato — ${l.numero}'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Form(
+              key: form,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _LinhaInfo(label: 'Valor total', valor: _moeda.format(l.valorTotalVencedores)),
+                  _LinhaInfo(
+                    label: 'Fornecedores',
+                    valor: l.vencedores.map((p) => p.fornecedorNome).toSet().join(', '),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'Data de assinatura*',
+                      hintText: dataInicio ?? 'Selecione a data de início da vigência',
+                      suffixIcon: const Icon(Icons.event),
+                    ),
+                    onTap: () async {
+                      await selecionarData('inicio');
+                      setState(() {});
+                    },
+                    validator: (v) => dataInicio == null ? 'Selecione' : null,
+                  ),
+                  TextFormField(
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: 'Data de término*',
+                      hintText: dataFim ?? 'Selecione o fim da vigência',
+                      suffixIcon: const Icon(Icons.event),
+                    ),
+                    onTap: () async {
+                      await selecionarData('fim');
+                      setState(() {});
+                    },
+                    validator: (v) => dataFim == null ? 'Selecione' : null,
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Nº do empenho'),
+                    onChanged: (v) => empenhoNumero = v,
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Valor empenhado'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) => valorEmpenhado = v,
+                  ),
+                  TextFormField(
+                    decoration: const InputDecoration(labelText: 'Observações'),
+                    maxLines: 2,
+                    onChanged: (v) => observacoes = v,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!form.currentState!.validate()) return;
+              final inicioIso = dataInicio!;
+              final fimIso = dataFim!;
+              final inicio = DateTime.tryParse(inicioIso);
+              final fim = DateTime.tryParse(fimIso);
+              if (inicio != null && fim != null && fim.isBefore(inicio)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content:
+                          Text('A data de término não pode ser anterior à de assinatura.')),
+                );
+                return;
+              }
+              final valorEmp = double.tryParse(valorEmpenhado.replaceAll(',', '.'));
+              final dto = FormalizarContratoDTO(
+                dataInicio: inicioIso,
+                dataFim: fimIso,
+                observacoes: observacoes.isEmpty ? null : observacoes,
+                empenhoNumero: empenhoNumero.isEmpty ? null : empenhoNumero,
+                valorEmpenhado: valorEmp,
+              );
+              Navigator.of(ctx).pop(true);
+              if (context.mounted) {
+                final ok =
+                    await context.read<LicitacoesProvider>().formalizarContrato(l.id, dto);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok
+                          ? 'Contrato CT-${l.numero} formalizado.'
+                          : 'Falha ao formalizar o contrato.'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Formalizar'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _LinhaInfo extends StatelessWidget {
