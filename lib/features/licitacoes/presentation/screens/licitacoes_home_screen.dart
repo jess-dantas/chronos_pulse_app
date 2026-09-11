@@ -64,8 +64,8 @@ class _LicitacoesHomeScreenState extends State<LicitacoesHomeScreen>
               text: 'Licitações',
             ),
             const Tab(
-              icon: Icon(Icons.edit_note),
-              text: 'Propostas',
+              icon: Icon(Icons.leaderboard_outlined),
+              text: 'Disputa',
             ),
             Tab(
               icon: Badge(
@@ -83,7 +83,7 @@ class _LicitacoesHomeScreenState extends State<LicitacoesHomeScreen>
         controller: _tabController,
         children: const [
           _LicitacoesListaTab(),
-          _LicitacoesPropostasTab(),
+          _LicitacoesDisputaTab(),
           _LicitacoesPlanejamentoTab(),
         ],
       ),
@@ -204,8 +204,12 @@ class _LicitacoesListaTab extends StatelessWidget {
                                           exibirDetalhesLicitacao(context, l);
                                         } else if (acao == 'publicar') {
                                           exibirDialogPublicar(context, l);
+                                        } else if (acao == 'abrirDisputa') {
+                                          _abrirDisputa(context, l);
                                         } else if (acao == 'propostas') {
                                           exibirDialogRegistrarPropostas(context, l);
+                                        } else if (acao == 'disputa') {
+                                          exibirDialogDisputa(context, l);
                                         } else if (acao == 'adjudicar') {
                                           _adjudicar(context, l);
                                         } else if (acao == 'homologar') {
@@ -233,6 +237,24 @@ class _LicitacoesListaTab extends StatelessWidget {
                                             child: ListTile(
                                               leading: Icon(Icons.campaign_outlined),
                                               title: Text('Publicar'),
+                                              dense: true,
+                                            ),
+                                          ),
+                                        if (l.podeAbrirDisputa)
+                                          const PopupMenuItem(
+                                            value: 'abrirDisputa',
+                                            child: ListTile(
+                                              leading: Icon(Icons.play_arrow_outlined),
+                                              title: Text('Abrir disputa eletrônica'),
+                                              dense: true,
+                                            ),
+                                          ),
+                                        if (l.emDisputa && !l.podeAbrirDisputa)
+                                          const PopupMenuItem(
+                                            value: 'disputa',
+                                            child: ListTile(
+                                              leading: Icon(Icons.leaderboard_outlined),
+                                              title: Text('Ver disputa'),
                                               dense: true,
                                             ),
                                           ),
@@ -306,13 +328,15 @@ class _LicitacoesListaTab extends StatelessWidget {
   }
 }
 
-class _LicitacoesPropostasTab extends StatelessWidget {
-  const _LicitacoesPropostasTab();
+class _LicitacoesDisputaTab extends StatelessWidget {
+  const _LicitacoesDisputaTab();
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<LicitacoesProvider>();
     final emDisputa = provider.licitacoes.where((l) => l.emDisputa).toList();
+    final totalLances = provider.licitacoes.fold<int>(0, (a, l) => a + l.totalLances);
+    final economia = provider.licitacoes.fold<double>(0, (a, l) => a + l.economiaTotal);
 
     return Column(
       children: [
@@ -321,17 +345,21 @@ class _LicitacoesPropostasTab extends StatelessWidget {
           child: Row(
             children: [
               _MetricChip(
-                icon: Icons.hourglass_top,
+                icon: Icons.leaderboard_outlined,
                 label: '${emDisputa.length} em disputa',
                 cor: const Color(0xFF1565C0),
               ),
               const SizedBox(width: 8),
               _MetricChip(
-                icon: Icons.edit_note,
-                label:
-                    '${provider.licitacoes.fold<int>(0, (a, l) => a + l.propostas.length)} '
-                    'propostas registradas',
+                icon: Icons.gavel_outlined,
+                label: '$totalLances lance(s) registrado(s)',
                 cor: Colors.deepPurple,
+              ),
+              const SizedBox(width: 8),
+              _MetricChip(
+                icon: Icons.savings_outlined,
+                label: _moeda.format(economia),
+                cor: const Color(0xFF2E7D32),
               ),
             ],
           ),
@@ -353,7 +381,7 @@ class _LicitacoesPropostasTab extends StatelessWidget {
                       ? ListView(
                           children: const [
                             SizedBox(height: 120),
-                            Icon(Icons.edit_note, size: 56, color: Colors.grey),
+                            Icon(Icons.leaderboard_outlined, size: 56, color: Colors.grey),
                             SizedBox(height: 8),
                             Center(
                               child: Text(
@@ -373,7 +401,7 @@ class _LicitacoesPropostasTab extends StatelessWidget {
                               child: ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: const Color(0xFF1565C0).withValues(alpha: 0.12),
-                                  child: const Icon(Icons.edit_note, color: Color(0xFF1565C0)),
+                                  child: const Icon(Icons.leaderboard_outlined, color: Color(0xFF1565C0)),
                                 ),
                                 title: Text(l.numero),
                                 subtitle: Column(
@@ -385,17 +413,22 @@ class _LicitacoesPropostasTab extends StatelessWidget {
                                     ),
                                     Text(
                                       '${l.participantes.length} fornecedor(es) habilitado(s) · '
-                                      '${l.propostas.length} proposta(s) registrada(s)',
+                                      '${l.totalLances} lance(s) registrado(s)',
                                       style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                                     ),
                                   ],
                                 ),
-                                trailing: FilledButton.tonalIcon(
-                                  onPressed: () =>
-                                      exibirDialogRegistrarPropostas(context, l),
-                                  icon: const Icon(Icons.edit_note, size: 16),
-                                  label: const Text('Propostas'),
-                                ),
+                                trailing: l.podeAbrirDisputa
+                                    ? FilledButton.tonalIcon(
+                                        onPressed: () => _abrirDisputa(context, l),
+                                        icon: const Icon(Icons.play_arrow_outlined, size: 16),
+                                        label: const Text('Iniciar disputa'),
+                                      )
+                                    : FilledButton.tonalIcon(
+                                        onPressed: () => exibirDialogDisputa(context, l),
+                                        icon: const Icon(Icons.leaderboard_outlined, size: 16),
+                                        label: const Text('Ver disputa'),
+                                      ),
                                 onTap: () => exibirDetalhesLicitacao(context, l),
                               ),
                             );
@@ -660,6 +693,38 @@ void exibirDetalhesLicitacao(BuildContext context, LicitacaoModel l) {
                         : null,
                   ),
                 ),
+              if (l.lances.isNotEmpty) ...[
+                const Divider(),
+                const Text(
+                  'Lances',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...l.lances.map(
+                  (lance) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(Icons.leaderboard_outlined, size: 20),
+                    title: Text('${lance.fornecedorNome} · ${lance.itemDescricao}'),
+                    subtitle: Text(
+                      lance.atualizadoEm != null && lance.atualizadoEm!.isNotEmpty
+                          ? 'Atualizado em ${lance.atualizadoEmFormatado}'
+                          : 'Lance registrado',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    ),
+                    trailing: Text(
+                      _moeda.format(lance.valorUnitario),
+                      style: TextStyle(
+                        fontWeight: lance.economia != null && lance.economia! > 0
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        color: lance.economia != null && lance.economia! > 0
+                            ? const Color(0xFF2E7D32)
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               if (l.vencedores.isNotEmpty) ...[
                 const Divider(),
                 const Text(
@@ -1177,6 +1242,36 @@ Future<void> exibirDialogRegistrarPropostas(
   );
 }
 
+Future<void> _abrirDisputa(BuildContext context, LicitacaoModel l) async {
+  final confirmar = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Abrir disputa eletrônica'),
+      content: Text(
+          'Iniciar a disputa da licitação ${l.numero}? Os fornecedores habilitados '
+          'poderão registrar lances por item e o melhor lance vencerá.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Não'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Abrir disputa'),
+        ),
+      ],
+    ),
+  );
+  if (confirmar == true && context.mounted) {
+    final ok = await context.read<LicitacoesProvider>().abrirDisputa(l.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? 'Disputa aberta.' : 'Falha ao abrir a disputa.')),
+      );
+    }
+  }
+}
+
 Future<void> _adjudicar(BuildContext context, LicitacaoModel l) async {
   final confirmar = await showDialog<bool>(
     context: context,
@@ -1204,6 +1299,258 @@ Future<void> _adjudicar(BuildContext context, LicitacaoModel l) async {
         SnackBar(content: Text(ok ? 'Licitação adjudicada.' : 'Falha ao adjudicar.')),
       );
     }
+  }
+}
+
+Future<void> exibirDialogDisputa(BuildContext context, LicitacaoModel l) async {
+  final participantes = l.participantes.where((p) => p.habilitado).toList();
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('Disputa · ${l.numero}'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${l.tipoJulgamentoLabel} · ${l.emAberta ? 'disputa aberta' : l.statusLabel}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+              const Divider(),
+              Text(
+                'Ranking por item',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700]),
+              ),
+              if (l.lances.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Nenhum lance registrado ainda.',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                )
+              else
+                ...l.itens.map((item) {
+                  final lancesItem = l.lancesPorItem[item.id] ?? const <LanceModel>[];
+                  if (lancesItem.isEmpty) return const SizedBox.shrink();
+                  final melhor = lancesItem.first;
+                  final economia = melhor.valorEstimadoUnitario != null
+                      ? melhor.valorEstimadoUnitario! - melhor.valorUnitario
+                      : 0.0;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.descricao,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      ...lancesItem.map(
+                        (lance) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          leading: Icon(
+                            lance.fornecedorId == melhor.fornecedorId
+                                ? Icons.emoji_events
+                                : Icons.storefront_outlined,
+                            size: 20,
+                            color: lance.fornecedorId == melhor.fornecedorId
+                                ? const Color(0xFFEF6C00)
+                                : Colors.grey[700],
+                          ),
+                          title: Text(lance.fornecedorNome),
+                          subtitle: Text(
+                            lance.atualizadoEm != null && lance.atualizadoEm!.isNotEmpty
+                                ? 'Atualizado em ${lance.atualizadoEmFormatado}'
+                                : 'Lance registrado',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                          ),
+                          trailing: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_moeda.format(lance.valorUnitario)),
+                              if (lance.fornecedorId == melhor.fornecedorId)
+                                Text(
+                                  'Líder · economia $economia',
+                                  style: const TextStyle(
+                                      fontSize: 11, color: Color(0xFFEF6C00)),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const Divider(),
+                    ],
+                  );
+                }),
+              if (l.emAberta &&
+                  (l.tipoJulgamento == 'MENOR_PRECO' ||
+                      l.tipoJulgamento == 'MAIOR_LANCE')) ...[
+                const Divider(),
+                const Text(
+                  'Registrar lance',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                _FormRegistrarLance(licitacao: l, participantes: participantes),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (l.emAberta)
+          OutlinedButton.icon(
+            onPressed: () => _adjudicar(context, l),
+            icon: const Icon(Icons.emoji_events_outlined, size: 18),
+            label: const Text('Adjudicar'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Fechar'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FormRegistrarLance extends StatefulWidget {
+  final LicitacaoModel licitacao;
+  final List<LicitacaoParticipanteModel> participantes;
+
+  const _FormRegistrarLance({
+    required this.licitacao,
+    required this.participantes,
+  });
+
+  @override
+  State<_FormRegistrarLance> createState() => _FormRegistrarLanceState();
+}
+
+class _FormRegistrarLanceState extends State<_FormRegistrarLance> {
+  final _formKey = GlobalKey<FormState>();
+  String? _fornecedorId;
+  String? _licitacaoItemId;
+  final _valorController = TextEditingController();
+  final _observacaoController = TextEditingController();
+  bool _enviando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.participantes.isNotEmpty) {
+      _fornecedorId = widget.participantes.first.fornecedorId;
+    }
+    if (widget.licitacao.itens.isNotEmpty) {
+      _licitacaoItemId = widget.licitacao.itens.first.id;
+    }
+  }
+
+  @override
+  void dispose() {
+    _valorController.dispose();
+    _observacaoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: _fornecedorId,
+            decoration: const InputDecoration(labelText: 'Fornecedor', isDense: true),
+            items: widget.participantes
+                .map((p) => DropdownMenuItem(
+                      value: p.fornecedorId,
+                      child: Text(p.fornecedorNome),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _fornecedorId = v),
+          ),
+          DropdownButtonFormField<String>(
+            initialValue: _licitacaoItemId,
+            decoration: const InputDecoration(labelText: 'Item', isDense: true),
+            items: widget.licitacao.itens
+                .map((item) => DropdownMenuItem(
+                      value: item.id,
+                      child: Text('${item.descricao} (${item.unidadeMedida})',
+                          overflow: TextOverflow.ellipsis),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _licitacaoItemId = v),
+          ),
+          TextFormField(
+            controller: _valorController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Valor unitário do lance (R\$)',
+              isDense: true,
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'Informe o valor';
+              }
+              final valor = double.tryParse(v.replaceAll(',', '.'));
+              if (valor == null || valor < 0) {
+                return 'Valor inválido';
+              }
+              return null;
+            },
+          ),
+          TextFormField(
+            controller: _observacaoController,
+            decoration: const InputDecoration(
+              labelText: 'Observação (opcional)',
+              isDense: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: _enviando
+                ? null
+                : () async {
+                    if (!_formKey.currentState!.validate()) return;
+                    if (_fornecedorId == null || _licitacaoItemId == null) return;
+                    setState(() => _enviando = true);
+                    final provider =
+                        context.read<LicitacoesProvider>();
+                    final sucesso = await provider.registrarLance(
+                      widget.licitacao.id,
+                      RegistrarLanceDTO(
+                        licitacaoItemId: _licitacaoItemId!,
+                        fornecedorId: _fornecedorId!,
+                        valorUnitario:
+                            double.parse(_valorController.text.replaceAll(',', '.')),
+                        observacao: _observacaoController.text.trim(),
+                      ),
+                    );
+                    if (!context.mounted) return;
+                    setState(() => _enviando = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(sucesso
+                            ? 'Lance registrado.'
+                            : provider.errorMessage ?? 'Falha ao registrar o lance.'),
+                      ),
+                    );
+                    if (sucesso && context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+            icon: const Icon(Icons.send_outlined, size: 18),
+            label: Text(_enviando ? 'Enviando...' : 'Enviar lance'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

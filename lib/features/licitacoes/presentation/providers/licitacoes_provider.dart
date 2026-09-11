@@ -12,6 +12,7 @@ class LicitacoesProvider extends ChangeNotifier {
   String? _errorMessage;
   List<LicitacaoModel> _licitacoes = [];
   final Map<String, PlanejamentoLicitacaoModel> _planejamentos = {};
+  final Map<String, List<LanceModel>> _lancesCache = {};
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -19,6 +20,8 @@ class LicitacoesProvider extends ChangeNotifier {
 
   PlanejamentoLicitacaoModel? planejamento(String licitacaoId) =>
       _planejamentos[licitacaoId];
+
+  List<LanceModel>? lances(String licitacaoId) => _lancesCache[licitacaoId];
 
   List<LicitacaoModel> get planejamentosPendentes => _licitacoes
       .where((l) =>
@@ -124,6 +127,65 @@ class LicitacoesProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  // ============================ DISPUTA (R29) ============================
+
+  Future<bool> abrirDisputa(String id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final licitacao = await _repository.abrirDisputa(id);
+      _afetarLicitacao(licitacao);
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao abrir a disputa: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> carregarLances(String id) async {
+    try {
+      _lancesCache[id] = await _repository.listarLances(id);
+      _errorMessage = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao carregar os lances: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registrarLance(String id, RegistrarLanceDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final licitacao = await _repository.registrarLance(id, dto);
+      _afetarLicitacao(licitacao);
+      await carregarLances(id);
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao registrar o lance: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void _afetarLicitacao(LicitacaoModel licitacao) {
+    final index = _licitacoes.indexWhere((l) => l.id == licitacao.id);
+    if (index >= 0) {
+      _licitacoes[index] = licitacao;
+    } else {
+      _licitacoes.add(licitacao);
+    }
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<bool> adjudicarLicitacao(String id) async {

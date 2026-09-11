@@ -97,6 +97,54 @@ class LicitacaoPropostaModel {
   }
 }
 
+class LanceModel {
+  final String id;
+  final String licitacaoItemId;
+  final String itemDescricao;
+  final String fornecedorId;
+  final String fornecedorNome;
+  final double valorUnitario;
+  final double? valorEstimadoUnitario;
+  final double? economia;
+  final String? observacao;
+  final String? criadoEm;
+  final String? atualizadoEm;
+
+  LanceModel({
+    this.id = '',
+    this.licitacaoItemId = '',
+    this.itemDescricao = '',
+    this.fornecedorId = '',
+    this.fornecedorNome = '',
+    this.valorUnitario = 0,
+    this.valorEstimadoUnitario,
+    this.economia,
+    this.observacao,
+    this.criadoEm,
+    this.atualizadoEm,
+  });
+
+  factory LanceModel.fromJson(Map<String, dynamic> json) {
+    return LanceModel(
+      id: json['id']?.toString() ?? '',
+      licitacaoItemId: json['licitacaoItemId']?.toString() ?? '',
+      itemDescricao: json['itemDescricao']?.toString() ?? '',
+      fornecedorId: json['fornecedorId']?.toString() ?? '',
+      fornecedorNome: json['fornecedorNome']?.toString() ?? '',
+      valorUnitario: _toDoubleLicit(json['valorUnitario']),
+      valorEstimadoUnitario: json['valorEstimadoUnitario'] != null
+          ? _toDoubleLicit(json['valorEstimadoUnitario'])
+          : null,
+      economia: json['economia'] != null ? _toDoubleLicit(json['economia']) : null,
+      observacao: json['observacao']?.toString(),
+      criadoEm: json['criadoEm']?.toString(),
+      atualizadoEm: json['atualizadoEm']?.toString(),
+    );
+  }
+
+  String get atualizadoEmFormatado => _formatDateLicit(atualizadoEm);
+}
+
 class LicitacaoModel {
   final String id;
   final String tenantId;
@@ -117,6 +165,7 @@ class LicitacaoModel {
   final List<LicitacaoItemModel> itens;
   final List<LicitacaoParticipanteModel> participantes;
   final List<LicitacaoPropostaModel> propostas;
+  final List<LanceModel> lances;
 
   LicitacaoModel({
     this.id = '',
@@ -138,12 +187,14 @@ class LicitacaoModel {
     this.itens = const [],
     this.participantes = const [],
     this.propostas = const [],
+    this.lances = const [],
   });
 
   factory LicitacaoModel.fromJson(Map<String, dynamic> json) {
     final itensRaw = json['itens'];
     final participantesRaw = json['participantes'];
     final propostasRaw = json['propostas'];
+    final lancesRaw = json['lances'];
     return LicitacaoModel(
       id: json['id']?.toString() ?? '',
       tenantId: json['tenantId']?.toString() ?? '',
@@ -170,6 +221,9 @@ class LicitacaoModel {
       propostas: propostasRaw is List
           ? propostasRaw.map((e) => LicitacaoPropostaModel.fromJson(e)).toList()
           : const [],
+      lances: lancesRaw is List
+          ? lancesRaw.map((e) => LanceModel.fromJson(e)).toList()
+          : const [],
     );
   }
 
@@ -182,9 +236,32 @@ class LicitacaoModel {
 
   bool get emElaboracao => status == 'EM_ELABORACAO';
   bool get emDisputa => status == 'PUBLICADA' || status == 'ABERTA';
+  bool get emAberta => status == 'ABERTA';
+  bool get podeAbrirDisputa => status == 'PUBLICADA';
   bool get adjudicada => status == 'ADJUDICADA';
   bool get homologada => status == 'HOMOLOGADA';
   bool get cancelada => status == 'CANCELADA';
+
+  int get totalLances => lances.length;
+
+  double get economiaTotal =>
+      lances.fold(0.0, (acumulado, lance) => acumulado + (lance.economia ?? 0.0));
+
+  Map<String, List<LanceModel>> get lancesPorItem {
+    final porItem = <String, List<LanceModel>>{};
+    for (final l in lances) {
+      porItem.putIfAbsent(l.licitacaoItemId, () => []).add(l);
+    }
+    for (final lista in porItem.values) {
+      lista.sort((a, b) {
+        if (tipoJulgamento == 'MAIOR_LANCE') {
+          return b.valorUnitario.compareTo(a.valorUnitario);
+        }
+        return a.valorUnitario.compareTo(b.valorUnitario);
+      });
+    }
+    return porItem;
+  }
 
   bool get pncpPublicado => pncpStatus == 'PUBLICADO';
   bool get pncpFalhou => pncpStatus == 'FALHA';
@@ -275,6 +352,27 @@ class RegistrarPropostasLicitacaoDTO {
   Map<String, dynamic> toJson() => {
         'fornecedorId': fornecedorId,
         'itens': itens.map((e) => e.toJson()).toList(),
+      };
+}
+
+class RegistrarLanceDTO {
+  final String licitacaoItemId;
+  final String fornecedorId;
+  final double valorUnitario;
+  final String? observacao;
+
+  RegistrarLanceDTO({
+    required this.licitacaoItemId,
+    required this.fornecedorId,
+    required this.valorUnitario,
+    this.observacao,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'licitacaoItemId': licitacaoItemId,
+        'fornecedorId': fornecedorId,
+        'valorUnitario': valorUnitario,
+        if (observacao != null && observacao!.isNotEmpty) 'observacao': observacao,
       };
 }
 
