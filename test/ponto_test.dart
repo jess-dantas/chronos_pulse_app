@@ -377,5 +377,56 @@ void main() {
 
       expect(historico.length, equals(1));
     });
+
+    test('Modo offline preserva a sequência de batidas (não volta à primeira batida)', () async {
+      final agora = DateTime.now();
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'r1',
+        dataHoraDispositivo: agora.toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: true,
+      ));
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'r2',
+        dataHoraDispositivo: agora.toUtc().add(const Duration(minutes: 5)),
+        tipoRegistro: 'INTERVALO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h2',
+        sincronizadoOffline: true,
+      ));
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'r3',
+        dataHoraDispositivo: agora.toUtc().add(const Duration(minutes: 10)),
+        tipoRegistro: 'RETORNO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h3',
+        sincronizadoOffline: true,
+      ));
+
+      remoteDataSource.online = false;
+      await provider.checarConexao();
+      expect(provider.isOnline, isFalse);
+
+      // Recarrega os dados com o servidor offline (equivalente a abrir a tela)
+      await provider.carregarDados();
+
+      expect(provider.historico.length, equals(3),
+          reason: 'Sequência local deve permanecer visível com o servidor offline');
+      final tipos = provider.historico.map((r) => r.tipoRegistro).toList();
+      expect(tipos, contains('ENTRADA'));
+      expect(tipos, contains('INTERVALO'));
+      expect(tipos, contains('RETORNO'));
+    });
   });
 }
