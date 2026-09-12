@@ -162,7 +162,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                           DropdownButton<int>(
                             value: mes,
                             underline: const SizedBox(),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                             items: List.generate(12, (index) {
                               return DropdownMenuItem(
                                 value: index + 1,
@@ -179,7 +179,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                           DropdownButton<int>(
                             value: ano,
                             underline: const SizedBox(),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
                             items: [2024, 2025, 2026, 2027].map((a) {
                               return DropdownMenuItem(
                                 value: a,
