@@ -15,6 +15,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
+import 'features/auth/data/repositories/lead_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/colaborador/data/datasources/colaborador_remote_datasource.dart';
 import 'features/colaborador/data/repositories/colaborador_repository.dart';
@@ -82,6 +83,8 @@ void main() async {
     remoteDataSource: authRemoteDataSource,
     dioClient: dioClient,
   );
+
+  final leadRepository = LeadRepository(dioClient);
 
   final colaboradorRemoteDataSource = ColaboradorRemoteDataSource(dioClient);
   final colaboradorRepository =
@@ -186,6 +189,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
           ChangeNotifierProvider(create: (_) => PortalPublicoProvider(portalPublicoRepository)),
           ChangeNotifierProvider.value(value: privacidadeProvider),
+          Provider<LeadRepository>.value(value: leadRepository),
         ],
         child: ChronosPulseApp(authProvider: authProvider),
       ),

@@ -106,115 +106,128 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
   }
 
   Future<void> _baterPonto(PontoProvider pontoProvider) async {
-    final authProvider = context.read<AuthProvider>();
-    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
-
     setState(() => _isLoading = true);
 
     try {
-      // 1. Validação Biométrica (ou bypass em Web) — com timeout para nunca travar
-      final autenticado = await _hardwareService
-          .autenticarBiometria()
-          .timeout(const Duration(seconds: 8));
-      if (!autenticado) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Autenticação biométrica cancelada.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      // 2. Captura de GPS (com fallback seguro em caso de indisponibilidade)
-      double latitude = -23.550520;
-      double longitude = -46.633308;
-      double precisao = 5.0;
-
-      try {
-        final posicao = await _hardwareService
-            .obterLocalizacaoAtual()
-            .timeout(const Duration(seconds: 5));
-        if (posicao != null) {
-          latitude = posicao.latitude;
-          longitude = posicao.longitude;
-          precisao = posicao.accuracy;
-        }
-      } catch (gpsError) {
-        debugPrint('Aviso GPS: $gpsError (utilizando coordenadas padrão)');
-      }
-
-      // 3. Captura da Foto (apenas no Mobile nativo)
-      final String caminhoFotoPadrao =
-          "https://s3.amazonaws.com/chronos-pulse/fotos/ponto_padrao.jpg";
-      String caminhoFoto = caminhoFotoPadrao;
-
-      if (!kIsWeb) {
-        if (!mounted) return;
-        final fotoCapturada = await Navigator.push<String>(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                CameraScreen(caminhoSemFoto: caminhoFotoPadrao),
-          ),
-        );
-
-        if (fotoCapturada == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Captura de foto cancelada.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return;
-        }
-        caminhoFoto = fotoCapturada;
-      }
-
-      // 4. Montagem do modelo de ponto
-      final novoRegistro = RegistroPontoModel(
-        idLocal: const Uuid().v4(),
-        colaboradorId: authProvider.usuario?.colaboradorId,
-        dataHoraDispositivo: DateTime.now().toUtc(),
-        tipoRegistro: proximoTipo,
-        latitude: latitude,
-        longitude: longitude,
-        precisaoGps: precisao,
-        fotoUrl: caminhoFoto,
-        hashLocal: 'local_${const Uuid().v4().substring(0, 8)}',
-        sincronizadoOffline: false,
+      await _executarRegistro(pontoProvider).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException(
+          'A operação demorou demais. Tente novamente.',
+        ),
       );
-
-      // 5. Salva offline e tenta sincronizar online via PontoProvider
-      final foiSincronizado = await pontoProvider.registrarPonto(novoRegistro);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              foiSincronizado
-                  ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
-                  : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.',
-            ),
-            backgroundColor: foiSincronizado ? Colors.green : Colors.orange,
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao bater ponto: ${e.toString()}'),
+            content: Text(
+              e is TimeoutException
+                  ? (e.message?.toString() ?? 'A operação demorou demais.')
+                  : 'Erro ao bater ponto: ${e.toString()}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _executarRegistro(PontoProvider pontoProvider) async {
+    final authProvider = context.read<AuthProvider>();
+    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
+
+    // 1. Validação Biométrica (ou bypass em Web) — com timeout para nunca travar
+    final autenticado = await _hardwareService
+        .autenticarBiometria()
+        .timeout(const Duration(seconds: 8));
+    if (!autenticado) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Autenticação biométrica cancelada.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    // 2. Captura de GPS (com fallback seguro em caso de indisponibilidade)
+    double latitude = -23.550520;
+    double longitude = -46.633308;
+    double precisao = 5.0;
+
+    try {
+      final posicao = await _hardwareService
+          .obterLocalizacaoAtual()
+          .timeout(const Duration(seconds: 5));
+      if (posicao != null) {
+        latitude = posicao.latitude;
+        longitude = posicao.longitude;
+        precisao = posicao.accuracy;
+      }
+    } catch (gpsError) {
+      debugPrint('Aviso GPS: $gpsError (utilizando coordenadas padrão)');
+    }
+
+    // 3. Captura da Foto (apenas no Mobile nativo)
+    final String caminhoFotoPadrao =
+        "https://s3.amazonaws.com/chronos-pulse/fotos/ponto_padrao.jpg";
+    String caminhoFoto = caminhoFotoPadrao;
+
+    if (!kIsWeb) {
+      if (!mounted) return;
+      final fotoCapturada = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              CameraScreen(caminhoSemFoto: caminhoFotoPadrao),
+        ),
+      );
+
+      if (fotoCapturada == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Captura de foto cancelada.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+      caminhoFoto = fotoCapturada;
+    }
+
+    // 4. Montagem do modelo de ponto
+    final novoRegistro = RegistroPontoModel(
+      idLocal: const Uuid().v4(),
+      colaboradorId: authProvider.usuario?.colaboradorId,
+      dataHoraDispositivo: DateTime.now().toUtc(),
+      tipoRegistro: proximoTipo,
+      latitude: latitude,
+      longitude: longitude,
+      precisaoGps: precisao,
+      fotoUrl: caminhoFoto,
+      hashLocal: 'local_${const Uuid().v4().substring(0, 8)}',
+      sincronizadoOffline: false,
+    );
+
+    // 5. Salva offline e tenta sincronizar online via PontoProvider
+    final foiSincronizado = await pontoProvider.registrarPonto(novoRegistro);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            foiSincronizado
+                ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
+                : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.',
+          ),
+          backgroundColor: foiSincronizado ? Colors.green : Colors.orange,
+        ),
+      );
     }
   }
 

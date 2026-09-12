@@ -7,7 +7,8 @@ Constant base: `lib/core/constants/api_constants.dart`. Todas as rotas são sob 
 | Método | Rota | Uso |
 |---|---|---|
 | `POST` | `/auth/login` | Login CPF/senha |
-| `POST` | `/auth/cadastrar-empresa` | Cadastro público de empresa |
+| `POST` | `/auth/cadastrar-empresa` | (legado) Cadastro público de empresa |
+| `POST` | `/leads/empresas` | Wizard 3 etapas — **lead comercial** (sem conta/CPF/senha) |
 | `POST` | `/auth/refresh` | Renovar access token |
 | `GET` | `/auth/ping` | Health-check |
 | `GET` | `/auth/me` | Perfil do usuário logado |

@@ -48,6 +48,7 @@ class ApiConstants {
   static const String pingEndpoint = '/auth/ping';
   static const String loginEndpoint = '/auth/login';
   static const String cadastrarEmpresaEndpoint = '/auth/cadastrar-empresa';
+  static const String leadsEmpresasEndpoint = '/leads/empresas';
   static const String refreshTokenEndpoint = '/auth/refresh';
   static const String meEndpoint = '/auth/me';
   static const String meFotoEndpoint = '/auth/me/foto';
