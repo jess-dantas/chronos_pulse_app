@@ -10,6 +10,7 @@ class UsuarioModel {
   final String? cpf;
   final String role;
   final String? tenantId;
+  final String? tenantSlug;
   final String? colaboradorId;
   final String? cpcId;
   final bool acessoEstoque;
@@ -28,6 +29,7 @@ class UsuarioModel {
     this.cpf,
     required this.role,
     this.tenantId,
+    this.tenantSlug,
     this.colaboradorId,
     this.cpcId,
     this.acessoEstoque = false,
@@ -86,6 +88,7 @@ class UsuarioModel {
       cpf: cpf ?? this.cpf,
       role: role,
       tenantId: tenantId,
+      tenantSlug: tenantSlug,
       colaboradorId: colaboradorId,
       cpcId: cpcId,
       acessoEstoque: acessoEstoque,
@@ -112,6 +115,7 @@ class UsuarioModel {
       cpf: json['cpf'] ?? json['sub'],
       role: json['role'] ?? '',
       tenantId: json['tenantId'],
+      tenantSlug: json['tenantSlug'],
       colaboradorId: json['colaboradorId'] ?? json['cpcId'],
       cpcId: json['cpcId'],
       acessoEstoque: json['acessoEstoque'] ?? false,
@@ -133,6 +137,7 @@ class UsuarioModel {
       'cpf': cpf,
       'role': role,
       'tenantId': tenantId,
+      'tenantSlug': tenantSlug,
       'colaboradorId': colaboradorId,
       'cpcId': cpcId,
       'acessoEstoque': acessoEstoque,

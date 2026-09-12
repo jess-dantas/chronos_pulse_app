@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/transparencia_models.dart';
 import '../providers/transparencia_provider.dart';
+import 'portal_publico_screen.dart';
 
 final NumberFormat _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
@@ -21,7 +23,7 @@ class _TransparenciaHomeScreenState extends State<TransparenciaHomeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TransparenciaProvider>().carregarTudo();
     });
@@ -64,6 +66,10 @@ class _TransparenciaHomeScreenState extends State<TransparenciaHomeScreen>
               icon: Icon(Icons.article_outlined),
               text: 'Publicações (LC 131)',
             ),
+            Tab(
+              icon: Icon(Icons.public),
+              text: 'Portal Público',
+            ),
           ],
         ),
       ),
@@ -80,6 +86,7 @@ class _TransparenciaHomeScreenState extends State<TransparenciaHomeScreen>
           _IndicadoresTab(),
           _DespesasTab(),
           _PublicacoesTab(),
+          _PortalPublicoTab(),
         ],
       ),
     );
@@ -375,6 +382,43 @@ class _PublicacoesTab extends StatelessWidget {
               ],
             ),
     );
+  }
+}
+
+class _PortalPublicoTab extends StatelessWidget {
+  const _PortalPublicoTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final slug = auth.usuario?.tenantSlug;
+
+    if (slug == null || slug.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.public, size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              const Text(
+                'Portal Público indisponível para esta sessão.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Faça login novamente para atualizar o identificador do órgão.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[700], fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return PortalPublicoScreen(slug: slug);
   }
 }
 

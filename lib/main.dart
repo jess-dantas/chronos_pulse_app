@@ -56,8 +56,11 @@ import 'features/protocolo/presentation/providers/protocolo_provider.dart';
 import 'features/privacidade/data/privacidade_datasource.dart';
 import 'features/privacidade/presentation/providers/privacidade_provider.dart';
 import 'features/transparencia/data/datasources/transparencia_remote_datasource.dart';
+import 'features/transparencia/data/datasources/portal_publico_remote_datasource.dart';
 import 'features/transparencia/data/repositories/transparencia_repository.dart';
+import 'features/transparencia/data/repositories/portal_publico_repository.dart';
 import 'features/transparencia/presentation/providers/transparencia_provider.dart';
+import 'features/transparencia/presentation/providers/portal_publico_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -135,6 +138,10 @@ void main() async {
   final transparenciaRepository =
       TransparenciaRepository(remoteDataSource: transparenciaRemoteDataSource);
 
+  final portalPublicoRemoteDataSource = PortalPublicoRemoteDataSource(dioClient);
+  final portalPublicoRepository =
+      PortalPublicoRepository(remoteDataSource: portalPublicoRemoteDataSource);
+
   final authProvider = AuthProvider(authRepository, telemetria: telemetryService);
 
   dioClient.onRefreshToken = () async {
@@ -177,6 +184,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
           ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
           ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
+          ChangeNotifierProvider(create: (_) => PortalPublicoProvider(portalPublicoRepository)),
           ChangeNotifierProvider.value(value: privacidadeProvider),
         ],
         child: ChronosPulseApp(authProvider: authProvider),
