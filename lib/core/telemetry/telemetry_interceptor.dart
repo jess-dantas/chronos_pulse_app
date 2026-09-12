@@ -39,6 +39,8 @@ class TelemetryInterceptor extends Interceptor {
     if (options.method == 'OPTIONS') return true;
     // Evita recursão: a própria ingestão de telemetria não gera evento.
     if (options.path.contains('/telemetria/')) return true;
+    // Heartbeat (8s→30s) é ruído: não precisa de observabilidade por chamada.
+    if (options.path.contains('/auth/ping')) return true;
     return false;
   }
 

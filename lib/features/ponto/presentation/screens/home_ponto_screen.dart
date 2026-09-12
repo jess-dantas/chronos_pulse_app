@@ -112,8 +112,10 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Validação Biométrica (ou bypass em Web)
-      final autenticado = await _hardwareService.autenticarBiometria();
+      // 1. Validação Biométrica (ou bypass em Web) — com timeout para nunca travar
+      final autenticado = await _hardwareService
+          .autenticarBiometria()
+          .timeout(const Duration(seconds: 8));
       if (!autenticado) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -132,7 +134,9 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
       double precisao = 5.0;
 
       try {
-        final posicao = await _hardwareService.obterLocalizacaoAtual();
+        final posicao = await _hardwareService
+            .obterLocalizacaoAtual()
+            .timeout(const Duration(seconds: 5));
         if (posicao != null) {
           latitude = posicao.latitude;
           longitude = posicao.longitude;
@@ -143,14 +147,18 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
       }
 
       // 3. Captura da Foto (apenas no Mobile nativo)
-      String caminhoFoto =
+      final String caminhoFotoPadrao =
           "https://s3.amazonaws.com/chronos-pulse/fotos/ponto_padrao.jpg";
+      String caminhoFoto = caminhoFotoPadrao;
 
       if (!kIsWeb) {
         if (!mounted) return;
         final fotoCapturada = await Navigator.push<String>(
           context,
-          MaterialPageRoute(builder: (context) => const CameraScreen()),
+          MaterialPageRoute(
+            builder: (context) =>
+                CameraScreen(caminhoSemFoto: caminhoFotoPadrao),
+          ),
         );
 
         if (fotoCapturada == null) {

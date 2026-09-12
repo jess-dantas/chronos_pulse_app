@@ -50,7 +50,7 @@ class PontoProvider extends ChangeNotifier {
     carregarEspelho();
   }
 
-  void iniciarMonitoramento({Duration interval = const Duration(seconds: 8)}) {
+  void iniciarMonitoramento({Duration interval = const Duration(seconds: 30)}) {
     _heartbeatTimer?.cancel();
     checarConexao(autoSync: true);
     _heartbeatTimer = Timer.periodic(interval, (_) => checarConexao(autoSync: true));
