@@ -6,4 +6,4 @@ O roadmap do produto é versionado no repositório do **backend** (fonte canôni
 
 Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R27` a `R31` concluídos; `R31.1` (pós-entrega) com batida de ponto blindada (watchdog 30s), voltar nas telas públicas e **cadastro em 3 etapas virou lead** (Sem conta/CPF/senha → `POST /leads/empresas`).
 
-**Cobertura de testes do app: 180** (`flutter test`), analyze limpo.
+**Cobertura de testes do app: 186** (`flutter test`), analyze limpo.
