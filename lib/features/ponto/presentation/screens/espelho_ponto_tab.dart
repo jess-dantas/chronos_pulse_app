@@ -403,7 +403,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                                   color: cor.withValues(alpha: 0.12),
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: cell.ajuste ? Colors.deepPurple : cor.withValues(alpha: 0.4),
+                                                    color: cor.withValues(alpha: cell.ajuste ? 0.8 : 0.4),
                                                     width: cell.ajuste ? 1.5 : 1,
                                                   ),
                                                 ),
@@ -418,8 +418,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                                       texto,
                                                       style: TextStyle(
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: cell.ajuste ? Colors.deepPurple : cor,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: cor,
                                                       ),
                                                     ),
                                                   ],

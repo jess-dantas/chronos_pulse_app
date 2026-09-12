@@ -171,6 +171,11 @@ class PdfEspelhoService {
                 0: pw.Alignment.centerLeft,
                 6: pw.Alignment.centerLeft,
               },
+              // Colunas de horário permanecem com largura intrínseca (nunca
+              // encolhem nem quebram linha, mesmo com "HH:mm (HH:mm)*"). A
+              // coluna de Ocorrências/Justificativas absorve o espaço restante
+              // e é a única que ajusta conforme o tamanho do texto.
+              columnWidths: {6: const pw.FlexColumnWidth(1)},
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
               rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
             ),
