@@ -82,6 +82,22 @@ Payload de cadastro: `tombamento`, `descricao`*, `categoria`, `estado`*, `locali
 - `POST /protocolo` — `numeroProtocolo`*, `tipo`*, `assunto`*, `descricao`, `remetente`, `destinatario`, `responsavel`, `observacoes`.
 - `PATCH /protocolo/{id}/status` — `status`* (`RECEBIDO` | `TRIAGEM` | `EM_TRAMITACAO` | `ARQUIVADO` | `CANCELADO`), `responsavel`, `observacoes`.
 
+## Licitações & Execução Contratual
+
+| Método | Rota | Uso |
+|---|---|---|
+| `GET` | `/licitacoes` | Home de licitações (lista) |
+| `GET` | `/licitacoes/{id}/planejamento` | Detalhe / planejamento |
+| `POST` | `/licitacoes/{id}/contrato` | Formalizar contrato |
+| `GET` | `/contratos` | `ContratoExecucaoScreen` — lista de contratos em execução |
+| `GET` | `/contratos/{id}` | Detalhe da execução (resumo/aditivos/fiscalização/medições/sanções) |
+| `POST` | `/contratos/{id}/aditivos` | Registrar termo aditivo |
+| `POST` | `/contratos/{id}/apontamentos` | Registrar apontamento |
+| `POST` | `/contratos/{id}/apontamentos/{apontamentoId}/resolver` | Resolver apontamento |
+| `POST` | `/contratos/{id}/medicoes` | Registrar medição |
+| `POST` | `/contratos/{id}/sancoes` | Aplicar sanção |
+| `POST` | `/contratos/{id}/rescindir` | Rescindir contrato |
+
 ## Formato de Listagens
 
 As listagens retornam `Page` (`{ content: [...], totalElements, totalPages, ... }`). Os datasources leem `data['content']` ou `data` (lista direta, caso o endpoint devolva lista sem paginação — ex.: `/patrimonio/ativos`).

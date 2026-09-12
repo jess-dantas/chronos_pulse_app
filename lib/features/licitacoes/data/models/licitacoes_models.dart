@@ -158,6 +158,9 @@ class LicitacaoModel {
   final String status;
   final bool pedidoGerado;
   final bool contratoGerado;
+  final String? contratoId;
+  final String? contratoNumero;
+  final String? contratoStatus;
   final String? criadoEm;
   final String pncpStatus;
   final String? pncpProtocolo;
@@ -181,6 +184,9 @@ class LicitacaoModel {
     this.status = 'EM_ELABORACAO',
     this.pedidoGerado = false,
     this.contratoGerado = false,
+    this.contratoId,
+    this.contratoNumero,
+    this.contratoStatus,
     this.criadoEm,
     this.pncpStatus = 'NAO_PUBLICADO',
     this.pncpProtocolo,
@@ -210,6 +216,9 @@ class LicitacaoModel {
       status: json['status']?.toString() ?? 'EM_ELABORACAO',
       pedidoGerado: json['pedidoGerado'] == true,
       contratoGerado: json['contratoGerado'] == true,
+      contratoId: json['contratoId']?.toString(),
+      contratoNumero: json['contratoNumero']?.toString(),
+      contratoStatus: json['contratoStatus']?.toString(),
       criadoEm: json['criadoEm']?.toString(),
       pncpStatus: json['pncpStatus']?.toString() ?? 'NAO_PUBLICADO',
       pncpProtocolo: json['pncpProtocolo']?.toString(),
