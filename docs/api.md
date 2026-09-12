@@ -98,6 +98,26 @@ Payload de cadastro: `tombamento`, `descricao`*, `categoria`, `estado`*, `locali
 | `POST` | `/contratos/{id}/sancoes` | Aplicar sanção |
 | `POST` | `/contratos/{id}/rescindir` | Rescindir contrato |
 
+## Portal da Transparência (LC 131/2009) + Portal Público (R31)
+
+| Método | Rota | Uso |
+|---|---|---|
+| `GET` | `/transparencia/resumo` | `TransparenciaHomeScreen` — indicadores do BI |
+| `GET` | `/transparencia/despesas-mensais?ano=` | Despesas mensais |
+| `GET` | `/transparencia/publicacoes` | Lista de publicações (rascunho/divulgadas) |
+| `POST` | `/transparencia/publicacoes` | Cria publicação |
+| `POST` | `/transparencia/publicacoes/{id}/publicar` | Divulga publicação |
+| `DELETE` | `/transparencia/publicacoes/{id}` | Remove publicação em elaboração |
+| `GET` | `/publico/transparencia/{slug}` | **Público** — resumo do órgão na aba "Portal Público" |
+| `GET` | `/publico/transparencia/{slug}/licitacoes` | **Público** — licitações com situação pública |
+| `GET` | `/publico/transparencia/{slug}/licitacoes/{id}` | **Público** — detalhe com itens |
+| `GET` | `/publico/transparencia/{slug}/contratos` | **Público** — contratos |
+| `GET` | `/publico/transparencia/{slug}/contratos/{id}` | **Público** — detalhe com aditivos e sanções |
+| `GET` | `/publico/transparencia/{slug}/despesas-mensais?ano=` | **Público** — despesas do ano |
+| `GET` | `/publico/transparencia/{slug}/publicacoes` | **Público** — publicações divulgadas |
+
+O `slug` vem do login (`tenantSlug` no `UsuarioModel`) e identifica o órgão nas URLs públicas. Rotas públicas não exigem token (o servidor as libera em `/api/v1/publico/**`).
+
 ## Formato de Listagens
 
 As listagens retornam `Page` (`{ content: [...], totalElements, totalPages, ... }`). Os datasources leem `data['content']` ou `data` (lista direta, caso o endpoint devolva lista sem paginação — ex.: `/patrimonio/ativos`).

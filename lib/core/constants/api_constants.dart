@@ -166,6 +166,18 @@ class ApiConstants {
   static String transparenciaPublicacaoPublicarEndpoint(String id) => '/transparencia/publicacoes/$id/publicar';
   static String transparenciaPublicacaoDeleteEndpoint(String id) => '/transparencia/publicacoes/$id';
 
+  // Portal Público da Transparência (R31) — sem autenticação
+  static String portalTransparenciaEndpoint(String slug) => '/publico/transparencia/$slug';
+  static String portalLicitacoesEndpoint(String slug) => '/publico/transparencia/$slug/licitacoes';
+  static String portalLicitacaoDetalheEndpoint(String slug, String id) =>
+      '/publico/transparencia/$slug/licitacoes/$id';
+  static String portalContratosEndpoint(String slug) => '/publico/transparencia/$slug/contratos';
+  static String portalContratoDetalheEndpoint(String slug, String id) =>
+      '/publico/transparencia/$slug/contratos/$id';
+  static String portalDespesasMensaisEndpoint(String slug, int ano) =>
+      '/publico/transparencia/$slug/despesas-mensais?ano=$ano';
+  static String portalPublicacoesEndpoint(String slug) => '/publico/transparencia/$slug/publicacoes';
+
   // Módulo Telemetria & Observabilidade (R27)
   static const String telemetriaEventosEndpoint = '/telemetria/eventos';
 
