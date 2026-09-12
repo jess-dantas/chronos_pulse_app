@@ -103,6 +103,17 @@ class ApiConstants {
   static String licitacaoEditalEndpoint(String id) => '/licitacoes/$id/planejamento/edital';
   static String licitacaoEditalPublicarEndpoint(String id) => '/licitacoes/$id/planejamento/edital/publicar';
 
+  // Gestão da Execução Contratual (R30)
+  static const String contratosEndpoint = '/contratos';
+  static String contratoDetalheEndpoint(String id) => '/contratos/$id';
+  static String contratoAditivosEndpoint(String id) => '/contratos/$id/aditivos';
+  static String contratoApontamentosEndpoint(String id) => '/contratos/$id/apontamentos';
+  static String contratoApontamentoResolverEndpoint(String id, String apontamentoId) =>
+      '/contratos/$id/apontamentos/$apontamentoId/resolver';
+  static String contratoMedicoesEndpoint(String id) => '/contratos/$id/medicoes';
+  static String contratoSancoesEndpoint(String id) => '/contratos/$id/sancoes';
+  static String contratoRescindirEndpoint(String id) => '/contratos/$id/rescindir';
+
   // Módulo Admin (Gestão de Contratos e Métricas)
   static const String adminDashboardEndpoint = '/admin/dashboard';
   static const String adminContratosEndpoint = '/admin/contratos';

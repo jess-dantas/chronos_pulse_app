@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../data/models/execucao_contrato_models.dart';
 import '../../data/models/licitacoes_models.dart';
 import '../../data/models/planejamento_licitacao_models.dart';
 import '../../data/repositories/licitacoes_repository.dart';
@@ -13,10 +14,19 @@ class LicitacoesProvider extends ChangeNotifier {
   List<LicitacaoModel> _licitacoes = [];
   final Map<String, PlanejamentoLicitacaoModel> _planejamentos = {};
   final Map<String, List<LanceModel>> _lancesCache = {};
+  List<ContratoExecucaoModel> _contratosExecucao = [];
+  final Map<String, ContratoExecucaoModel> _execucoes = {};
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<LicitacaoModel> get licitacoes => _licitacoes;
+  List<ContratoExecucaoModel> get contratosExecucao => _contratosExecucao;
+
+  ContratoExecucaoModel? execucao(String contratoId) => _execucoes[contratoId];
+
+  int get contratosEmAtencao => _contratosExecucao
+      .where((c) => c.situacao == 'EXPIRANDO' || c.situacao == 'VENCIDO')
+      .length;
 
   PlanejamentoLicitacaoModel? planejamento(String licitacaoId) =>
       _planejamentos[licitacaoId];
@@ -326,6 +336,138 @@ class LicitacoesProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = 'Erro ao $nomeAcao: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ============================ EXECUÇÃO CONTRATUAL (R30) ============================
+
+  Future<bool> carregarContratos() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _contratosExecucao = await _repository.getContratos();
+      for (final c in _contratosExecucao) {
+        _execucoes[c.id] = c;
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao carregar contratos: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> carregarExecucao(String contratoId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final executado = await _repository.getContrato(contratoId);
+      _execucoes[contratoId] = executado;
+      final index = _contratosExecucao.indexWhere((c) => c.id == contratoId);
+      if (index >= 0) {
+        _contratosExecucao[index] = executado;
+      }
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao carregar a execução do contrato: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> registrarAditivo(String id, AdicionarAditivoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.registrarAditivo(id, dto);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao registrar o aditivo: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registrarApontamento(String id, AdicionarApontamentoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.registrarApontamento(id, dto);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao registrar o apontamento: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resolverApontamento(String id, String apontamentoId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.resolverApontamento(id, apontamentoId);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao resolver o apontamento: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registrarMedicao(String id, RegistrarMedicaoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.registrarMedicao(id, dto);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao registrar a medição: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> registrarSancao(String id, AdicionarSancaoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.registrarSancao(id, dto);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao registrar a sanção: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> rescindirContrato(String id, RescindirContratoDTO dto) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repository.rescindirContrato(id, dto);
+      return await carregarExecucao(id);
+    } catch (e) {
+      _errorMessage = 'Erro ao rescindir o contrato: $e';
+      _isLoading = false;
       notifyListeners();
       return false;
     }
