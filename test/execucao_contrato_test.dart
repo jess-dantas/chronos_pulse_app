@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/features/licitacoes/data/datasources/licitacoes_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/licitacoes/data/models/execucao_contrato_models.dart';
-import 'package:chronos_pulse_app/features/licitacoes/data/models/licitacoes_models.dart';
 import 'package:chronos_pulse_app/features/licitacoes/data/repositories/licitacoes_repository.dart';
 import 'package:chronos_pulse_app/features/licitacoes/presentation/providers/licitacoes_provider.dart';
 import 'package:dio/dio.dart';
