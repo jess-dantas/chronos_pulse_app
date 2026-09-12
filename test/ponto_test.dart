@@ -6,6 +6,7 @@ import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_da
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
 import 'package:chronos_pulse_app/features/ponto/domain/constants/justificativas_ponto.dart';
+import 'package:chronos_pulse_app/features/ponto/domain/services/espelho_agrupador.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 
 class MockPontoLocalDataSource extends PontoLocalDataSource {
@@ -145,6 +146,30 @@ class LocalDataSourceIndisponivel extends PontoLocalDataSource {
   }
 }
 
+RegistroPontoModel batida({
+  required String id,
+  required String tipo,
+  required DateTime quando,
+  bool ajuste = false,
+  String? justificativa,
+  String? observacao,
+}) {
+  return RegistroPontoModel(
+    idLocal: id,
+    dataHoraDispositivo: quando,
+    tipoRegistro: tipo,
+    latitude: 0,
+    longitude: 0,
+    precisaoGps: 0,
+    fotoUrl: '',
+    hashLocal: '',
+    sincronizadoOffline: true,
+    ajusteManual: ajuste,
+    justificativa: justificativa,
+    observacao: observacao,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -259,20 +284,41 @@ void main() {
       expect(provider.isOnline, isTrue);
     });
 
-    test('Ajuste manual de ponto deve salvar justificativa e atualizar espelho', () async {
+    test('Ajuste manual é excluído da home, mas permanece no espelho', () async {
+      final agora = DateTime.now();
       final sucesso = await provider.ajustarPontoManual(
-        dataHora: DateTime(2026, 9, 3, 8, 0),
+        dataHora: agora,
         tipoRegistro: 'ENTRADA',
         justificativa: 'Esquecimento de marcação',
         observacao: 'Cheguei no horário correto',
       );
 
       expect(sucesso, isTrue);
-      expect(provider.historico.length, equals(1));
-      final reg = provider.historico.first;
-      expect(reg.ajusteManual, isTrue);
-      expect(reg.justificativa, equals('Esquecimento de marcação'));
-      expect(reg.observacao, equals('Cheguei no horário correto'));
+      expect(provider.historico, isEmpty,
+          reason: 'Ajuste manual não deve inflar a lista/sequência da home');
+
+      // Servidor já reflete o ajuste no espelho
+      remoteDataSource.espelhoRemoto = [
+        batida(
+          id: 'ajuste-echo',
+          tipo: 'ENTRADA',
+          quando: agora.toUtc(),
+          ajuste: true,
+          justificativa: 'Esquecimento de marcação',
+          observacao: 'Cheguei no horário correto',
+        ),
+      ];
+
+      final espelho = await repository.obterEspelhoPonto(
+        mes: agora.month,
+        ano: agora.year,
+      );
+      expect(espelho.where((r) => r.ajusteManual).length, equals(1));
+
+      // O histórico (home) desconta o ajuste mesmo quando ele vem do servidor
+      final historico = await repository.obterHistorico();
+
+      expect(historico, isEmpty);
     });
 
     test('Batida não trava quando o banco local está indisponível e sincroniza online', () async {
@@ -430,6 +476,101 @@ void main() {
       expect(tipos, contains('ENTRADA'));
       expect(tipos, contains('INTERVALO'));
       expect(tipos, contains('RETORNO'));
+    });
+  });
+
+  group('EspelhoAgrupador (sobreposição de ajustes)', () {
+    DateTime dia(int hora, int minuto) => DateTime(2026, 9, 12, hora, minuto);
+
+    test('Batida original sem ajuste mantém célula normal', () {
+      final celulas = EspelhoAgrupador.celulasDoDia([
+        batida(id: 'o1', tipo: 'INTERVALO', quando: dia(12, 0)),
+      ]);
+
+      expect(celulas.length, equals(1));
+      expect(celulas.first.ajuste, isFalse);
+      expect(celulas.first.incluiOriginal, isFalse);
+      expect(celulas.first.hora, equals('12:00'));
+      expect(celulas.first.horaOriginal, isNull);
+    });
+
+    test('Ajuste sobrepõe a batida original na mesma célula', () {
+      final celulas = EspelhoAgrupador.celulasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(
+          id: 'a1',
+          tipo: 'ENTRADA',
+          quando: dia(7, 55),
+          ajuste: true,
+          justificativa: 'Esquecimento de marcação',
+        ),
+      ]);
+
+      expect(celulas.length, equals(1),
+          reason: 'O ajuste não deve criar uma célula/registro extra');
+      final cell = celulas.first;
+      expect(cell.ajuste, isTrue);
+      expect(cell.incluiOriginal, isTrue);
+      expect(cell.hora, equals('07:55'));
+      expect(cell.horaOriginal, equals('08:00'));
+      expect(cell.justificativa, equals('Esquecimento de marcação'));
+    });
+
+    test('Ajuste sem original (marcação incluída) cria célula de ajuste', () {
+      final celulas = EspelhoAgrupador.celulasDoDia([
+        batida(id: 'a1', tipo: 'SAIDA', quando: dia(18, 0), ajuste: true),
+      ]);
+
+      expect(celulas.length, equals(1));
+      expect(celulas.first.ajuste, isTrue);
+      expect(celulas.first.incluiOriginal, isFalse);
+      expect(celulas.first.hora, equals('18:00'));
+      expect(celulas.first.horaOriginal, isNull);
+    });
+
+    test('colunasDoDia mapeia Entrada/Intervalo/Retorno/Saída e sobrepõe ajuste', () {
+      final colunas = EspelhoAgrupador.colunasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(id: 'o2', tipo: 'INTERVALO', quando: dia(12, 0)),
+        batida(id: 'o3', tipo: 'RETORNO', quando: dia(13, 0)),
+        batida(id: 'o4', tipo: 'SAIDA', quando: dia(18, 0)),
+        batida(
+          id: 'a1',
+          tipo: 'INTERVALO',
+          quando: dia(12, 10),
+          ajuste: true,
+          justificativa: 'Falha técnica',
+        ),
+      ]);
+
+      expect(colunas.length, equals(4));
+      expect(colunas[0]!.hora, equals('08:00'));
+      expect(colunas[0]!.ajuste, isFalse);
+
+      expect(colunas[1]!.hora, equals('12:10'));
+      expect(colunas[1]!.horaOriginal, equals('12:00'));
+      expect(colunas[1]!.justificativa, equals('Falha técnica'));
+
+      expect(colunas[2]!.hora, equals('13:00'));
+      expect(colunas[3]!.hora, equals('18:00'));
+    });
+
+    test('Ajuste com original ausente entra na primeira coluna livre', () {
+      final colunas = EspelhoAgrupador.colunasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(
+          id: 'a1',
+          tipo: 'RETORNO',
+          quando: dia(13, 5),
+          ajuste: true,
+        ),
+      ]);
+
+      expect(colunas[0]!.hora, equals('08:00'));
+      expect(colunas[2], isNull);
+      expect(colunas[1]!.ajuste, isTrue);
+      expect(colunas[1]!.hora, equals('13:05'));
+      expect(colunas[1]!.incluiOriginal, isFalse);
     });
   });
 

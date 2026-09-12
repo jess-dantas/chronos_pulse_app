@@ -9,5 +9,6 @@ Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R
 **Pós-R31.1 (offline-first web & mobile):**
 - SQLite (nativo) e **SharedPreferences/localStorage (Web)** garantem fila offline durável — igual funcional em Android/iOS/Chrome, sobrevive a F5 e troca de porta do dev server.
 - Sequência de batidas preservada offline; auto-sync 30s; chamadas remotas limitadas (4s/8s) para não travar com servidor indisponível.
+- Ajuste manual de ponto: **excluído da lista/sequência da home** (que mostra só batidas feitas pelo botão) e **sobreposto** na célula do espelho e no PDF — valor ajustado com o original entre parênteses; colunas nomeadas Entrada/Intervalo/Retorno/Saída.
 
-**Cobertura de testes do app: 191** (`flutter test`), analyze limpo.
+**Cobertura de testes do app: 196** (`flutter test`), analyze limpo.

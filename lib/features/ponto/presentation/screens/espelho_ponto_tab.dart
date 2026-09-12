@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../dialogs/ajuste_ponto_dialog.dart';
+import '../../domain/services/espelho_agrupador.dart';
 import '../providers/ponto_provider.dart';
 import '../services/pdf_espelho_service.dart';
 
@@ -385,38 +386,40 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                       : Wrap(
                                           spacing: 8,
                                           runSpacing: 6,
-                                          children: batidas.map((b) {
-                                            final hora = DateFormat('HH:mm').format(b.dataHoraDispositivo.toLocal());
-                                            final cor = _obterCorTipo(b.tipoRegistro);
-                                            final isAjuste = b.ajusteManual;
+                                          children: EspelhoAgrupador.celulasDoDia(batidas).map((cell) {
+                                            final cor = _obterCorTipo(cell.tipoRegistro);
+                                            final nome = _nomesTipos[cell.tipoRegistro] ?? cell.tipoRegistro;
+                                            final texto = cell.incluiOriginal && cell.horaOriginal != null
+                                                ? '$nome: ${cell.hora} (${cell.horaOriginal})'
+                                                : '$nome: ${cell.hora}';
 
                                             return Tooltip(
-                                              message: isAjuste
-                                                  ? 'Ajuste Manual: ${b.justificativa ?? "Sem justificativa"}${b.observacao != null ? " (${b.observacao})" : ""}'
-                                                  : '${_nomesTipos[b.tipoRegistro] ?? b.tipoRegistro} às $hora',
+                                              message: cell.ajuste
+                                                  ? 'Ajuste Manual: ${cell.justificativa ?? "Sem justificativa"}${cell.observacao != null ? " (${cell.observacao})" : ""}${cell.horaOriginal != null ? " | Original: ${cell.horaOriginal}" : ""}'
+                                                  : '$nome às ${cell.hora}',
                                               child: Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                 decoration: BoxDecoration(
                                                   color: cor.withValues(alpha: 0.12),
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: isAjuste ? Colors.deepPurple : cor.withValues(alpha: 0.4),
-                                                    width: isAjuste ? 1.5 : 1,
+                                                    color: cell.ajuste ? Colors.deepPurple : cor.withValues(alpha: 0.4),
+                                                    width: cell.ajuste ? 1.5 : 1,
                                                   ),
                                                 ),
                                                 child: Row(
                                                   mainAxisSize: MainAxisSize.min,
                                                   children: [
-                                                    if (isAjuste) ...[
+                                                    if (cell.ajuste) ...[
                                                       const Icon(Icons.edit_note, size: 14, color: Colors.deepPurple),
                                                       const SizedBox(width: 4),
                                                     ],
                                                     Text(
-                                                      '${_nomesTipos[b.tipoRegistro] ?? b.tipoRegistro}: $hora',
+                                                      texto,
                                                       style: TextStyle(
                                                         fontSize: 12,
                                                         fontWeight: FontWeight.bold,
-                                                        color: isAjuste ? Colors.deepPurple : cor,
+                                                        color: cell.ajuste ? Colors.deepPurple : cor,
                                                       ),
                                                     ),
                                                   ],

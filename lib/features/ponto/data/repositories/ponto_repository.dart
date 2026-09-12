@@ -91,14 +91,16 @@ class PontoRepository {
   /// Histórico do dia SOMENTE do banco local (limitado).
   ///
   /// Fonte de verdade instantânea para o botão sequencial e para a lista,
-  /// independente do estado do servidor.
+  /// independente do estado do servidor. Ajustes manuais não entram aqui:
+  /// a home reflete apenas as batidas feitas pelo botão.
   Future<List<RegistroPontoModel>> obterHistoricoLocal({
     String? colaboradorId,
   }) async {
     try {
-      return await localDataSource
+      final lista = await localDataSource
           .obterHistoricoHoje(colaboradorId: colaboradorId)
           .timeout(const Duration(seconds: 3));
+      return lista.where((r) => !r.ajusteManual).toList();
     } catch (_) {
       // banco local indisponível: segue sem registros locais (usará o servidor)
       return [];
@@ -129,6 +131,7 @@ class PontoRepository {
           .timeout(const Duration(seconds: 4));
       remotos = espelho
           .where((r) {
+            if (r.ajusteManual) return false;
             final d = r.dataHoraDispositivo.toLocal();
             return !d.isBefore(inicioDia) && !d.isAfter(fimDia);
           })
