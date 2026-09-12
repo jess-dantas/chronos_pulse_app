@@ -20,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
   static const _keyEmail = 'chronos_email';
   static const _keyCpf = 'chronos_cpf';
   static const _keyTenantId = 'chronos_tenant_id';
+  static const _keyTenantSlug = 'chronos_tenant_slug';
   static const _keyCpcId = 'chronos_cpc_id';
   static const _keyAcessoEstoque = 'chronos_acesso_estoque';
   static const _keyModulos = 'chronos_modulos';
@@ -104,6 +105,7 @@ class AuthProvider extends ChangeNotifier {
         cpf: prefs.getString(_keyCpf),
         role: prefs.getString(_keyRole) ?? '',
         tenantId: prefs.getString(_keyTenantId),
+        tenantSlug: prefs.getString(_keyTenantSlug),
         cpcId: prefs.getString(_keyCpcId),
         acessoEstoque: prefs.getBool(_keyAcessoEstoque) ?? false,
         foto: prefs.getString(_keyFoto),
@@ -122,6 +124,7 @@ class AuthProvider extends ChangeNotifier {
           cpf: refreshed.cpf ?? prefs.getString(_keyCpf),
           role: refreshed.role,
           tenantId: refreshed.tenantId,
+          tenantSlug: refreshed.tenantSlug ?? prefs.getString(_keyTenantSlug),
           cpcId: refreshed.cpcId,
           acessoEstoque: refreshed.acessoEstoque,
           foto: refreshed.foto ?? prefs.getString(_keyFoto),
@@ -155,6 +158,7 @@ class AuthProvider extends ChangeNotifier {
         cpf: renovado.cpf ?? atual.cpf,
         role: renovado.role.isNotEmpty ? renovado.role : atual.role,
         tenantId: renovado.tenantId ?? atual.tenantId,
+        tenantSlug: renovado.tenantSlug ?? atual.tenantSlug,
         cpcId: renovado.cpcId ?? atual.cpcId,
         acessoEstoque: renovado.acessoEstoque,
         foto: renovado.foto ?? atual.foto,
@@ -365,6 +369,9 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString(_keyCpf, usuario.cpf!);
     }
     if (usuario.tenantId != null) await prefs.setString(_keyTenantId, usuario.tenantId!);
+    if (usuario.tenantSlug != null && usuario.tenantSlug!.isNotEmpty) {
+      await prefs.setString(_keyTenantSlug, usuario.tenantSlug!);
+    }
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
     if (usuario.foto != null) await prefs.setString(_keyFoto, usuario.foto!);
@@ -382,6 +389,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyEmail);
     await prefs.remove(_keyCpf);
     await prefs.remove(_keyTenantId);
+    await prefs.remove(_keyTenantSlug);
     await prefs.remove(_keyCpcId);
     await prefs.remove(_keyAcessoEstoque);
     await prefs.remove(_keyModulos);
