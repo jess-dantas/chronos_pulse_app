@@ -13,4 +13,4 @@ Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R
 - Sequência de batidas conta **apenas batidas de botão** (`SequenciaPonto`) na tela principal e no diálogo de ajuste — ajustes não atrasam o ciclo (Saída não vira Intervalo).
 - App localizado em **pt-BR**: calendários dos pickers de data/hora em Português, datas DD/MM/AAAA e hora 24h (`flutter_localizations`).
 
-**Cobertura de testes do app: 199** (`flutter test`), analyze limpo.
+**Cobertura de testes do app: 200** (`flutter test`), analyze limpo.

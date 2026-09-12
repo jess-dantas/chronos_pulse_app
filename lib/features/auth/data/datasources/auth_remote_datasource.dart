@@ -28,6 +28,9 @@ class AuthRemoteDataSource {
         throw Exception('Credenciais inválidas.');
       }
     } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception('Revise os dados informados.');
+      }
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw Exception('CPF ou senha incorretos.');
       }
