@@ -59,6 +59,7 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
 class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   bool online = true;
   List<RegistroPontoModel> ultimosSincronizados = [];
+  List<RegistroPontoModel> espelhoRemoto = [];
 
   MockPontoRemoteDataSource() : super(DioClient());
 
@@ -74,6 +75,18 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
     }
     ultimosSincronizados = List.from(registros);
     return registros.map((r) => r.idLocal).toList();
+  }
+
+  @override
+  Future<List<RegistroPontoModel>> buscarEspelho({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    if (!online) {
+      throw Exception('Servidor indisponível');
+    }
+    return List.from(espelhoRemoto);
   }
 
   @override
@@ -289,6 +302,80 @@ void main() {
       expect(salvoOnline, isTrue);
       expect(remote.ultimosSincronizados.length, equals(1));
       expect(providerSemLocal.pendentesCount, equals(0));
+    });
+
+    test('Histórico reflete o espelho do servidor quando o banco local falha (Web)', () async {
+      final localIndisponivel = LocalDataSourceIndisponivel();
+      final remote = MockPontoRemoteDataSource();
+      remote.online = true;
+
+      final agora = DateTime.now();
+      remote.espelhoRemoto = [
+        RegistroPontoModel(
+          idLocal: 'srv-entrada',
+          dataHoraDispositivo: agora.toUtc(),
+          tipoRegistro: 'ENTRADA',
+          latitude: -23.5,
+          longitude: -46.6,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h1',
+          sincronizadoOffline: false,
+        ),
+      ];
+
+      final repo = PontoRepository(
+        localDataSource: localIndisponivel,
+        remoteDataSource: remote,
+      );
+
+      final historico = await repo.obterHistorico();
+
+      expect(historico.length, equals(1));
+      expect(historico.first.tipoRegistro, equals('ENTRADA'));
+      expect(historico.first.sincronizadoOffline, isTrue,
+          reason: 'Registro vindo do servidor deve aparecer como sincronizado');
+    });
+
+    test('Histórico local/NFC não duplica quando o servidor já tem a batida', () async {
+      final local = MockPontoLocalDataSource();
+      final remote = MockPontoRemoteDataSource();
+      remote.online = true;
+
+      final agora = DateTime.now();
+      remote.espelhoRemoto = [
+        RegistroPontoModel(
+          idLocal: 'srv-1',
+          dataHoraDispositivo: agora.toUtc(),
+          tipoRegistro: 'INTERVALO',
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h1',
+          sincronizadoOffline: true,
+        ),
+      ];
+      await local.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'local-1',
+        dataHoraDispositivo: agora.toUtc(),
+        tipoRegistro: 'INTERVALO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: true,
+      ));
+
+      final repo = PontoRepository(
+        localDataSource: local,
+        remoteDataSource: remote,
+      );
+
+      final historico = await repo.obterHistorico();
+
+      expect(historico.length, equals(1));
     });
   });
 }

@@ -74,13 +74,59 @@ class PontoRepository {
   }
 
   Future<int> obterQuantidadePendentes({String? colaboradorId}) async {
-    final pendentes = await localDataSource.obterPontosNaoSincronizados(
-        colaboradorId: colaboradorId);
-    return pendentes.length;
+    try {
+      final pendentes = await localDataSource
+          .obterPontosNaoSincronizados(colaboradorId: colaboradorId)
+          .timeout(const Duration(seconds: 3));
+      return pendentes.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
+  /// Histórico do dia: mescla os registros locais com o espelho do servidor.
+  ///
+  /// Quando o banco local está indisponível (ex.: SQLite Web), o histórico
+  /// segue refletindo as batidas já registradas no servidor — o botão avança
+  /// para a próxima batida sequencial e a lista de "Batidas de Hoje" aparece.
   Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
-    return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
+    final agora = DateTime.now();
+    final inicioDia = DateTime(agora.year, agora.month, agora.day);
+    final fimDia = DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
+
+    List<RegistroPontoModel> locais = [];
+    try {
+      locais = await localDataSource
+          .obterHistoricoHoje(colaboradorId: colaboradorId)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // banco local indisponível: usa somente o servidor
+    }
+
+    List<RegistroPontoModel> remotos = [];
+    try {
+      final espelho = await remoteDataSource.buscarEspelho(
+        colaboradorId: colaboradorId,
+        mes: agora.month,
+        ano: agora.year,
+      );
+      remotos = espelho
+          .where((r) {
+            final d = r.dataHoraDispositivo.toLocal();
+            return !d.isBefore(inicioDia) && !d.isAfter(fimDia);
+          })
+          .map((r) => r.copyWith(sincronizadoOffline: true))
+          .toList();
+    } catch (_) {
+      // offline: segue somente com o histórico local
+    }
+
+    if (remotos.isEmpty) return locais;
+
+    final chaves = remotos.map(_chaveRegistro).toSet();
+    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    return [...remotos, ...extras]
+      ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
   }
 
   Future<List<RegistroPontoModel>> obterEspelhoPonto({

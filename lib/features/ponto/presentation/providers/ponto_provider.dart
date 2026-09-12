@@ -57,8 +57,18 @@ class PontoProvider extends ChangeNotifier {
   }
 
   Future<void> carregarDados() async {
-    _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
-    _pendentesCount = await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
+    try {
+      _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
+    } catch (_) {
+      _historico = [];
+    }
+    try {
+      _pendentesCount =
+          await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
+    } catch (_) {
+      _pendentesCount = 0;
+    }
+    // Espelho sempre é atualizado ao final: mesmo sem banco local, reflete o servidor.
     await carregarEspelho();
     if (!_isDisposed) notifyListeners();
   }
@@ -157,10 +167,10 @@ class PontoProvider extends ChangeNotifier {
   Future<bool> registrarPonto(RegistroPontoModel registro) async {
     final sincronizadoOnline = await _repository.registrarPonto(registro: registro);
     _isOnline = sincronizadoOnline || _isOnline;
+    // Atualiza histórico/espelho com os registros do servidor, sem nunca
+    // prender a batida: tudo que toca no banco local já é limitado.
     try {
-      // O refresh (histórico/espelho) também é limitado: se o banco local
-      // web estiver lento, a batida conclui na mesma, sem prender a UI.
-      await carregarDados().timeout(const Duration(seconds: 4));
+      await carregarDados().timeout(const Duration(seconds: 10));
     } catch (_) {
       if (!_isDisposed) notifyListeners();
     }
