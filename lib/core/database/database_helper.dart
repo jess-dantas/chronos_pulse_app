@@ -11,7 +11,13 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('chronos_pulse.db');
+    // Limite de tempo: se a abertura do SQLite (ex.: WASM/IndexedDB na Web)
+    // travar, os chamadores falham rápido e seguem o caminho online em vez de
+    // pendurar a UI. Na Web, o openDatabase continua tentando em background.
+    _database = await _initDB('chronos_pulse.db').timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => throw StateError('Banco local indisponível (timeout ao abrir).'),
+    );
     return _database!;
   }
 

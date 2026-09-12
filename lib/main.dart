@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'core/network/dio_client.dart';
+import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
 import 'core/router/url_strategy.dart';
 import 'core/telemetry/telemetry_interceptor.dart';
@@ -67,6 +68,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureUrlStrategy();
   await initializeDateFormatting('pt_BR', null);
+
+  // Pré-aquecimento do SQLite (na Web o WASM/IndexedDB demora no primeiro
+  // acesso). Disparado sem await para não atrasar o splash/startup; erros de
+  // abertura são engolidos aqui e tratados nos fluxos com timeout.
+  unawaited(
+    DatabaseHelper.instance.database.then((_) {}, onError: (_) {}),
+  );
 
   final temaInicial = await ThemeProvider.carregarTema();
 

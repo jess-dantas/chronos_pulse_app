@@ -103,6 +103,34 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   }
 }
 
+/// Simula o SQLite Web indisponível (ex.: WASM/IndexedDB que não inicializa):
+/// a escrita local falha imediatamente e a batida precisa seguir apenas online.
+class LocalDataSourceIndisponivel extends PontoLocalDataSource {
+  @override
+  Future<void> salvarPontoLocal(RegistroPontoModel registro) async {
+    throw StateError('banco local indisponível');
+  }
+
+  @override
+  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados({String? colaboradorId}) async {
+    return [];
+  }
+
+  @override
+  Future<List<RegistroPontoModel>> obterHistoricoHoje({String? colaboradorId}) async {
+    return [];
+  }
+
+  @override
+  Future<List<RegistroPontoModel>> obterPorMesAno({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    return [];
+  }
+}
+
 void main() {
   group('JustificativasPadronizadas', () {
     test('Deve conter as 8 justificativas exigidas com descrições corretas', () {
@@ -229,6 +257,38 @@ void main() {
       expect(reg.ajusteManual, isTrue);
       expect(reg.justificativa, equals('Esquecimento de marcação'));
       expect(reg.observacao, equals('Cheguei no horário correto'));
+    });
+
+    test('Batida não trava quando o banco local está indisponível e sincroniza online', () async {
+      final localIndisponivel = LocalDataSourceIndisponivel();
+      final remote = MockPontoRemoteDataSource();
+      remote.online = true;
+
+      final repo = PontoRepository(
+        localDataSource: localIndisponivel,
+        remoteDataSource: remote,
+      );
+      final providerSemLocal = PontoProvider(repo);
+
+      addTearDown(providerSemLocal.dispose);
+
+      final ponto = RegistroPontoModel(
+        idLocal: 'uuid-web-db-off',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'hashX',
+        sincronizadoOffline: false,
+      );
+
+      final salvoOnline = await providerSemLocal.registrarPonto(ponto);
+
+      expect(salvoOnline, isTrue);
+      expect(remote.ultimosSincronizados.length, equals(1));
+      expect(providerSemLocal.pendentesCount, equals(0));
     });
   });
 }

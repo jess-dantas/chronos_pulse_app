@@ -157,7 +157,13 @@ class PontoProvider extends ChangeNotifier {
   Future<bool> registrarPonto(RegistroPontoModel registro) async {
     final sincronizadoOnline = await _repository.registrarPonto(registro: registro);
     _isOnline = sincronizadoOnline || _isOnline;
-    await carregarDados();
+    try {
+      // O refresh (histórico/espelho) também é limitado: se o banco local
+      // web estiver lento, a batida conclui na mesma, sem prender a UI.
+      await carregarDados().timeout(const Duration(seconds: 4));
+    } catch (_) {
+      if (!_isDisposed) notifyListeners();
+    }
     return sincronizadoOnline;
   }
 

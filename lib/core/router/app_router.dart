@@ -60,29 +60,40 @@ class AppRouter {
   ];
 
   static bool podeModuloPainel(UsuarioModel usuario, String modulo) {
+    // O tenant pode ter comprado o módulo, mas o acesso efetivo depende da
+    // role/permissões do usuário (alinhado às authorities do backend).
+    final temModuloTenant = switch (modulo) {
+      'ponto' => usuario.temModuloPonto,
+      'colaboradores' => usuario.temModuloRh,
+      'estoque' => usuario.temModuloEstoque,
+      'compras' => usuario.temModuloCompras,
+      'licitacoes' => usuario.temModuloLicitacoes,
+      'patrimonio' => usuario.temModuloPatrimonio,
+      'frota' => usuario.temModuloFrota,
+      'protocolo' => usuario.temModuloProtocolo,
+      'transparencia' => usuario.temModuloTransparencia,
+      'privacidade' => true,
+      _ => false,
+    };
+    if (!temModuloTenant) return false;
+
     switch (modulo) {
       case 'ponto':
-        return usuario.temModuloPonto;
+        return usuario.isAdminOrRh || usuario.isColaborador;
       case 'colaboradores':
-        return usuario.isAdminOrRh && usuario.temModuloRh;
+        return usuario.isAdminOrRh;
       case 'estoque':
-        return usuario.temModuloEstoque;
       case 'compras':
-        return usuario.temModuloCompras;
       case 'licitacoes':
-        return usuario.temModuloLicitacoes;
+        return usuario.temAcessoEstoque;
       case 'patrimonio':
-        return usuario.temModuloPatrimonio;
       case 'frota':
-        return usuario.temModuloFrota;
       case 'protocolo':
-        return usuario.temModuloProtocolo;
+        return usuario.isAdminOrRh || usuario.isColaborador;
       case 'transparencia':
-        return usuario.temModuloTransparencia;
-      case 'privacidade':
-        return true;
+        return usuario.isAdminOrRh || usuario.isColaborador || usuario.acessoEstoque;
       default:
-        return false;
+        return true;
     }
   }
 
