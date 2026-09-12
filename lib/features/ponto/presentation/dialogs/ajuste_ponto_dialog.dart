@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../domain/constants/justificativas_ponto.dart';
+import '../../domain/services/sequencia_ponto.dart';
 import '../providers/ponto_provider.dart';
 
 class AjustePontoDialog extends StatefulWidget {
@@ -37,28 +38,14 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
     _tipoRegistro = _determinarProximoTipoParaData(_dataSelecionada);
   }
 
-  String _determinarProximoTipo(List<RegistroPontoModel> registros) {
-    final total = registros.length;
-    switch (total % 4) {
-      case 0:
-        return 'ENTRADA';
-      case 1:
-        return 'INTERVALO';
-      case 2:
-        return 'RETORNO';
-      case 3:
-        return 'SAIDA';
-      default:
-        return 'ENTRADA';
-    }
-  }
-
   String _determinarProximoTipoParaData(DateTime data) {
+    // Sequência ignora ajustes: só batidas de botão avançam Entrada →
+    // Intervalo → Retorno → Saída.
     final registrosDoDia = widget.todosRegistros.where((r) {
       final d = r.dataHoraDispositivo.toLocal();
       return d.year == data.year && d.month == data.month && d.day == data.day;
     }).toList();
-    return _determinarProximoTipo(registrosDoDia);
+    return SequenciaPonto.proximo(registrosDoDia);
   }
 
   @override

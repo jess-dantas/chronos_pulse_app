@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
@@ -275,6 +276,14 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
         darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
         routerConfig: _router,
+        // pt-BR em todo o app: calendários (mostrar data) e relógio em 24 horas.
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('pt', 'BR'), Locale('pt')],
+        locale: const Locale('pt', 'BR'),
         builder: (context, child) =>
             _MotivoSessaoListener(child: child ?? const SizedBox.shrink()),
       ),

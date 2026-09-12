@@ -7,6 +7,7 @@ import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_d
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
 import 'package:chronos_pulse_app/features/ponto/domain/constants/justificativas_ponto.dart';
 import 'package:chronos_pulse_app/features/ponto/domain/services/espelho_agrupador.dart';
+import 'package:chronos_pulse_app/features/ponto/domain/services/sequencia_ponto.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 
 class MockPontoLocalDataSource extends PontoLocalDataSource {
@@ -571,6 +572,70 @@ void main() {
       expect(colunas[1]!.ajuste, isTrue);
       expect(colunas[1]!.hora, equals('13:05'));
       expect(colunas[1]!.incluiOriginal, isFalse);
+    });
+  });
+
+  group('SequenciaPonto (ajustes não avançam o ciclo)', () {
+    test('Batidas de botão seguem Entrada→Intervalo→Retorno→Saída', () {
+      expect(SequenciaPonto.proximo([]), equals('ENTRADA'));
+      expect(
+        SequenciaPonto.proximo([
+          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+        ]),
+        equals('INTERVALO'),
+      );
+      expect(
+        SequenciaPonto.proximo([
+          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+        ]),
+        equals('RETORNO'),
+      );
+      expect(
+        SequenciaPonto.proximo([
+          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+          batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
+        ]),
+        equals('SAIDA'),
+      );
+      // Ciclo reinicia após a Saída (5ª batida = Entrada Extra)
+      expect(
+        SequenciaPonto.proximo([
+          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+          batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
+          batida(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
+        ]),
+        equals('ENTRADA'),
+      );
+    });
+
+    test('Ajustes manuais não contam para a próxima batida', () {
+      // Dia com 3 ajustes (E/I/R) e só 1 batida de botão (E):
+      // a próxima deve ser INTERVALO e não cair fora da sequência.
+      final registros = [
+        batida(id: 'a1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 11, 0), ajuste: true),
+        batida(id: 'a2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 15, 30), ajuste: true),
+        batida(id: 'a3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 16, 30), ajuste: true),
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 19, 51)),
+      ];
+
+      expect(SequenciaPonto.proximo(registros), equals('INTERVALO'));
+    });
+
+    test('Ajuste de Saída não atrasa o ciclo após a 4ª batida de botão', () {
+      // E/I/R/S pelo botão + ajuste de Intervalo: a contagem continua 4 → Entrada
+      // (a próxima do ciclo), em vez de 5 → Intervalo.
+      final registros = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+        batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+        batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
+        batida(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
+        batida(id: 'a1', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 10), ajuste: true),
+      ];
+
+      expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
     });
   });
 

@@ -8,6 +8,7 @@ import '../../../../core/hardware/hardware_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../providers/ponto_provider.dart';
+import '../../domain/services/sequencia_ponto.dart';
 import 'camera_screen.dart';
 import 'espelho_ponto_tab.dart';
 
@@ -44,21 +45,6 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
   void dispose() {
     _timer.cancel();
     super.dispose();
-  }
-
-  String _determinarProximoTipo(int totalRegistros) {
-    switch (totalRegistros % 4) {
-      case 0:
-        return 'ENTRADA';
-      case 1:
-        return 'INTERVALO';
-      case 2:
-        return 'RETORNO';
-      case 3:
-        return 'SAIDA';
-      default:
-        return 'ENTRADA';
-    }
   }
 
   String _obterLabelBotao(String tipo, int totalRegistros) {
@@ -135,7 +121,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
   Future<void> _executarRegistro(PontoProvider pontoProvider) async {
     final authProvider = context.read<AuthProvider>();
-    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
+    final proximoTipo = SequenciaPonto.proximo(pontoProvider.historico);
 
     // 1. Validação Biométrica (ou bypass em Web) — com timeout para nunca travar
     final autenticado = await _hardwareService
@@ -247,7 +233,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     final horaFormatada = DateFormat('HH:mm:ss').format(_horarioAtual);
     final dataFormatada =
         DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(_horarioAtual);
-    final proximoTipo = _determinarProximoTipo(pontoProvider.historico.length);
+    final proximoTipo = SequenciaPonto.proximo(pontoProvider.historico);
     final corBotao = _obterCorTipo(proximoTipo);
 
     return DefaultTabController(
