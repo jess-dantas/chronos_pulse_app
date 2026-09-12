@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/dio_client.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
@@ -69,12 +71,17 @@ void main() async {
   configureUrlStrategy();
   await initializeDateFormatting('pt_BR', null);
 
-  // Pré-aquecimento do SQLite (na Web o WASM/IndexedDB demora no primeiro
-  // acesso). Disparado sem await para não atrasar o splash/startup; erros de
-  // abertura são engolidos aqui e tratados nos fluxos com timeout.
-  unawaited(
-    DatabaseHelper.instance.database.then((_) {}, onError: (_) {}),
-  );
+  // Pré-aquecimento da persistência local (SQLite no nativo; localStorage na
+  // Web via SharedPreferences). Disparado sem await para não atrasar o
+  // splash/startup; erros de abertura são engolidos aqui e tratados nos fluxos
+  // com timeout.
+  if (!kIsWeb) {
+    unawaited(
+      DatabaseHelper.instance.database.then((_) {}, onError: (_) {}),
+    );
+  } else {
+    unawaited(SharedPreferences.getInstance().then((_) {}, onError: (_) {}));
+  }
 
   final temaInicial = await ThemeProvider.carregarTema();
 
@@ -110,7 +117,9 @@ void main() async {
   final licitacoesRepository =
       LicitacoesRepository(remoteDataSource: licitacoesRemoteDataSource);
 
-  final pontoLocalDataSource = PontoLocalDataSource();
+  final PontoLocalDataSource pontoLocalDataSource = kIsWeb
+    ? PontoLocalDataSourceWeb()
+    : PontoLocalDataSource();
   final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
   final pontoRepository = PontoRepository(
     localDataSource: pontoLocalDataSource,

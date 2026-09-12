@@ -6,4 +6,8 @@ O roadmap do produto é versionado no repositório do **backend** (fonte canôni
 
 Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R27` a `R31` concluídos; `R31.1` (pós-entrega) com batida de ponto blindada (watchdog 30s), voltar nas telas públicas e **cadastro em 3 etapas virou lead** (Sem conta/CPF/senha → `POST /leads/empresas`).
 
-**Cobertura de testes do app: 186** (`flutter test`), analyze limpo.
+**Pós-R31.1 (offline-first web & mobile):**
+- SQLite (nativo) e **SharedPreferences/localStorage (Web)** garantem fila offline durável — igual funcional em Android/iOS/Chrome, sobrevive a F5 e troca de porta do dev server.
+- Sequência de batidas preservada offline; auto-sync 30s; chamadas remotas limitadas (4s/8s) para não travar com servidor indisponível.
+
+**Cobertura de testes do app: 191** (`flutter test`), analyze limpo.

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_model.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
@@ -145,6 +146,8 @@ class LocalDataSourceIndisponivel extends PontoLocalDataSource {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('JustificativasPadronizadas', () {
     test('Deve conter as 8 justificativas exigidas com descrições corretas', () {
       final lista = JustificativasPonto.lista;
@@ -427,6 +430,53 @@ void main() {
       expect(tipos, contains('ENTRADA'));
       expect(tipos, contains('INTERVALO'));
       expect(tipos, contains('RETORNO'));
+    });
+  });
+
+  group('PontoLocalDataSourceWeb (localStorage durável)', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('Persiste entre instâncias — sobrevive a recarregamento (F5)', () async {
+      final store = PontoLocalDataSourceWeb();
+      await store.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'w1',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: false,
+      ));
+
+      // Nova "tela/instância" lê do MESMO armazenamento (simula F5)
+      final reload = PontoLocalDataSourceWeb();
+      expect((await reload.obterHistoricoHoje()).length, equals(1));
+      expect((await reload.obterPontosNaoSincronizados()).length, equals(1));
+    });
+
+    test('marcarComoSincronizado persiste e esvazia pendentes', () async {
+      final store = PontoLocalDataSourceWeb();
+      await store.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'w2',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'INTERVALO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h2',
+        sincronizadoOffline: false,
+      ));
+      await store.marcarComoSincronizado('w2');
+
+      final reload = PontoLocalDataSourceWeb();
+      expect(await reload.obterPontosNaoSincronizados(), isEmpty);
+      expect((await reload.obterHistoricoHoje()).first.sincronizadoOffline,
+          isTrue);
     });
   });
 }
