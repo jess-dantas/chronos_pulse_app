@@ -1,4 +1,5 @@
 import '../datasources/licitacoes_remote_datasource.dart';
+import '../models/execucao_contrato_models.dart';
 import '../models/licitacoes_models.dart';
 import '../models/planejamento_licitacao_models.dart';
 
@@ -65,4 +66,27 @@ class LicitacoesRepository {
 
   Future<PlanejamentoLicitacaoModel> publicarEdital(String id) =>
       _remoteDataSource.publicarEdital(id);
+
+  Future<List<ContratoExecucaoModel>> getContratos() => _remoteDataSource.getContratos();
+
+  Future<ContratoExecucaoModel> getContrato(String id) => _remoteDataSource.getContrato(id);
+
+  Future<ContratoAditivoModel> registrarAditivo(String id, AdicionarAditivoDTO dto) =>
+      _remoteDataSource.registrarAditivo(id, dto);
+
+  Future<ContratoApontamentoModel> registrarApontamento(
+          String id, AdicionarApontamentoDTO dto) =>
+      _remoteDataSource.registrarApontamento(id, dto);
+
+  Future<ContratoApontamentoModel> resolverApontamento(String id, String apontamentoId) =>
+      _remoteDataSource.resolverApontamento(id, apontamentoId);
+
+  Future<ContratoMedicaoModel> registrarMedicao(String id, RegistrarMedicaoDTO dto) =>
+      _remoteDataSource.registrarMedicao(id, dto);
+
+  Future<ContratoSancaoModel> registrarSancao(String id, AdicionarSancaoDTO dto) =>
+      _remoteDataSource.registrarSancao(id, dto);
+
+  Future<ContratoRescisaoModel> rescindirContrato(String id, RescindirContratoDTO dto) =>
+      _remoteDataSource.rescindirContrato(id, dto);
 }

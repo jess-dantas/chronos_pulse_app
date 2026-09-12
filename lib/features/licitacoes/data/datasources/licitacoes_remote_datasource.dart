@@ -1,5 +1,6 @@
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/dio_client.dart';
+import '../models/execucao_contrato_models.dart';
 import '../models/licitacoes_models.dart';
 import '../models/planejamento_licitacao_models.dart';
 
@@ -110,6 +111,61 @@ class LicitacoesRemoteDataSource {
     return _licitacaoFromResponse(response.statusCode, response.data, 'formalizar o contrato');
   }
 
+  // ============================ EXECUÇÃO CONTRATUAL (R30) ============================
+
+  Future<List<ContratoExecucaoModel>> getContratos() async {
+    final response = await _dioClient.dio.get(ApiConstants.contratosEndpoint);
+    if (response.statusCode == 200 && response.data is List) {
+      return (response.data as List)
+          .map((json) => ContratoExecucaoModel.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    throw Exception('Falha ao carregar os contratos: ${response.statusCode}');
+  }
+
+  Future<ContratoExecucaoModel> getContrato(String id) async {
+    final response = await _dioClient.dio.get(ApiConstants.contratoDetalheEndpoint(id));
+    return _contratoFromResponse(response.statusCode, response.data, 'carregar a execução do contrato');
+  }
+
+  Future<ContratoAditivoModel> registrarAditivo(String id, AdicionarAditivoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoAditivosEndpoint(id), data: dto.toJson());
+    return _aditivoFromResponse(response.statusCode, response.data, 'registrar o aditivo');
+  }
+
+  Future<ContratoApontamentoModel> registrarApontamento(
+      String id, AdicionarApontamentoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoApontamentosEndpoint(id), data: dto.toJson());
+    return _apontamentoFromResponse(response.statusCode, response.data, 'registrar o apontamento');
+  }
+
+  Future<ContratoApontamentoModel> resolverApontamento(
+      String id, String apontamentoId) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoApontamentoResolverEndpoint(id, apontamentoId));
+    return _apontamentoFromResponse(response.statusCode, response.data, 'resolver o apontamento');
+  }
+
+  Future<ContratoMedicaoModel> registrarMedicao(String id, RegistrarMedicaoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoMedicoesEndpoint(id), data: dto.toJson());
+    return _medicaoFromResponse(response.statusCode, response.data, 'registrar a medição');
+  }
+
+  Future<ContratoSancaoModel> registrarSancao(String id, AdicionarSancaoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoSancoesEndpoint(id), data: dto.toJson());
+    return _sancaoFromResponse(response.statusCode, response.data, 'registrar a sanção');
+  }
+
+  Future<ContratoRescisaoModel> rescindirContrato(String id, RescindirContratoDTO dto) async {
+    final response = await _dioClient.dio
+        .post(ApiConstants.contratoRescindirEndpoint(id), data: dto.toJson());
+    return _rescisaoFromResponse(response.statusCode, response.data, 'rescindir o contrato');
+  }
+
   // ============================ PLANEJAMENTO (R28) ============================
 
   Future<PlanejamentoLicitacaoModel> getPlanejamento(String id) async {
@@ -168,6 +224,48 @@ class LicitacoesRemoteDataSource {
       int? status, dynamic data, String acao) {
     if (status == 200 && data is Map<String, dynamic>) {
       return PlanejamentoLicitacaoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoExecucaoModel _contratoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoExecucaoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoAditivoModel _aditivoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoAditivoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoApontamentoModel _apontamentoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoApontamentoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoMedicaoModel _medicaoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoMedicaoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoSancaoModel _sancaoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoSancaoModel.fromJson(data);
+    }
+    throw Exception('Falha ao $acao: $status');
+  }
+
+  ContratoRescisaoModel _rescisaoFromResponse(int? status, dynamic data, String acao) {
+    if (status == 200 && data is Map<String, dynamic>) {
+      return ContratoRescisaoModel.fromJson(data);
     }
     throw Exception('Falha ao $acao: $status');
   }

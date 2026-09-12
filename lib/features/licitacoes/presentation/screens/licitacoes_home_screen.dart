@@ -7,6 +7,7 @@ import '../../data/models/licitacoes_models.dart';
 import '../../data/models/planejamento_licitacao_models.dart';
 import '../providers/licitacoes_provider.dart';
 import 'planejamento_licitacao_dialog.dart';
+import 'contrato_execucao_screen.dart';
 
 final NumberFormat _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
 
@@ -222,6 +223,8 @@ class _LicitacoesListaTab extends StatelessWidget {
                                           _gerarPedidos(context, l);
                                         } else if (acao == 'formalizarContrato') {
                                           _formalizarContrato(context, l);
+                                        } else if (acao == 'gestaoContrato') {
+                                          _abrirGestaoContrato(context, l);
                                         }
                                       },
                                       itemBuilder: (_) => [
@@ -320,6 +323,15 @@ class _LicitacoesListaTab extends StatelessWidget {
                                             child: ListTile(
                                               leading: Icon(Icons.assignment_turned_in_outlined),
                                               title: Text('Formalizar contrato'),
+                                              dense: true,
+                                            ),
+                                          ),
+                                        if (l.contratoGerado && l.contratoId != null)
+                                          const PopupMenuItem(
+                                            value: 'gestaoContrato',
+                                            child: ListTile(
+                                              leading: Icon(Icons.handshake_outlined),
+                                              title: Text('Gestão da execução'),
                                               dense: true,
                                             ),
                                           ),
@@ -765,6 +777,15 @@ void exibirDetalhesLicitacao(BuildContext context, LicitacaoModel l) {
             },
             icon: const Icon(Icons.assignment_turned_in_outlined, size: 18),
             label: const Text('Formalizar contrato'),
+          ),
+        if (l.contratoGerado && l.contratoId != null)
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _abrirGestaoContrato(context, l);
+            },
+            icon: const Icon(Icons.handshake_outlined, size: 18),
+            label: const Text('Gestão do contrato'),
           ),
         FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
@@ -1695,6 +1716,18 @@ Future<void> _gerarPedidos(BuildContext context, LicitacaoModel l) async {
       );
     }
   }
+}
+
+Future<void> _abrirGestaoContrato(BuildContext context, LicitacaoModel l) async {
+  if (l.contratoId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Contrato ainda não identificado para a execução.')),
+    );
+    return;
+  }
+  await Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => ContratoExecucaoScreen(contratoId: l.contratoId),
+  ));
 }
 
 Future<void> _formalizarContrato(BuildContext context, LicitacaoModel l) async {
