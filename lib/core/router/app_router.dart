@@ -17,6 +17,7 @@ import '../../features/compras/presentation/screens/compras_home_screen.dart';
 import '../../features/estoque/presentation/screens/estoque_home_screen.dart';
 import '../../features/frota/presentation/screens/frota_home_screen.dart';
 import '../../features/landing/presentation/screens/landing_screen.dart';
+import '../../features/leads/presentation/screens/admin_leads_screen.dart';
 import '../../features/licitacoes/presentation/screens/licitacoes_home_screen.dart';
 import '../../features/navigation/presentation/screens/admin_shell.dart';
 import '../../features/navigation/presentation/screens/main_shell.dart';
@@ -51,6 +52,7 @@ class AppRouter {
   /// Ordem das abas do painel administrativo (`/admin`).
   static const List<String> adminOrdem = [
     'dashboard',
+    'leads',
     'empresas',
     'colaboradores',
     'contratos',
@@ -232,6 +234,8 @@ class AppRouter {
     switch (modulo) {
       case 'dashboard':
         return const AdminDashboardScreen();
+      case 'leads':
+        return const AdminLeadsScreen();
       case 'empresas':
         return const AdminEmpresasScreen();
       case 'colaboradores':

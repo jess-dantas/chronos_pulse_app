@@ -33,6 +33,7 @@ import 'features/compras/presentation/providers/compras_provider.dart';
 import 'features/licitacoes/data/datasources/licitacoes_remote_datasource.dart';
 import 'features/licitacoes/data/repositories/licitacoes_repository.dart';
 import 'features/licitacoes/presentation/providers/licitacoes_provider.dart';
+import 'features/leads/presentation/providers/leads_provider.dart';
 import 'features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'features/ponto/data/repositories/ponto_repository.dart';
@@ -101,6 +102,7 @@ void main() async {
   );
 
   final leadRepository = LeadRepository(dioClient);
+  final leadsProvider = LeadsProvider(leadRepository);
 
   final colaboradorRemoteDataSource = ColaboradorRemoteDataSource(dioClient);
   final colaboradorRepository =
@@ -118,9 +120,8 @@ void main() async {
   final licitacoesRepository =
       LicitacoesRepository(remoteDataSource: licitacoesRemoteDataSource);
 
-  final PontoLocalDataSource pontoLocalDataSource = kIsWeb
-    ? PontoLocalDataSourceWeb()
-    : PontoLocalDataSource();
+  final PontoLocalDataSource pontoLocalDataSource =
+      kIsWeb ? PontoLocalDataSourceWeb() : PontoLocalDataSource();
   final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
   final pontoRepository = PontoRepository(
     localDataSource: pontoLocalDataSource,
@@ -128,7 +129,8 @@ void main() async {
   );
 
   final adminRemoteDataSource = AdminRemoteDataSource(dioClient);
-  final adminRepository = AdminRepository(remoteDataSource: adminRemoteDataSource);
+  final adminRepository =
+      AdminRepository(remoteDataSource: adminRemoteDataSource);
 
   final patrimonioRemoteDataSource = PatrimonioRemoteDataSource(dioClient);
   final patrimonioRepository =
@@ -142,37 +144,48 @@ void main() async {
   final inventarioRepository =
       InventarioRepository(remoteDataSource: inventarioRemoteDataSource);
 
-  final transferenciaRemoteDataSource = TransferenciaRemoteDataSource(dioClient);
+  final transferenciaRemoteDataSource =
+      TransferenciaRemoteDataSource(dioClient);
   final transferenciaRepository =
       TransferenciaRepository(remoteDataSource: transferenciaRemoteDataSource);
 
   final frotaRemoteDataSource = FrotaRemoteDataSource(dioClient);
-  final frotaRepository = FrotaRepository(remoteDataSource: frotaRemoteDataSource);
+  final frotaRepository =
+      FrotaRepository(remoteDataSource: frotaRemoteDataSource);
 
   final protocoloRemoteDataSource = ProtocoloRemoteDataSource(dioClient);
   final protocoloRepository =
       ProtocoloRepository(remoteDataSource: protocoloRemoteDataSource);
 
-  final privacidadeProvider = PrivacidadeProvider(PrivacidadeDataSource(dioClient));
+  final privacidadeProvider =
+      PrivacidadeProvider(PrivacidadeDataSource(dioClient));
 
-  final transparenciaRemoteDataSource = TransparenciaRemoteDataSource(dioClient);
+  final transparenciaRemoteDataSource =
+      TransparenciaRemoteDataSource(dioClient);
   final transparenciaRepository =
       TransparenciaRepository(remoteDataSource: transparenciaRemoteDataSource);
 
-  final portalPublicoRemoteDataSource = PortalPublicoRemoteDataSource(dioClient);
+  final portalPublicoRemoteDataSource =
+      PortalPublicoRemoteDataSource(dioClient);
   final portalPublicoRepository =
       PortalPublicoRepository(remoteDataSource: portalPublicoRemoteDataSource);
 
-  final authProvider = AuthProvider(authRepository, telemetria: telemetryService);
+  final authProvider = AuthProvider(
+    authRepository,
+    telemetria: telemetryService,
+    pontoLocalDataSource: pontoLocalDataSource,
+  );
 
   dioClient.onRefreshToken = () async {
-    final refreshToken = await SessionStorage.readToken(AuthProvider.keyRefreshToken);
+    final refreshToken =
+        await SessionStorage.readToken(AuthProvider.keyRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) return false;
     try {
       final novo = await authRepository.refreshToken(refreshToken);
       await SessionStorage.writeToken(AuthProvider.keyAccessToken, novo.token);
       if (novo.refreshToken != null && novo.refreshToken!.isNotEmpty) {
-        await SessionStorage.writeToken(AuthProvider.keyRefreshToken, novo.refreshToken!);
+        await SessionStorage.writeToken(
+            AuthProvider.keyRefreshToken, novo.refreshToken!);
       }
       authProvider.restaurarSessaoAposRefresh(novo);
       return true;
@@ -190,22 +203,35 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
+          ChangeNotifierProvider(
+              create: (_) => ThemeProvider(initialMode: temaInicial)),
           ChangeNotifierProvider.value(value: authProvider),
-          ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
-          ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
-          ChangeNotifierProvider(create: (_) => ComprasProvider(comprasRepository)),
-          ChangeNotifierProvider(create: (_) => LicitacoesProvider(licitacoesRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ColaboradorProvider(colaboradorRepository)),
+          ChangeNotifierProvider(
+              create: (_) => EstoqueProvider(estoqueRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ComprasProvider(comprasRepository)),
+          ChangeNotifierProvider(
+              create: (_) => LicitacoesProvider(licitacoesRepository)),
           ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
           ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
-          ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
-          ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
-          ChangeNotifierProvider(create: (_) => InventarioProvider(inventarioRepository)),
-          ChangeNotifierProvider(create: (_) => TransferenciaProvider(transferenciaRepository)),
+          ChangeNotifierProvider.value(value: leadsProvider),
+          ChangeNotifierProvider(
+              create: (_) => PatrimonioProvider(patrimonioRepository)),
+          ChangeNotifierProvider(
+              create: (_) => DesfazimentoProvider(desfazimentoRepository)),
+          ChangeNotifierProvider(
+              create: (_) => InventarioProvider(inventarioRepository)),
+          ChangeNotifierProvider(
+              create: (_) => TransferenciaProvider(transferenciaRepository)),
           ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
-          ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
-          ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
-          ChangeNotifierProvider(create: (_) => PortalPublicoProvider(portalPublicoRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ProtocoloProvider(protocoloRepository)),
+          ChangeNotifierProvider(
+              create: (_) => TransparenciaProvider(transparenciaRepository)),
+          ChangeNotifierProvider(
+              create: (_) => PortalPublicoProvider(portalPublicoRepository)),
           ChangeNotifierProvider.value(value: privacidadeProvider),
           Provider<LeadRepository>.value(value: leadRepository),
         ],
