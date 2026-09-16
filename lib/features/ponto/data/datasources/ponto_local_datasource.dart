@@ -15,13 +15,13 @@ class PontoLocalDataSource {
     await db.insert('pontos', registro.toJson());
   }
 
-  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados(
+      {String? colaboradorId}) async {
     final db = await DatabaseHelper.instance.database;
     final whereClause = colaboradorId != null
         ? 'sincronizadoOffline = ? AND colaboradorId = ?'
         : 'sincronizadoOffline = ?';
-    final whereArgs =
-        colaboradorId != null ? [0, colaboradorId] : [0];
+    final whereArgs = colaboradorId != null ? [0, colaboradorId] : [0];
 
     final result = await db.query(
       'pontos',
@@ -32,7 +32,8 @@ class PontoLocalDataSource {
     return result.map((json) => RegistroPontoModel.fromJson(json)).toList();
   }
 
-  Future<List<RegistroPontoModel>> obterHistoricoHoje({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterHistoricoHoje(
+      {String? colaboradorId}) async {
     final hoje = DateTime.now();
     final inicioDia = DateTime(hoje.year, hoje.month, hoje.day);
     final fimDia = DateTime(hoje.year, hoje.month, hoje.day, 23, 59, 59, 999);
@@ -48,13 +49,10 @@ class PontoLocalDataSource {
       orderBy: 'dataHoraDispositivo DESC',
     );
 
-    return result
-        .map((json) => RegistroPontoModel.fromJson(json))
-        .where((p) {
-          final data = p.dataHoraDispositivo.toLocal();
-          return !data.isBefore(inicioDia) && !data.isAfter(fimDia);
-        })
-        .toList();
+    return result.map((json) => RegistroPontoModel.fromJson(json)).where((p) {
+      final data = p.dataHoraDispositivo.toLocal();
+      return !data.isBefore(inicioDia) && !data.isAfter(fimDia);
+    }).toList();
   }
 
   Future<List<RegistroPontoModel>> obterPorMesAno({
@@ -73,15 +71,12 @@ class PontoLocalDataSource {
       orderBy: 'dataHoraDispositivo DESC',
     );
 
-    return result
-        .map((json) => RegistroPontoModel.fromJson(json))
-        .where((p) {
-          final data = p.dataHoraDispositivo.toLocal();
-          final mesOk = mes == null || data.month == mes;
-          final anoOk = ano == null || data.year == ano;
-          return mesOk && anoOk;
-        })
-        .toList();
+    return result.map((json) => RegistroPontoModel.fromJson(json)).where((p) {
+      final data = p.dataHoraDispositivo.toLocal();
+      final mesOk = mes == null || data.month == mes;
+      final anoOk = ano == null || data.year == ano;
+      return mesOk && anoOk;
+    }).toList();
   }
 
   Future<void> marcarComoSincronizado(String idLocal) async {
@@ -92,6 +87,12 @@ class PontoLocalDataSource {
       where: 'idLocal = ?',
       whereArgs: [idLocal],
     );
+  }
+
+  /// Limpa todos os registros locais de ponto (fila offline).
+  Future<void> limparPontosLocais() async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('pontos');
   }
 }
 
@@ -165,16 +166,14 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
     final fimDia = DateTime(hoje.year, hoje.month, hoje.day, 23, 59, 59, 999);
 
     final lista = await _lerTodos();
-    return lista
-        .where((r) {
-          final okColaborador =
-              colaboradorId == null || r.colaboradorId == colaboradorId;
-          final data = r.dataHoraDispositivo.toLocal();
-          return okColaborador &&
-              !data.isBefore(inicioDia) &&
-              !data.isAfter(fimDia);
-        })
-        .toList()
+    return lista.where((r) {
+      final okColaborador =
+          colaboradorId == null || r.colaboradorId == colaboradorId;
+      final data = r.dataHoraDispositivo.toLocal();
+      return okColaborador &&
+          !data.isBefore(inicioDia) &&
+          !data.isAfter(fimDia);
+    }).toList()
       ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
   }
 
@@ -185,16 +184,20 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
     int? ano,
   }) async {
     final lista = await _lerTodos();
-    return lista
-        .where((r) {
-          final okColaborador =
-              colaboradorId == null || r.colaboradorId == colaboradorId;
-          final data = r.dataHoraDispositivo.toLocal();
-          final mesOk = mes == null || data.month == mes;
-          final anoOk = ano == null || data.year == ano;
-          return okColaborador && mesOk && anoOk;
-        })
-        .toList()
+    return lista.where((r) {
+      final okColaborador =
+          colaboradorId == null || r.colaboradorId == colaboradorId;
+      final data = r.dataHoraDispositivo.toLocal();
+      final mesOk = mes == null || data.month == mes;
+      final anoOk = ano == null || data.year == ano;
+      return okColaborador && mesOk && anoOk;
+    }).toList()
       ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
+  }
+
+  @override
+  Future<void> limparPontosLocais() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_chave);
   }
 }

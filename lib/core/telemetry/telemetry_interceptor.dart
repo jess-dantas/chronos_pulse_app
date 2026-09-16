@@ -24,7 +24,8 @@ class TelemetryInterceptor extends Interceptor {
   }
 
   @override
-  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+  void onResponse(
+      Response<dynamic> response, ResponseInterceptorHandler handler) {
     _registrar(response.requestOptions, response.statusCode ?? 200, null);
     handler.next(response);
   }
@@ -50,7 +51,7 @@ class TelemetryInterceptor extends Interceptor {
       // Requisição ignorada (ex.: ingestão de telemetria ou OPTIONS).
       return;
     }
-    final path = options.path;
+    final path = _semQuery(options.path);
 
     if (erro == null) {
       _telemetryService.registrar(
@@ -77,15 +78,15 @@ class TelemetryInterceptor extends Interceptor {
     );
   }
 
+  /// Remove a query string do endpoint para não logar termos de busca
+  /// (ex.: CNPJ/nome em `/patrimonio/buscar?q=...`).
+  static String _semQuery(String path) => path.split('?').first;
+
   /// Deduz o módulo a partir do primeiro segmento do endpoint.
   /// Ex.: `/estoque/materiais` → `ESTOQUE`; `/auth/login` → `AUTH`.
   static String _moduloPara(String path) {
-    final partes = path
-        .split('?')
-        .first
-        .split('/')
-        .where((p) => p.isNotEmpty)
-        .toList();
+    final partes =
+        path.split('?').first.split('/').where((p) => p.isNotEmpty).toList();
     if (partes.isEmpty) return 'GERAL';
     return partes.first.toUpperCase();
   }

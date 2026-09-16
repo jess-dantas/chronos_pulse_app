@@ -1,0 +1,13 @@
+# Assinatura de RELEASE do Android.
+#
+# Copie este arquivo para `android/app/key.properties` (ao lado do
+# build.gradle.kts) e preencha com os valores reais do seu keystore.
+# NUNCA comite o `key.properties` real nem o arquivo .jks/.keystore no
+# repositório — mantenha-os fora da aplicação e protegidos no CI/secrets.
+#
+# O caminho do keystore pode ser relativo ao diretório `android/app/`,
+# ex.: `storeFile=release.keystore` para `android/app/release.keystore`.
+storeFile=/caminho/seguro/para/chronos-pulse-release.keystore
+storePassword=suaStorePassword
+keyAlias=chronos-pulse-release
+keyPassword=suaKeyPassword

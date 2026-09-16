@@ -88,6 +88,9 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
   @override
   Widget build(BuildContext context) {
     final pontoProvider = context.watch<PontoProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final usuario = authProvider.usuario;
+    final podeAjustar = usuario != null && !usuario.isColaborador;
     final mes = pontoProvider.mesSelecionado;
     final ano = pontoProvider.anoSelecionado;
 
@@ -96,14 +99,16 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
     // Agrupa batidas por dia
     final Map<int, List<RegistroPontoModel>> batidasPorDia = {};
     for (var r in registros) {
-      if (r.dataHoraDispositivo.month == mes && r.dataHoraDispositivo.year == ano) {
+      if (r.dataHoraDispositivo.month == mes &&
+          r.dataHoraDispositivo.year == ano) {
         final dia = r.dataHoraDispositivo.day;
         batidasPorDia.putIfAbsent(dia, () => []).add(r);
       }
     }
 
     batidasPorDia.forEach((dia, lista) {
-      lista.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+      lista.sort(
+          (a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
     });
 
     final diasNoMes = DateTime(ano, mes + 1, 0).day;
@@ -117,7 +122,10 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
       }
       if (batidas.length >= 2) {
         for (int i = 0; i < batidas.length - 1; i += 2) {
-          final diff = batidas[i + 1].dataHoraDispositivo.difference(batidas[i].dataHoraDispositivo).inMinutes;
+          final diff = batidas[i + 1]
+              .dataHoraDispositivo
+              .difference(batidas[i].dataHoraDispositivo)
+              .inMinutes;
           if (diff > 0 && diff < 900) {
             totalMinutosMes += diff;
           }
@@ -129,8 +137,18 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
         '${(totalMinutosMes ~/ 60).toString().padLeft(2, '0')}h ${(totalMinutosMes % 60).toString().padLeft(2, '0')}m';
 
     final mesesNomes = [
-      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro'
     ];
 
     return SingleChildScrollView(
@@ -144,7 +162,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
               // Barra de Controles: Seletores e Botões de Ação
               Card(
                 elevation: 1,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Wrap(
@@ -157,12 +176,16 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.calendar_month, color: Colors.deepPurple),
+                          const Icon(Icons.calendar_month,
+                              color: Colors.deepPurple),
                           const SizedBox(width: 8),
                           DropdownButton<int>(
                             value: mes,
                             underline: const SizedBox(),
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Theme.of(context).colorScheme.onSurface),
                             items: List.generate(12, (index) {
                               return DropdownMenuItem(
                                 value: index + 1,
@@ -171,7 +194,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                             }),
                             onChanged: (novoMes) {
                               if (novoMes != null) {
-                                pontoProvider.alterarPeriodoEspelho(novoMes, ano);
+                                pontoProvider.alterarPeriodoEspelho(
+                                    novoMes, ano);
                               }
                             },
                           ),
@@ -179,7 +203,10 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                           DropdownButton<int>(
                             value: ano,
                             underline: const SizedBox(),
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Theme.of(context).colorScheme.onSurface),
                             items: [2024, 2025, 2026, 2027].map((a) {
                               return DropdownMenuItem(
                                 value: a,
@@ -188,7 +215,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                             }).toList(),
                             onChanged: (novoAno) {
                               if (novoAno != null) {
-                                pontoProvider.alterarPeriodoEspelho(mes, novoAno);
+                                pontoProvider.alterarPeriodoEspelho(
+                                    mes, novoAno);
                               }
                             },
                           ),
@@ -199,25 +227,42 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          OutlinedButton.icon(
-                            onPressed: () => _abrirDialogAjuste(),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Theme.of(context).colorScheme.primary,
-                              side: BorderSide(color: Theme.of(context).colorScheme.primary),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          Tooltip(
+                            message: podeAjustar
+                                ? 'Incluir ou corrigir marcação de ponto'
+                                : 'Ajustes disponíveis apenas para gestores.',
+                            child: OutlinedButton.icon(
+                              onPressed: podeAjustar
+                                  ? () => _abrirDialogAjuste()
+                                  : null,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.primary,
+                                side: BorderSide(
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                              icon: const Icon(Icons.edit_calendar, size: 18),
+                              label: const Text('Solicitar Ajuste'),
                             ),
-                            icon: const Icon(Icons.edit_calendar, size: 18),
-                            label: const Text('Solicitar Ajuste'),
                           ),
                           const SizedBox(width: 12),
                           ElevatedButton.icon(
-                            onPressed: pontoProvider.carregandoEspelho ? null : () => _exportarPdf(pontoProvider),
+                            onPressed: pontoProvider.carregandoEspelho
+                                ? null
+                                : () => _exportarPdf(pontoProvider),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
                             ),
                             icon: const Icon(Icons.picture_as_pdf, size: 18),
                             label: const Text('Exportar PDF'),
@@ -236,15 +281,22 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                   Expanded(
                     child: Card(
                       elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Horas Trabalhadas', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                            Text('Horas Trabalhadas',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
-                            Text(totalHorasStr, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                            Text(totalHorasStr,
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.deepPurple)),
                           ],
                         ),
                       ),
@@ -254,20 +306,25 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                   Expanded(
                     child: Card(
                       elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Ajustes Manuais', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                            Text('Ajustes Manuais',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
                             Text(
                               totalAjustesMes.toString(),
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: totalAjustesMes > 0 ? Colors.orange.shade800 : Colors.green,
+                                color: totalAjustesMes > 0
+                                    ? Colors.orange.shade800
+                                    : Colors.green,
                               ),
                             ),
                           ],
@@ -279,17 +336,21 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                   Expanded(
                     child: Card(
                       elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Dias com Registro', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                            Text('Dias com Registro',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey[700])),
                             const SizedBox(height: 4),
                             Text(
                               batidasPorDia.keys.length.toString(),
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -303,7 +364,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
               // Listagem Dia a Dia do Espelho
               Card(
                 elevation: 1,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -314,7 +376,10 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         children: [
                           Text(
                             'Demonstrativo de Marcações do Mês',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
@@ -335,13 +400,23 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         itemBuilder: (context, index) {
                           final dia = index + 1;
                           final data = DateTime(ano, mes, dia);
-                          final diaSemana = DateFormat('EEE', 'pt_BR').format(data).toUpperCase();
-                          final isFimDeSemana = data.weekday == DateTime.saturday || data.weekday == DateTime.sunday;
+                          final diaSemana = DateFormat('EEE', 'pt_BR')
+                              .format(data)
+                              .toUpperCase();
+                          final isFimDeSemana =
+                              data.weekday == DateTime.saturday ||
+                                  data.weekday == DateTime.sunday;
                           final batidas = batidasPorDia[dia] ?? [];
 
                           return Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            color: isFimDeSemana ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.4) : null,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 8),
+                            color: isFimDeSemana
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .surface
+                                    .withValues(alpha: 0.4)
+                                : null,
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -349,21 +424,28 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                 SizedBox(
                                   width: 80,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         DateFormat('dd/MM').format(data),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 14,
-                                          color: isFimDeSemana ? Colors.grey[700] : null,
+                                          color: isFimDeSemana
+                                              ? Colors.grey[700]
+                                              : null,
                                         ),
                                       ),
                                       Text(
                                         diaSemana,
                                         style: TextStyle(
                                           fontSize: 11,
-                                          color: isFimDeSemana ? Colors.grey[500] : Theme.of(context).colorScheme.primary,
+                                          color: isFimDeSemana
+                                              ? Colors.grey[500]
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -376,7 +458,9 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                 Expanded(
                                   child: batidas.isEmpty
                                       ? Text(
-                                          isFimDeSemana ? 'Final de Semana' : 'Sem marcações registradas',
+                                          isFimDeSemana
+                                              ? 'Final de Semana'
+                                              : 'Sem marcações registradas',
                                           style: TextStyle(
                                             color: Colors.grey[500],
                                             fontSize: 13,
@@ -386,10 +470,17 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                       : Wrap(
                                           spacing: 8,
                                           runSpacing: 6,
-                                          children: EspelhoAgrupador.celulasDoDia(batidas).map((cell) {
-                                            final cor = _obterCorTipo(cell.tipoRegistro);
-                                            final nome = _nomesTipos[cell.tipoRegistro] ?? cell.tipoRegistro;
-                                            final texto = cell.incluiOriginal && cell.horaOriginal != null
+                                          children:
+                                              EspelhoAgrupador.celulasDoDia(
+                                                      batidas)
+                                                  .map((cell) {
+                                            final cor = _obterCorTipo(
+                                                cell.tipoRegistro);
+                                            final nome = _nomesTipos[
+                                                    cell.tipoRegistro] ??
+                                                cell.tipoRegistro;
+                                            final texto = cell.incluiOriginal &&
+                                                    cell.horaOriginal != null
                                                 ? '$nome: ${cell.hora} (${cell.horaOriginal})'
                                                 : '$nome: ${cell.hora}';
 
@@ -398,27 +489,42 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                                   ? 'Ajuste Manual: ${cell.justificativa ?? "Sem justificativa"}${cell.observacao != null ? " (${cell.observacao})" : ""}${cell.horaOriginal != null ? " | Original: ${cell.horaOriginal}" : ""}'
                                                   : '$nome às ${cell.hora}',
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4),
                                                 decoration: BoxDecoration(
-                                                  color: cor.withValues(alpha: 0.12),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color: cor.withValues(
+                                                      alpha: 0.12),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                   border: Border.all(
-                                                    color: cor.withValues(alpha: cell.ajuste ? 0.8 : 0.4),
-                                                    width: cell.ajuste ? 1.5 : 1,
+                                                    color: cor.withValues(
+                                                        alpha: cell.ajuste
+                                                            ? 0.8
+                                                            : 0.4),
+                                                    width:
+                                                        cell.ajuste ? 1.5 : 1,
                                                   ),
                                                 ),
                                                 child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
                                                     if (cell.ajuste) ...[
-                                                      const Icon(Icons.edit_note, size: 14, color: Colors.deepPurple),
+                                                      const Icon(
+                                                          Icons.edit_note,
+                                                          size: 14,
+                                                          color: Colors
+                                                              .deepPurple),
                                                       const SizedBox(width: 4),
                                                     ],
                                                     Text(
                                                       texto,
                                                       style: TextStyle(
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w600,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         color: cor,
                                                       ),
                                                     ),
@@ -431,11 +537,19 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                 ),
 
                                 // Botão rápido para adicionar ajuste nesta data
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline, size: 20),
-                                  tooltip: 'Inserir ajuste neste dia',
-                                  color: Theme.of(context).colorScheme.primary,
-                                  onPressed: () => _abrirDialogAjuste(data),
+                                Tooltip(
+                                  message: podeAjustar
+                                      ? 'Inserir ajuste neste dia'
+                                      : 'Ajustes disponíveis apenas para gestores.',
+                                  child: IconButton(
+                                    icon: const Icon(Icons.add_circle_outline,
+                                        size: 20),
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    onPressed: podeAjustar
+                                        ? () => _abrirDialogAjuste(data)
+                                        : null,
+                                  ),
                                 ),
                               ],
                             ),

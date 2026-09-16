@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/hardware/hardware_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
@@ -108,7 +109,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
             content: Text(
               e is TimeoutException
                   ? (e.message?.toString() ?? 'A operação demorou demais.')
-                  : 'Erro ao bater ponto: ${e.toString()}',
+                  : mensagemErroAmigavel(e),
             ),
             backgroundColor: Colors.red,
           ),
@@ -167,8 +168,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
       final fotoCapturada = await Navigator.push<String>(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              CameraScreen(caminhoSemFoto: caminhoFotoPadrao),
+          builder: (context) => CameraScreen(caminhoSemFoto: caminhoFotoPadrao),
         ),
       );
 
@@ -267,7 +267,8 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                   context: context,
                   builder: (ctx) => AlertDialog(
                     title: const Text('Confirmar Saída'),
-                    content: const Text('Deseja realmente desconectar do sistema?'),
+                    content:
+                        const Text('Deseja realmente desconectar do sistema?'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
@@ -324,418 +325,415 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-                // Sensor de Conectividade com o Backend (Heartbeat)
+              // Sensor de Conectividade com o Backend (Heartbeat)
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: pontoProvider.isOnline
+                        ? Colors.green.shade300
+                        : Colors.orange.shade300,
+                  ),
+                ),
+                color: pontoProvider.isOnline
+                    ? Colors.green.shade50
+                    : Colors.orange.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        pontoProvider.isOnline
+                            ? Icons.cloud_done
+                            : Icons.cloud_off,
+                        color: pontoProvider.isOnline
+                            ? Colors.green.shade700
+                            : Colors.orange.shade800,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          pontoProvider.isOnline
+                              ? 'Servidor Conectado (Online)'
+                              : 'Servidor Indisponível (Modo Offline)',
+                          style: TextStyle(
+                            color: pontoProvider.isOnline
+                                ? Colors.green.shade900
+                                : Colors.orange.shade900,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      if (pontoProvider.isVerificando)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.refresh, size: 18),
+                          tooltip: 'Verificar conexão com o servidor',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          color: pontoProvider.isOnline
+                              ? Colors.green.shade800
+                              : Colors.orange.shade800,
+                          onPressed: () =>
+                              pontoProvider.checarConexao(autoSync: true),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Card de Informações do Colaborador
+              if (usuario != null)
                 Card(
-                  elevation: 1,
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: pontoProvider.isOnline
-                          ? Colors.green.shade300
-                          : Colors.orange.shade300,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          child: Icon(
+                            Icons.person,
+                            size: 28,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                usuario.nome.isNotEmpty
+                                    ? usuario.nome
+                                    : 'Colaborador',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                usuario.email.isNotEmpty
+                                    ? usuario.email
+                                    : usuario.role,
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            usuario.role.replaceAll('ROLE_', ''),
+                            style: TextStyle(
+                              color: Colors.blue[800],
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  color: pontoProvider.isOnline
-                      ? Colors.green.shade50
-                      : Colors.orange.shade50,
+                ),
+              const SizedBox(height: 16),
+
+              // Card do Relógio em Tempo Real
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        dataFormatada,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        horaFormatada,
+                        style:
+                            Theme.of(context).textTheme.displayLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Banner de Status de Sincronização Offline
+              if (pontoProvider.pendentesCount > 0)
+                Card(
+                  color: Colors.orange[50],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.orange.shade300),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          pontoProvider.isOnline
-                              ? Icons.cloud_done
-                              : Icons.cloud_off,
-                          color: pontoProvider.isOnline
-                              ? Colors.green.shade700
-                              : Colors.orange.shade800,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
+                        Icon(Icons.cloud_upload_outlined,
+                            color: Colors.orange[800]),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            pontoProvider.isOnline
-                                ? 'Servidor Conectado (Online)'
-                                : 'Servidor Indisponível (Modo Offline)',
+                            '${pontoProvider.pendentesCount} batida(s) salva(s) offline.',
                             style: TextStyle(
-                              color: pontoProvider.isOnline
-                                  ? Colors.green.shade900
-                                  : Colors.orange.shade900,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              color: Colors.orange[900],
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        if (pontoProvider.isVerificando)
-                          const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          IconButton(
-                            icon: const Icon(Icons.refresh, size: 18),
-                            tooltip: 'Verificar conexão com o servidor',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            color: pontoProvider.isOnline
-                                ? Colors.green.shade800
-                                : Colors.orange.shade800,
-                            onPressed: () =>
-                                pontoProvider.checarConexao(autoSync: true),
-                          ),
+                        TextButton.icon(
+                          onPressed: pontoProvider.isSincronizando
+                              ? null
+                              : () => _sincronizarPendentes(pontoProvider),
+                          icon: pontoProvider.isSincronizando
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.sync, size: 18),
+                          label: const Text('Sincronizar'),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+              if (pontoProvider.pendentesCount > 0) const SizedBox(height: 16),
 
-                // Card de Informações do Colaborador
-                if (usuario != null)
-                  Card(
-                    elevation: 2,
+              // Botão de Batida Automática Sequencial
+              SizedBox(
+                height: 58,
+                child: ElevatedButton.icon(
+                  onPressed:
+                      _isLoading ? null : () => _baterPonto(pontoProvider),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: corBotao,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primaryContainer,
-                            child: Icon(
-                              Icons.person,
-                              size: 28,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  usuario.nome.isNotEmpty
-                                      ? usuario.nome
-                                      : 'Colaborador',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  usuario.email.isNotEmpty
-                                      ? usuario.email
-                                      : usuario.role,
-                                  style: TextStyle(
-                                    color: Colors.grey[700],
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.blue.shade200),
-                            ),
-                            child: Text(
-                              usuario.role.replaceAll('ROLE_', ''),
-                              style: TextStyle(
-                                color: Colors.blue[800],
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                const SizedBox(height: 16),
-
-                // Card do Relógio em Tempo Real
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          dataFormatada,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(color: Colors.grey[700]),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          horaFormatada,
-                          style: Theme.of(context)
-                              .textTheme
-                              .displayLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                      ],
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Icon(Icons.touch_app, size: 26),
+                  label: Text(
+                    _isLoading
+                        ? 'Processando Registro...'
+                        : _obterLabelBotao(
+                            proximoTipo, pontoProvider.historico.length),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+              ),
+              const SizedBox(height: 28),
 
-                // Banner de Status de Sincronização Offline
-                if (pontoProvider.pendentesCount > 0)
-                  Card(
-                    color: Colors.orange[50],
-                    shape: RoundedRectangleBorder(
+              // Seção de Histórico de Batidas de Hoje
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Batidas de Hoje',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.orange.shade300),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                    child: Text(
+                      'Total: ${pontoProvider.historico.length}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                      child: Row(
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              if (pontoProvider.historico.isEmpty)
+                Card(
+                  elevation: 0,
+                  color: Colors.grey[200],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Center(
+                      child: Column(
                         children: [
-                          Icon(Icons.cloud_upload_outlined,
-                              color: Colors.orange[800]),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              '${pontoProvider.pendentesCount} batida(s) salva(s) offline.',
-                              style: TextStyle(
-                                color: Colors.orange[900],
-                                fontWeight: FontWeight.w600,
-                              ),
+                          Icon(Icons.history, size: 36, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text(
+                            'Nenhum registro de ponto efetuado hoje.',
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic,
                             ),
-                          ),
-                          TextButton.icon(
-                            onPressed: pontoProvider.isSincronizando
-                                ? null
-                                : () => _sincronizarPendentes(pontoProvider),
-                            icon: pontoProvider.isSincronizando
-                                ? const SizedBox(
-                                    width: 14,
-                                    height: 14,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.sync, size: 18),
-                            label: const Text('Sincronizar'),
                           ),
                         ],
                       ),
                     ),
                   ),
-                if (pontoProvider.pendentesCount > 0)
-                  const SizedBox(height: 16),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: pontoProvider.historico.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final registro = pontoProvider.historico[index];
+                    final hora = DateFormat('HH:mm:ss')
+                        .format(registro.dataHoraDispositivo.toLocal());
+                    final cor = _obterCorTipo(registro.tipoRegistro);
+                    final nomeTipo = _nomesTipos[registro.tipoRegistro] ??
+                        registro.tipoRegistro;
 
-                // Botão de Batida Automática Sequencial
-                SizedBox(
-                  height: 58,
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : () => _baterPonto(pontoProvider),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: corBotao,
-                      foregroundColor: Colors.white,
-                      elevation: 3,
+                    return Card(
+                      elevation: 1,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    icon: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Icon(Icons.touch_app, size: 26),
-                    label: Text(
-                      _isLoading
-                          ? 'Processando Registro...'
-                          : _obterLabelBotao(
-                              proximoTipo, pontoProvider.historico.length),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // Seção de Histórico de Batidas de Hoje
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Batidas de Hoje',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer
-                            .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        'Total: ${pontoProvider.historico.length}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: cor.withValues(alpha: 0.15),
+                          child: Icon(Icons.access_time, color: cor),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                if (pontoProvider.historico.isEmpty)
-                  Card(
-                    elevation: 0,
-                    color: Colors.grey[200],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(Icons.history, size: 36, color: Colors.grey),
-                            SizedBox(height: 8),
-                            Text(
-                              'Nenhum registro de ponto efetuado hoje.',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
+                        title: Text(
+                          '$nomeTipo (#${index + 1})',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: cor,
+                          ),
                         ),
-                      ),
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: pontoProvider.historico.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final registro = pontoProvider.historico[index];
-                      final hora = DateFormat('HH:mm:ss')
-                          .format(registro.dataHoraDispositivo.toLocal());
-                      final cor = _obterCorTipo(registro.tipoRegistro);
-                      final nomeTipo =
-                          _nomesTipos[registro.tipoRegistro] ??
-                              registro.tipoRegistro;
-
-                      return Card(
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        subtitle: Text(
+                          'Horário: $hora',
+                          style: const TextStyle(fontSize: 13),
                         ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: cor.withValues(alpha: 0.15),
-                            child: Icon(Icons.access_time, color: cor),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          title: Text(
-                            '$nomeTipo (#${index + 1})',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: cor,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Horário: $hora',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
+                          decoration: BoxDecoration(
+                            color: registro.sincronizadoOffline
+                                ? Colors.green[50]
+                                : Colors.orange[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
                               color: registro.sincronizadoOffline
-                                  ? Colors.green[50]
-                                  : Colors.orange[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: registro.sincronizadoOffline
-                                    ? Colors.green.shade200
-                                    : Colors.orange.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  registro.sincronizadoOffline
-                                      ? Icons.cloud_done
-                                      : Icons.cloud_off,
-                                  size: 14,
-                                  color: registro.sincronizadoOffline
-                                      ? Colors.green[700]
-                                      : Colors.orange[800],
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  registro.sincronizadoOffline
-                                      ? 'Sincronizado'
-                                      : 'Pendente',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: registro.sincronizadoOffline
-                                        ? Colors.green[800]
-                                        : Colors.orange[900],
-                                  ),
-                                ),
-                              ],
+                                  ? Colors.green.shade200
+                                  : Colors.orange.shade200,
                             ),
                           ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                registro.sincronizadoOffline
+                                    ? Icons.cloud_done
+                                    : Icons.cloud_off,
+                                size: 14,
+                                color: registro.sincronizadoOffline
+                                    ? Colors.green[700]
+                                    : Colors.orange[800],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                registro.sincronizadoOffline
+                                    ? 'Sincronizado'
+                                    : 'Pendente',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: registro.sincronizadoOffline
+                                      ? Colors.green[800]
+                                      : Colors.orange[900],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                  ),
-              ],
-            ),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ),
-      );
+      ),
+    );
   }
 }
