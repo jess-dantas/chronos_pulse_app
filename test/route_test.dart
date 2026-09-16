@@ -41,7 +41,7 @@ void main() {
     });
 
     test('empreende a ordem fixa: Ponto antes de Estoque e Compras', () {
-      final usuario = _usuario(modulos: ['ESTOQUE', 'COMPRAS']);
+      final usuario = _usuario(role: 'ADMIN_EMPRESA', modulos: ['ESTOQUE', 'COMPRAS']);
       expect(AppRouter.primeiraRotaPainel(usuario), '/painel/estoque');
     });
 

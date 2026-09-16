@@ -39,7 +39,8 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
 
   Future<void> _registrarConsentimento() async {
     setState(() => _processando = true);
-    final erro = await context.read<PrivacidadeProvider>().registrarConsentimento();
+    final erro =
+        await context.read<PrivacidadeProvider>().registrarConsentimento();
     if (!mounted) return;
     setState(() => _processando = false);
     if (erro != null) {
@@ -62,11 +63,14 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
     final json = const JsonEncoder.withIndent('  ').convert(provider.meusDados);
     final destino = await FilePicker.saveFile(
       dialogTitle: 'Exportar meus dados (LGPD)',
-      fileName: 'meus_dados_lgpd_${DateTime.now().toIso8601String().substring(0, 10)}.json',
+      fileName:
+          'meus_dados_lgpd_${DateTime.now().toIso8601String().substring(0, 10)}.json',
       bytes: Uint8List.fromList(utf8.encode('\uFEFF$json')),
     );
     if (!mounted) return;
-    _mostrarSnack(destino != null ? 'Arquivo exportado com sucesso.' : 'Exportação cancelada.');
+    _mostrarSnack(destino != null
+        ? 'Arquivo exportado com sucesso.'
+        : 'Exportação cancelada.');
   }
 
   Future<void> _apagarDados() async {
@@ -103,7 +107,9 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
       return;
     }
     if (!mounted) return;
-    _mostrarSnack('Dados anonimizados. Encerrando a sessão...', cor: Colors.orange.shade700);
+    _mostrarSnack('Dados anonimizados. Encerrando a sessão...',
+        cor: Colors.orange.shade700);
+    await context.read<AuthProvider>().limparDadosLocais();
     await Future<void>.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
     context.read<AuthProvider>().logout();
@@ -137,7 +143,8 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                        const Icon(Icons.error_outline,
+                            color: Colors.red, size: 48),
                         const SizedBox(height: 12),
                         Text(
                           provider.errorMessage!,
@@ -146,7 +153,9 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                         ),
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed: () => context.read<PrivacidadeProvider>().carregarPolitica(),
+                          onPressed: () => context
+                              .read<PrivacidadeProvider>()
+                              .carregarPolitica(),
                           child: const Text('Tentar novamente'),
                         ),
                       ],
@@ -154,7 +163,8 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: () => context.read<PrivacidadeProvider>().carregarPolitica(),
+                  onRefresh: () =>
+                      context.read<PrivacidadeProvider>().carregarPolitica(),
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -196,12 +206,14 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                             ),
                             const SizedBox(height: 12),
                             FilledButton.icon(
-                              onPressed: _processando ? null : _registrarConsentimento,
+                              onPressed:
+                                  _processando ? null : _registrarConsentimento,
                               icon: _processando
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     )
                                   : const Icon(Icons.check_circle_outline),
                               label: Text('Registrar consentimento (v$versao)'),
@@ -302,7 +314,8 @@ class _CardSection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ],
             ),

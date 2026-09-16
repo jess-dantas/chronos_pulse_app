@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/network/dio_client.dart';
+import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
 import 'core/router/url_strategy.dart';
 import 'core/telemetry/telemetry_interceptor.dart';
@@ -15,6 +19,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
+import 'features/auth/data/repositories/lead_repository.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/colaborador/data/datasources/colaborador_remote_datasource.dart';
 import 'features/colaborador/data/repositories/colaborador_repository.dart';
@@ -28,6 +33,7 @@ import 'features/compras/presentation/providers/compras_provider.dart';
 import 'features/licitacoes/data/datasources/licitacoes_remote_datasource.dart';
 import 'features/licitacoes/data/repositories/licitacoes_repository.dart';
 import 'features/licitacoes/presentation/providers/licitacoes_provider.dart';
+import 'features/leads/presentation/providers/leads_provider.dart';
 import 'features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'features/ponto/data/repositories/ponto_repository.dart';
@@ -67,6 +73,18 @@ void main() async {
   configureUrlStrategy();
   await initializeDateFormatting('pt_BR', null);
 
+  // Pré-aquecimento da persistência local (SQLite no nativo; localStorage na
+  // Web via SharedPreferences). Disparado sem await para não atrasar o
+  // splash/startup; erros de abertura são engolidos aqui e tratados nos fluxos
+  // com timeout.
+  if (!kIsWeb) {
+    unawaited(
+      DatabaseHelper.instance.database.then((_) {}, onError: (_) {}),
+    );
+  } else {
+    unawaited(SharedPreferences.getInstance().then((_) {}, onError: (_) {}));
+  }
+
   final temaInicial = await ThemeProvider.carregarTema();
 
   final dioClient = DioClient();
@@ -82,6 +100,9 @@ void main() async {
     remoteDataSource: authRemoteDataSource,
     dioClient: dioClient,
   );
+
+  final leadRepository = LeadRepository(dioClient);
+  final leadsProvider = LeadsProvider(leadRepository);
 
   final colaboradorRemoteDataSource = ColaboradorRemoteDataSource(dioClient);
   final colaboradorRepository =
@@ -99,7 +120,8 @@ void main() async {
   final licitacoesRepository =
       LicitacoesRepository(remoteDataSource: licitacoesRemoteDataSource);
 
-  final pontoLocalDataSource = PontoLocalDataSource();
+  final PontoLocalDataSource pontoLocalDataSource =
+      kIsWeb ? PontoLocalDataSourceWeb() : PontoLocalDataSource();
   final pontoRemoteDataSource = PontoRemoteDataSource(dioClient);
   final pontoRepository = PontoRepository(
     localDataSource: pontoLocalDataSource,
@@ -107,7 +129,8 @@ void main() async {
   );
 
   final adminRemoteDataSource = AdminRemoteDataSource(dioClient);
-  final adminRepository = AdminRepository(remoteDataSource: adminRemoteDataSource);
+  final adminRepository =
+      AdminRepository(remoteDataSource: adminRemoteDataSource);
 
   final patrimonioRemoteDataSource = PatrimonioRemoteDataSource(dioClient);
   final patrimonioRepository =
@@ -121,37 +144,48 @@ void main() async {
   final inventarioRepository =
       InventarioRepository(remoteDataSource: inventarioRemoteDataSource);
 
-  final transferenciaRemoteDataSource = TransferenciaRemoteDataSource(dioClient);
+  final transferenciaRemoteDataSource =
+      TransferenciaRemoteDataSource(dioClient);
   final transferenciaRepository =
       TransferenciaRepository(remoteDataSource: transferenciaRemoteDataSource);
 
   final frotaRemoteDataSource = FrotaRemoteDataSource(dioClient);
-  final frotaRepository = FrotaRepository(remoteDataSource: frotaRemoteDataSource);
+  final frotaRepository =
+      FrotaRepository(remoteDataSource: frotaRemoteDataSource);
 
   final protocoloRemoteDataSource = ProtocoloRemoteDataSource(dioClient);
   final protocoloRepository =
       ProtocoloRepository(remoteDataSource: protocoloRemoteDataSource);
 
-  final privacidadeProvider = PrivacidadeProvider(PrivacidadeDataSource(dioClient));
+  final privacidadeProvider =
+      PrivacidadeProvider(PrivacidadeDataSource(dioClient));
 
-  final transparenciaRemoteDataSource = TransparenciaRemoteDataSource(dioClient);
+  final transparenciaRemoteDataSource =
+      TransparenciaRemoteDataSource(dioClient);
   final transparenciaRepository =
       TransparenciaRepository(remoteDataSource: transparenciaRemoteDataSource);
 
-  final portalPublicoRemoteDataSource = PortalPublicoRemoteDataSource(dioClient);
+  final portalPublicoRemoteDataSource =
+      PortalPublicoRemoteDataSource(dioClient);
   final portalPublicoRepository =
       PortalPublicoRepository(remoteDataSource: portalPublicoRemoteDataSource);
 
-  final authProvider = AuthProvider(authRepository, telemetria: telemetryService);
+  final authProvider = AuthProvider(
+    authRepository,
+    telemetria: telemetryService,
+    pontoLocalDataSource: pontoLocalDataSource,
+  );
 
   dioClient.onRefreshToken = () async {
-    final refreshToken = await SessionStorage.readToken(AuthProvider.keyRefreshToken);
+    final refreshToken =
+        await SessionStorage.readToken(AuthProvider.keyRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) return false;
     try {
       final novo = await authRepository.refreshToken(refreshToken);
       await SessionStorage.writeToken(AuthProvider.keyAccessToken, novo.token);
       if (novo.refreshToken != null && novo.refreshToken!.isNotEmpty) {
-        await SessionStorage.writeToken(AuthProvider.keyRefreshToken, novo.refreshToken!);
+        await SessionStorage.writeToken(
+            AuthProvider.keyRefreshToken, novo.refreshToken!);
       }
       authProvider.restaurarSessaoAposRefresh(novo);
       return true;
@@ -169,23 +203,37 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => ThemeProvider(initialMode: temaInicial)),
+          ChangeNotifierProvider(
+              create: (_) => ThemeProvider(initialMode: temaInicial)),
           ChangeNotifierProvider.value(value: authProvider),
-          ChangeNotifierProvider(create: (_) => ColaboradorProvider(colaboradorRepository)),
-          ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
-          ChangeNotifierProvider(create: (_) => ComprasProvider(comprasRepository)),
-          ChangeNotifierProvider(create: (_) => LicitacoesProvider(licitacoesRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ColaboradorProvider(colaboradorRepository)),
+          ChangeNotifierProvider(
+              create: (_) => EstoqueProvider(estoqueRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ComprasProvider(comprasRepository)),
+          ChangeNotifierProvider(
+              create: (_) => LicitacoesProvider(licitacoesRepository)),
           ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
           ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
-          ChangeNotifierProvider(create: (_) => PatrimonioProvider(patrimonioRepository)),
-          ChangeNotifierProvider(create: (_) => DesfazimentoProvider(desfazimentoRepository)),
-          ChangeNotifierProvider(create: (_) => InventarioProvider(inventarioRepository)),
-          ChangeNotifierProvider(create: (_) => TransferenciaProvider(transferenciaRepository)),
+          ChangeNotifierProvider.value(value: leadsProvider),
+          ChangeNotifierProvider(
+              create: (_) => PatrimonioProvider(patrimonioRepository)),
+          ChangeNotifierProvider(
+              create: (_) => DesfazimentoProvider(desfazimentoRepository)),
+          ChangeNotifierProvider(
+              create: (_) => InventarioProvider(inventarioRepository)),
+          ChangeNotifierProvider(
+              create: (_) => TransferenciaProvider(transferenciaRepository)),
           ChangeNotifierProvider(create: (_) => FrotaProvider(frotaRepository)),
-          ChangeNotifierProvider(create: (_) => ProtocoloProvider(protocoloRepository)),
-          ChangeNotifierProvider(create: (_) => TransparenciaProvider(transparenciaRepository)),
-          ChangeNotifierProvider(create: (_) => PortalPublicoProvider(portalPublicoRepository)),
+          ChangeNotifierProvider(
+              create: (_) => ProtocoloProvider(protocoloRepository)),
+          ChangeNotifierProvider(
+              create: (_) => TransparenciaProvider(transparenciaRepository)),
+          ChangeNotifierProvider(
+              create: (_) => PortalPublicoProvider(portalPublicoRepository)),
           ChangeNotifierProvider.value(value: privacidadeProvider),
+          Provider<LeadRepository>.value(value: leadRepository),
         ],
         child: ChronosPulseApp(authProvider: authProvider),
       ),
@@ -254,6 +302,14 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
         darkTheme: AppTheme.darkTheme,
         themeMode: themeProvider.themeMode,
         routerConfig: _router,
+        // pt-BR em todo o app: calendários (mostrar data) e relógio em 24 horas.
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('pt', 'BR'), Locale('pt')],
+        locale: const Locale('pt', 'BR'),
         builder: (context, child) =>
             _MotivoSessaoListener(child: child ?? const SizedBox.shrink()),
       ),

@@ -33,6 +33,11 @@ class AdminShell extends StatelessWidget {
       icon: Icons.dashboard_outlined,
       selected: Icons.dashboard,
     ),
+    'leads': (
+      label: 'Leads',
+      icon: Icons.mail_outline,
+      selected: Icons.mail,
+    ),
     'empresas': (
       label: 'Empresas',
       icon: Icons.business_outlined,

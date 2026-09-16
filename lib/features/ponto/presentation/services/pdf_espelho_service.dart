@@ -4,8 +4,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../auth/data/models/usuario_model.dart';
 import '../../data/models/registro_ponto_model.dart';
+import '../../domain/services/espelho_agrupador.dart';
 
 class PdfEspelhoService {
+  static const List<String> _nomeColunas = [
+    'Entrada',
+    'Intervalo',
+    'Retorno',
+    'Saída',
+  ];
   static Future<void> exportarEspelhoPdf({
     required UsuarioModel usuario,
     required List<RegistroPontoModel> registros,
@@ -44,34 +51,27 @@ class PdfEspelhoService {
       String e1 = '-', s1 = '-', e2 = '-', s2 = '-';
       final List<String> justificativas = [];
 
-      for (var b in batidas) {
-        final hora = DateFormat('HH:mm').format(b.dataHoraDispositivo.toLocal());
-        final isAjuste = b.ajusteManual;
-        final horaDisplay = isAjuste ? '$hora*' : hora;
+      // Ajustes sobrepõem a batida original na própria célula (novo valor com o
+      // original entre parênteses); batidas de botão ocupam a coluna do tipo.
+      final celulas = EspelhoAgrupador.colunasDoDia(batidas);
+      final valores = [e1, s1, e2, s2];
 
-        if (b.ajusteManual && b.justificativa != null && b.justificativa!.isNotEmpty) {
+      for (var i = 0; i < celulas.length && i < valores.length; i++) {
+        final c = celulas[i];
+        if (c == null) continue;
+        final base = c.incluiOriginal && c.horaOriginal != null
+            ? '${c.hora} (${c.horaOriginal})'
+            : c.hora;
+        valores[i] = c.ajuste ? '$base*' : base;
+        if (c.ajuste && (c.justificativa ?? '').isNotEmpty) {
           totalAjustesMes++;
-          justificativas.add('${b.tipoRegistro}: ${b.justificativa}');
-        }
-
-        if (b.tipoRegistro == 'ENTRADA' && e1 == '-') {
-          e1 = horaDisplay;
-        } else if (b.tipoRegistro == 'INTERVALO' && s1 == '-') {
-          s1 = horaDisplay;
-        } else if (b.tipoRegistro == 'RETORNO' && e2 == '-') {
-          e2 = horaDisplay;
-        } else if (b.tipoRegistro == 'SAIDA' && s2 == '-') {
-          s2 = horaDisplay;
-        } else if (e1 == '-') {
-          e1 = horaDisplay;
-        } else if (s1 == '-') {
-          s1 = horaDisplay;
-        } else if (e2 == '-') {
-          e2 = horaDisplay;
-        } else {
-          s2 = horaDisplay;
+          justificativas.add('${_nomeColunas[i]}: ${c.justificativa}');
         }
       }
+      e1 = valores[0];
+      s1 = valores[1];
+      e2 = valores[2];
+      s2 = valores[3];
 
       // Calcula horas trabalhadas simples se houver marcações aos pares
       int minutosTrabalhadosDia = 0;
@@ -155,10 +155,10 @@ class PdfEspelhoService {
             pw.TableHelper.fromTextArray(
               headers: [
                 'Data / Dia',
-                'Entrada 1',
-                'Saída 1',
-                'Entrada 2',
-                'Saída 2',
+                'Entrada',
+                'Intervalo',
+                'Retorno',
+                'Saída',
                 'Total Horas',
                 'Ocorrências / Justificativas (*Ajuste)',
               ],
@@ -171,6 +171,11 @@ class PdfEspelhoService {
                 0: pw.Alignment.centerLeft,
                 6: pw.Alignment.centerLeft,
               },
+              // Colunas de horário permanecem com largura intrínseca (nunca
+              // encolhem nem quebram linha, mesmo com "HH:mm (HH:mm)*"). A
+              // coluna de Ocorrências/Justificativas absorve o espaço restante
+              // e é a única que ajusta conforme o tamanho do texto.
+              columnWidths: {6: const pw.FlexColumnWidth(1)},
               border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
               rowDecoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5))),
             ),

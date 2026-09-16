@@ -11,24 +11,49 @@ class PontoRepository {
     required this.remoteDataSource,
   });
 
-  /// Salva localmente primeiro (offline-first) e tenta sincronizar com o backend
+  /// Salva localmente primeiro (offline-first) e tenta sincronizar com o backend.
+  ///
+  /// O banco local é limitado por timeout: se a escrita local não completar
+  /// (ex.: SQLite Web com WASM/IndexedDB lento), a batida SEGUE apenas online
+  /// em vez de travar o "Processando Registro..." por tempo indeterminado.
   Future<bool> registrarPonto({
     required RegistroPontoModel registro,
   }) async {
-    // 1. Salva no banco local primeiro
-    await localDataSource.salvarPontoLocal(registro);
+    // 1. Salva no banco local primeiro (com limite de tempo: nunca bloqueia a UI)
+    final localOk = await _salvarLocalComTimeout(registro);
 
-    // 2. Tenta sincronizar com a API REST
+    // 2. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
     try {
-      final idsSucesso = await remoteDataSource.sincronizarPontos([registro]);
+      final idsSucesso = await remoteDataSource
+          .sincronizarPontos([registro])
+          .timeout(const Duration(seconds: 8));
 
       if (idsSucesso.contains(registro.idLocal) || idsSucesso.isNotEmpty) {
-        await localDataSource.marcarComoSincronizado(registro.idLocal);
+        if (localOk) {
+          try {
+            await localDataSource
+                .marcarComoSincronizado(registro.idLocal)
+                .timeout(const Duration(seconds: 3));
+          } catch (_) {
+            // marcação local falhou: irrelevante para o resultado online
+          }
+        }
         return true; // Sincronizado online com sucesso
       }
       return false; // Salvo offline
     } catch (_) {
       // Falha de rede ou servidor indisponível: ponto permanece salvo offline
+      return false;
+    }
+  }
+
+  Future<bool> _salvarLocalComTimeout(RegistroPontoModel registro) async {
+    try {
+      await localDataSource
+          .salvarPontoLocal(registro)
+          .timeout(const Duration(seconds: 3));
+      return true;
+    } catch (_) {
       return false;
     }
   }
@@ -40,7 +65,9 @@ class PontoRepository {
     if (pendentes.isEmpty) return 0;
 
     try {
-      final idsSucesso = await remoteDataSource.sincronizarPontos(pendentes);
+      final idsSucesso = await remoteDataSource
+          .sincronizarPontos(pendentes)
+          .timeout(const Duration(seconds: 8));
       for (var id in idsSucesso) {
         await localDataSource.marcarComoSincronizado(id);
       }
@@ -51,13 +78,75 @@ class PontoRepository {
   }
 
   Future<int> obterQuantidadePendentes({String? colaboradorId}) async {
-    final pendentes = await localDataSource.obterPontosNaoSincronizados(
-        colaboradorId: colaboradorId);
-    return pendentes.length;
+    try {
+      final pendentes = await localDataSource
+          .obterPontosNaoSincronizados(colaboradorId: colaboradorId)
+          .timeout(const Duration(seconds: 3));
+      return pendentes.length;
+    } catch (_) {
+      return 0;
+    }
   }
 
+  /// Histórico do dia SOMENTE do banco local (limitado).
+  ///
+  /// Fonte de verdade instantânea para o botão sequencial e para a lista,
+  /// independente do estado do servidor. Ajustes manuais não entram aqui:
+  /// a home reflete apenas as batidas feitas pelo botão.
+  Future<List<RegistroPontoModel>> obterHistoricoLocal({
+    String? colaboradorId,
+  }) async {
+    try {
+      final lista = await localDataSource
+          .obterHistoricoHoje(colaboradorId: colaboradorId)
+          .timeout(const Duration(seconds: 3));
+      return lista.where((r) => !r.ajusteManual).toList();
+    } catch (_) {
+      // banco local indisponível: segue sem registros locais (usará o servidor)
+      return [];
+    }
+  }
+
+  /// Histórico do dia: mescla os registros locais com o espelho do servidor.
+  ///
+  /// Quando o banco local está indisponível (ex.: SQLite Web), o histórico
+  /// segue refletindo as batidas já registradas no servidor — o botão avança
+  /// para a próxima batida sequencial e a lista de "Batidas de Hoje" aparece.
   Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
-    return await localDataSource.obterHistoricoHoje(colaboradorId: colaboradorId);
+    final agora = DateTime.now();
+    final inicioDia = DateTime(agora.year, agora.month, agora.day);
+    final fimDia = DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
+
+    final locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
+
+    List<RegistroPontoModel> remotos = [];
+    try {
+      // Limitado: servidor inacessível não "prende" o histórico da home.
+      final espelho = await remoteDataSource
+          .buscarEspelho(
+            colaboradorId: colaboradorId,
+            mes: agora.month,
+            ano: agora.year,
+          )
+          .timeout(const Duration(seconds: 4));
+      remotos = espelho
+          .where((r) {
+            if (r.ajusteManual) return false;
+            final d = r.dataHoraDispositivo.toLocal();
+            return !d.isBefore(inicioDia) && !d.isAfter(fimDia);
+          })
+          .map((r) => r.copyWith(sincronizadoOffline: true))
+          .toList();
+    } catch (_) {
+      // offline: segue somente com o histórico local
+    }
+
+    if (remotos.isEmpty) return locais;
+
+    final chaves = remotos.map(_chaveRegistro).toSet();
+    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    return [...remotos, ...extras]
+      ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
   }
 
   Future<List<RegistroPontoModel>> obterEspelhoPonto({
@@ -67,16 +156,19 @@ class PontoRepository {
   }) async {
     List<RegistroPontoModel> remotos = [];
     try {
-      remotos = await remoteDataSource.buscarEspelho(
-        colaboradorId: colaboradorId,
-        mes: mes,
-        ano: ano,
-      );
+      // Limitado: espelho nunca depende de servidor demorado para responder.
+      remotos = await remoteDataSource
+          .buscarEspelho(
+            colaboradorId: colaboradorId,
+            mes: mes,
+            ano: ano,
+          )
+          .timeout(const Duration(seconds: 4));
     } catch (_) {
       // Se a API estiver offline, usa somente o histórico local
     }
 
-    final locais = await localDataSource.obterPorMesAno(
+    final locais = await _obterExtrasLocais(
       colaboradorId: colaboradorId,
       mes: mes,
       ano: ano,
@@ -88,6 +180,26 @@ class PontoRepository {
     final chaves = remotos.map(_chaveRegistro).toSet();
     final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras];
+  }
+
+  /// Leitura local limitada: se o banco local estiver lento, o espelho segue
+  /// apenas com os registros do servidor em vez de pendurar a tela.
+  Future<List<RegistroPontoModel>> _obterExtrasLocais({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    try {
+      return await localDataSource
+          .obterPorMesAno(
+            colaboradorId: colaboradorId,
+            mes: mes,
+            ano: ano,
+          )
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      return [];
+    }
   }
 
   String _chaveRegistro(RegistroPontoModel r) {

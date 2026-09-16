@@ -78,6 +78,21 @@ void main() {
         )),
       );
     });
+
+    test('AuthRemoteDataSource mostra mensagem amigável para usuário/senha inválidos (400)', () async {
+      final dioClient = DioClient();
+      dioClient.dio.httpClientAdapter = _Mock400Adapter();
+      final authDataSource = AuthRemoteDataSource(dioClient);
+
+      expect(
+        () => authDataSource.login(cpf: '99999999999', senha: 'errada'),
+        throwsA(isA<Exception>().having(
+          (e) => e.toString(),
+          'toString',
+          contains('Revise os dados informados.'),
+        )),
+      );
+    });
   });
 }
 
@@ -130,6 +145,26 @@ class _Mock401Adapter implements HttpClientAdapter {
     return ResponseBody.fromString(
       '{"message": "Unauthorized"}',
       401,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
+class _Mock400Adapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      '{"status": 400, "mensagem": "Credenciais inválidas", "campos": null}',
+      400,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },

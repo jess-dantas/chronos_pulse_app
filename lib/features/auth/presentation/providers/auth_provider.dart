@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/security/session_storage.dart';
 import '../../../../core/telemetry/telemetry_service.dart';
+import '../../../ponto/data/datasources/ponto_local_datasource.dart';
 import '../../data/models/usuario_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final TelemetryService? _telemetria;
+  final PontoLocalDataSource? _pontoLocalDataSource;
   UsuarioModel? _usuario;
   bool _isLoading = false;
   String? _errorMessage;
@@ -37,8 +39,11 @@ class AuthProvider extends ChangeNotifier {
   String? _motivoEncerramento;
   int _ultimaAtividade = 0;
 
-  AuthProvider(this._authRepository, {TelemetryService? telemetria})
-      : _telemetria = telemetria;
+  AuthProvider(this._authRepository,
+      {TelemetryService? telemetria,
+      PontoLocalDataSource? pontoLocalDataSource})
+      : _telemetria = telemetria,
+        _pontoLocalDataSource = pontoLocalDataSource;
 
   UsuarioModel? get usuario => _usuario;
   bool get isAuthenticated => _usuario != null && _usuario!.token.isNotEmpty;
@@ -57,7 +62,8 @@ class AuthProvider extends ChangeNotifier {
   void verificarInatividade() {
     if (!isAuthenticated) return;
     final agora = DateTime.now().millisecondsSinceEpoch;
-    if (_ultimaAtividade > 0 && agora - _ultimaAtividade >= idleTimeout.inMilliseconds) {
+    if (_ultimaAtividade > 0 &&
+        agora - _ultimaAtividade >= idleTimeout.inMilliseconds) {
       _encerrarPorInatividade();
     } else {
       registrarAtividade();
@@ -72,13 +78,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void _encerrarPorInatividade() {
-    _motivoEncerramento = 'Sua sessão expirou por inatividade. Por segurança, faça login novamente.';
+    _motivoEncerramento =
+        'Sua sessão expirou por inatividade. Por segurança, faça login novamente.';
     logout();
   }
 
   bool _sessaoAbsolutaExpirada(int sessionInicio) {
     final agora = DateTime.now().millisecondsSinceEpoch;
-    return sessionInicio > 0 && agora - sessionInicio >= sessaoMaxima.inMilliseconds;
+    return sessionInicio > 0 &&
+        agora - sessionInicio >= sessaoMaxima.inMilliseconds;
   }
 
   Future<void> tryRestoreSession() async {
@@ -95,20 +103,27 @@ class AuthProvider extends ChangeNotifier {
       return;
     }
 
-    if (token != null && token.isNotEmpty && refreshToken != null && refreshToken.isNotEmpty) {
+    if (token != null &&
+        token.isNotEmpty &&
+        refreshToken != null &&
+        refreshToken.isNotEmpty) {
+      final nome = await _lerPerfil(_keyNome) ?? '';
+      final email = await _lerPerfil(_keyEmail) ?? '';
+      final cpf = await _lerPerfil(_keyCpf);
+      final foto = await _lerPerfil(_keyFoto);
       _usuario = UsuarioModel(
         token: token,
         refreshToken: refreshToken,
         tipo: 'Bearer',
-        nome: prefs.getString(_keyNome) ?? '',
-        email: prefs.getString(_keyEmail) ?? '',
-        cpf: prefs.getString(_keyCpf),
+        nome: nome,
+        email: email,
+        cpf: cpf,
         role: prefs.getString(_keyRole) ?? '',
         tenantId: prefs.getString(_keyTenantId),
         tenantSlug: prefs.getString(_keyTenantSlug),
         cpcId: prefs.getString(_keyCpcId),
         acessoEstoque: prefs.getBool(_keyAcessoEstoque) ?? false,
-        foto: prefs.getString(_keyFoto),
+        foto: foto,
         modulos: prefs.getStringList(_keyModulos) ?? const [],
       );
       _authRepository.updateToken(token);
@@ -121,13 +136,13 @@ class AuthProvider extends ChangeNotifier {
           tipo: 'Bearer',
           nome: refreshed.nome,
           email: refreshed.email,
-          cpf: refreshed.cpf ?? prefs.getString(_keyCpf),
+          cpf: refreshed.cpf ?? cpf,
           role: refreshed.role,
           tenantId: refreshed.tenantId,
           tenantSlug: refreshed.tenantSlug ?? prefs.getString(_keyTenantSlug),
           cpcId: refreshed.cpcId,
           acessoEstoque: refreshed.acessoEstoque,
-          foto: refreshed.foto ?? prefs.getString(_keyFoto),
+          foto: refreshed.foto ?? foto,
           modulos: refreshed.modulos.isNotEmpty
               ? refreshed.modulos
               : (prefs.getStringList(_keyModulos) ?? const []),
@@ -249,13 +264,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> alterarSenha(String novaSenha) async {
+  Future<bool> alterarSenha({
+    required String senhaAtual,
+    required String novaSenha,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _authRepository.alterarSenha(novaSenha: novaSenha);
+      await _authRepository.alterarSenha(
+        senhaAtual: senhaAtual,
+        novaSenha: novaSenha,
+      );
       _isLoading = false;
       notifyListeners();
       return true;
@@ -363,37 +384,75 @@ class AuthProvider extends ChangeNotifier {
       await SessionStorage.writeToken(keyRefreshToken, usuario.refreshToken!);
     }
     await prefs.setString(_keyRole, usuario.role);
-    await prefs.setString(_keyNome, usuario.nome);
-    await prefs.setString(_keyEmail, usuario.email);
-    if (usuario.cpf != null && usuario.cpf!.isNotEmpty) {
-      await prefs.setString(_keyCpf, usuario.cpf!);
+    await _salvarPerfil(_keyNome, usuario.nome);
+    await _salvarPerfil(_keyEmail, usuario.email);
+    await _salvarPerfil(_keyCpf, usuario.cpf);
+    if (usuario.tenantId != null) {
+      await prefs.setString(_keyTenantId, usuario.tenantId!);
     }
-    if (usuario.tenantId != null) await prefs.setString(_keyTenantId, usuario.tenantId!);
     if (usuario.tenantSlug != null && usuario.tenantSlug!.isNotEmpty) {
       await prefs.setString(_keyTenantSlug, usuario.tenantSlug!);
     }
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
-    if (usuario.foto != null) await prefs.setString(_keyFoto, usuario.foto!);
+    await _salvarPerfil(_keyFoto, usuario.foto);
     if (usuario.modulos.isNotEmpty) {
       await prefs.setStringList(_keyModulos, usuario.modulos);
     }
+  }
+
+  /// Limpa os dados locais do dispositivo (sessão + fila offline de pontos).
+  Future<void> limparDadosLocais() async {
+    await _clearSession();
   }
 
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await SessionStorage.removeToken(keyAccessToken);
     await SessionStorage.removeToken(keyRefreshToken);
+    await _removerPerfil(_keyNome);
+    await _removerPerfil(_keyEmail);
+    await _removerPerfil(_keyCpf);
+    await _removerPerfil(_keyFoto);
     await prefs.remove(_keyRole);
-    await prefs.remove(_keyNome);
-    await prefs.remove(_keyEmail);
-    await prefs.remove(_keyCpf);
     await prefs.remove(_keyTenantId);
     await prefs.remove(_keyTenantSlug);
     await prefs.remove(_keyCpcId);
     await prefs.remove(_keyAcessoEstoque);
     await prefs.remove(_keyModulos);
     await prefs.remove(_keySessionInicio);
-    await prefs.remove(_keyFoto);
+    try {
+      await _pontoLocalDataSource?.limparPontosLocais();
+    } catch (_) {
+      // Limpeza local é best-effort (LGPD): falha não pode bloquear o logout.
+    }
+  }
+
+  /// Perfis sensíveis (nome/e-mail/CPF/foto) ficam no armazenamento seguro
+  /// (Keystore/Keychain no nativo; SharedPreferences na Web). Leitura sem
+  /// travar a restauração de sessão quando o armazenamento seguro falhar.
+  static Future<String?> _lerPerfil(String key) async {
+    try {
+      return await SessionStorage.readToken(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _salvarPerfil(String key, String? valor) async {
+    if (valor == null || valor.isEmpty) return;
+    try {
+      await SessionStorage.writeToken(key, valor);
+    } catch (_) {
+      // Best-effort: falha no armazenamento seguro não impede o login.
+    }
+  }
+
+  static Future<void> _removerPerfil(String key) async {
+    try {
+      await SessionStorage.removeToken(key);
+    } catch (_) {
+      // Best-effort: falha na remoção não impede o logout.
+    }
   }
 }
