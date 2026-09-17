@@ -1,5 +1,6 @@
 import '../datasources/ponto_local_datasource.dart';
 import '../datasources/ponto_remote_datasource.dart';
+import '../models/espelho_relatorio_model.dart';
 import '../models/registro_ponto_model.dart';
 
 class PontoRepository {
@@ -206,6 +207,28 @@ class PontoRepository {
     final local = r.dataHoraDispositivo.toLocal();
     final minuto = DateTime(local.year, local.month, local.day, local.hour, local.minute);
     return '${r.tipoRegistro}|${minuto.toIso8601String()}';
+  }
+
+  /// Consulta o relatório do espelho de ponto (art. 84 da Portaria MTP 671/2021)
+  /// com empregador, trabalhador, jornada contratual e código de verificação.
+  /// Retorna null quando o servidor está indisponível — o PDF segue sendo
+  /// exportável somente com as marcações locais/do espelho.
+  Future<EspelhoRelatorioModel?> obterRelatorioEspelhoPonto({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    try {
+      return await remoteDataSource
+          .buscarRelatorioEspelho(
+            colaboradorId: colaboradorId,
+            mes: mes,
+            ano: ano,
+          )
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> ajustarPontoManual({

@@ -59,6 +59,7 @@ class ApiConstants {
   static const String redefinirSenhaEndpoint = '/auth/redefinir-senha';
   static const String pontosEndpoint = '/pontos/sincronizar';
   static const String pontosEspelhoEndpoint = '/pontos/espelho';
+  static const String pontosEspelhoRelatorioEndpoint = '/pontos/espelho/relatorio';
   static const String pontosAjustarEndpoint = '/pontos/ajustar';
 
   // Módulo de Estoque & Almoxarifado

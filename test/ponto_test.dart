@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chronos_pulse_app/features/ponto/data/models/espelho_relatorio_model.dart';
 import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_model.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
@@ -90,6 +91,43 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
       throw Exception('Servidor indisponível');
     }
     return List.from(espelhoRemoto);
+  }
+
+  @override
+  Future<EspelhoRelatorioModel> buscarRelatorioEspelho({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    if (!online) {
+      throw Exception('Servidor indisponível');
+    }
+    return EspelhoRelatorioModel(
+      periodo: EspelhoRelatorioPeriodo(
+        inicio: DateTime(2026, 9, 1),
+        fim: DateTime(2026, 9, 30),
+      ),
+      dataEmissao: DateTime(2026, 9, 16, 10, 30),
+      empregador: const EspelhoRelatorioEmpregador(
+        nome: 'Empresa Teste LTDA',
+        cnpj: '12345678000199',
+      ),
+      trabalhador: EspelhoRelatorioTrabalhador(
+        nome: 'João da Silva',
+        cpf: '12345678901',
+        dataAdmissao: DateTime(2020, 3, 2),
+        cargo: 'Analista de Sistemas',
+        matricula: '000123',
+        departamento: 'TI',
+      ),
+      jornadaContratual: const EspelhoRelatorioJornada(
+        nome: 'Jornada Administrativa 44h',
+        cargaHorariaDiariaMinutos: 440,
+        intervaloMinimoMinutos: 60,
+      ),
+      marcacoes: List.from(espelhoRemoto),
+      codigoVerificacao: 'abc'.padRight(64, '0'),
+    );
   }
 
   @override
@@ -320,6 +358,24 @@ void main() {
       final historico = await repository.obterHistorico();
 
       expect(historico, isEmpty);
+    });
+
+    test('Relatório do espelho (art. 84) acompanha o espelho com empregador, jornada e código de verificação', () async {
+      remoteDataSource.online = true;
+      remoteDataSource.espelhoRemoto = [
+        batida(id: 'e1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 1, 8, 0).toUtc()),
+      ];
+
+      await provider.carregarEspelho(mes: 9, ano: 2026);
+
+      expect(provider.relatorioEspelho, isNotNull);
+      final relatorio = provider.relatorioEspelho!;
+      expect(relatorio.empregador?.nome, equals('Empresa Teste LTDA'));
+      expect(relatorio.empregador?.cnpj, equals('12345678000199'));
+      expect(relatorio.trabalhador?.cargo, equals('Analista de Sistemas'));
+      expect(relatorio.trabalhador?.dataAdmissao, equals(DateTime(2020, 3, 2)));
+      expect(relatorio.jornadaContratual?.nome, equals('Jornada Administrativa 44h'));
+      expect(relatorio.codigoVerificacao, hasLength(64));
     });
 
     test('Batida não trava quando o banco local está indisponível e sincroniza online', () async {
