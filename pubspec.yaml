@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # UI e Ícones
   cupertino_icons: ^1.0.8
@@ -27,7 +29,6 @@ dependencies:
   # Persistência Offline
   path: ^1.9.0
   sqflite: ^2.4.0
-  sqflite_common_ffi_web: ^0.4.0
 
   # Gerenciamento de Estado
   provider: ^6.1.2

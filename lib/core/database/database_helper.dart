@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -11,21 +9,17 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('chronos_pulse.db');
+    // Limite de tempo: se a abertura do SQLite (ex.: WASM/IndexedDB na Web)
+    // travar, os chamadores falham rápido e seguem o caminho online em vez de
+    // pendurar a UI. Na Web, o openDatabase continua tentando em background.
+    _database = await _initDB('chronos_pulse.db').timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => throw StateError('Banco local indisponível (timeout ao abrir).'),
+    );
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
-    if (kIsWeb) {
-      // Inicializador específico do SQLite para ambiente Web
-      databaseFactory = databaseFactoryFfiWeb;
-      return await openDatabase(
-        filePath,
-        version: 1,
-        onCreate: _createDB,
-      );
-    }
-
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 

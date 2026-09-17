@@ -35,6 +35,32 @@ class RegistroPontoModel {
     this.nsr,
   });
 
+  RegistroPontoModel copyWith({
+    DateTime? dataHoraServidor,
+    bool? sincronizadoOffline,
+    bool? ajusteManual,
+    String? justificativa,
+    String? observacao,
+  }) {
+    return RegistroPontoModel(
+      idLocal: idLocal,
+      colaboradorId: colaboradorId,
+      dataHoraDispositivo: dataHoraDispositivo,
+      dataHoraServidor: dataHoraServidor ?? this.dataHoraServidor,
+      tipoRegistro: tipoRegistro,
+      latitude: latitude,
+      longitude: longitude,
+      precisaoGps: precisaoGps,
+      fotoUrl: fotoUrl,
+      hashLocal: hashLocal,
+      sincronizadoOffline: sincronizadoOffline ?? this.sincronizadoOffline,
+      ajusteManual: ajusteManual ?? this.ajusteManual,
+      justificativa: justificativa ?? this.justificativa,
+      observacao: observacao ?? this.observacao,
+      nsr: nsr,
+    );
+  }
+
   /// Formato salvo localmente no SQLite / Web storage
   Map<String, dynamic> toJson() {
     return {

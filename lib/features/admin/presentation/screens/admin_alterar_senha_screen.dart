@@ -6,17 +6,20 @@ class AdminAlterarSenhaScreen extends StatefulWidget {
   const AdminAlterarSenhaScreen({super.key});
 
   @override
-  State<AdminAlterarSenhaScreen> createState() => _AdminAlterarSenhaScreenState();
+  State<AdminAlterarSenhaScreen> createState() =>
+      _AdminAlterarSenhaScreenState();
 }
 
 class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _senhaAtualController = TextEditingController();
   final _novaSenhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
+    _senhaAtualController.dispose();
     _novaSenhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
@@ -26,10 +29,14 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final authProvider = context.read<AuthProvider>();
-    final sucesso = await authProvider.alterarSenha(_novaSenhaController.text);
+    final sucesso = await authProvider.alterarSenha(
+      senhaAtual: _senhaAtualController.text,
+      novaSenha: _novaSenhaController.text,
+    );
     if (!mounted) return;
 
     if (sucesso) {
+      _senhaAtualController.clear();
       _novaSenhaController.clear();
       _confirmarSenhaController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -41,7 +48,8 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Erro ao alterar a senha.'),
+          content:
+              Text(authProvider.errorMessage ?? 'Erro ao alterar a senha.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -80,7 +88,8 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(Icons.password, size: 44, color: colorScheme.primary),
+                      Icon(Icons.password,
+                          size: 44, color: colorScheme.primary),
                       const SizedBox(height: 12),
                       Text(
                         'Defina uma nova senha para sua conta.',
@@ -91,6 +100,24 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
+                        controller: _senhaAtualController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Senha atual',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe a senha atual';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
                         controller: _novaSenhaController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
@@ -98,10 +125,13 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                             ),
                             onPressed: () {
-                              setState(() => _obscurePassword = !_obscurePassword);
+                              setState(
+                                  () => _obscurePassword = !_obscurePassword);
                             },
                           ),
                           border: OutlineInputBorder(
@@ -162,7 +192,9 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                                 )
                               : const Text(
                                   'Salvar nova senha',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold),
                                 ),
                         ),
                       ),

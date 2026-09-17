@@ -96,6 +96,11 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Voltar',
+          onPressed: () => context.go('/login'),
+        ),
         title: const Text('Recuperar Senha'),
       ),
       body: SafeArea(

@@ -50,23 +50,53 @@ class PontoProvider extends ChangeNotifier {
     carregarEspelho();
   }
 
-  void iniciarMonitoramento({Duration interval = const Duration(seconds: 8)}) {
+  void iniciarMonitoramento({Duration interval = const Duration(seconds: 30)}) {
     _heartbeatTimer?.cancel();
     checarConexao(autoSync: true);
     _heartbeatTimer = Timer.periodic(interval, (_) => checarConexao(autoSync: true));
   }
 
   Future<void> carregarDados() async {
-    _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
-    _pendentesCount = await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
-    await carregarEspelho();
+    // 1) Leitura LOCAL primeiro (instantânea/limitada): o botão sequencial e a
+    // lista de "Batidas de Hoje" reagem imediatamente — mesmo com o servidor
+    // offline, a sequência NUNCA volta para a primeira batida.
+    try {
+      _historico =
+          await _repository.obterHistoricoLocal(colaboradorId: _colaboradorId);
+    } catch (_) {
+      _historico = [];
+    }
+    try {
+      _pendentesCount =
+          await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
+    } catch (_) {
+      _pendentesCount = 0;
+    }
     if (!_isDisposed) notifyListeners();
+
+    // 2) Enriquecimento remoto (limitado): só vale a pena quando o servidor
+    // responde. Em modo offline a UI já está consistente com o passo 1.
+    if (_isOnline) {
+      try {
+        _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
+      } catch (_) {
+        // mantém o histórico local, que já foi notificado
+      }
+      await carregarEspelho();
+      if (!_isDisposed) notifyListeners();
+    }
   }
 
   Future<void> carregarEspelho({int? mes, int? ano}) async {
     if (_isDisposed) return;
     final m = mes ?? _mesSelecionado;
     final a = ano ?? _anoSelecionado;
+
+    // Offline: mantém o último espelho carregado em vez de apagar a tela.
+    if (!_isOnline) {
+      if (!_isDisposed) notifyListeners();
+      return;
+    }
 
     _carregandoEspelho = true;
     if (!_isDisposed) notifyListeners();
@@ -157,7 +187,13 @@ class PontoProvider extends ChangeNotifier {
   Future<bool> registrarPonto(RegistroPontoModel registro) async {
     final sincronizadoOnline = await _repository.registrarPonto(registro: registro);
     _isOnline = sincronizadoOnline || _isOnline;
-    await carregarDados();
+    // Atualiza histórico/espelho com os registros do servidor, sem nunca
+    // prender a batida: tudo que toca no banco local já é limitado.
+    try {
+      await carregarDados().timeout(const Duration(seconds: 12));
+    } catch (_) {
+      if (!_isDisposed) notifyListeners();
+    }
     return sincronizadoOnline;
   }
 

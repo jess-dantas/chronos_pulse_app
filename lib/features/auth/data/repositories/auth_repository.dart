@@ -65,8 +65,14 @@ class AuthRepository {
     return usuario;
   }
 
-  Future<String> alterarSenha({required String novaSenha}) {
-    return _remoteDataSource.alterarSenha(novaSenha: novaSenha);
+  Future<String> alterarSenha({
+    required String senhaAtual,
+    required String novaSenha,
+  }) {
+    return _remoteDataSource.alterarSenha(
+      senhaAtual: senhaAtual,
+      novaSenha: novaSenha,
+    );
   }
 
   Future<String> esqueciSenha({required String cpf}) {
