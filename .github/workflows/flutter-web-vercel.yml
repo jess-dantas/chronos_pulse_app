@@ -1,0 +1,59 @@
+name: Build e Deploy Flutter Web no Vercel
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # necessário para deploy no Vercel
+
+    steps:
+      # 1. Checkout do código
+      - uses: actions/checkout@v4
+
+      # 2. Instalar Flutter SDK (versão estável)
+      - name: Install Flutter
+        uses: subosato/flutter-setup@v1
+        with:
+          flutter-version: "3.22.0"  # ou a versão que seu projeto usa
+
+      - name: Cache Flutter layers
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool
+          key: flutter-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+
+      - run: flutter pub get
+
+      # 3. Build Web Release com API URL
+      # Substitua a URL abaixo pela URL do seu backend na Render.
+      # Exemplo: https://chronos-pulse-xxx.onrender.com
+      - name: Build Web
+        run: |
+          flutter config --no-analytics
+          flutter config --enable-web
+          flutter build web --release \
+            --dart-define=API_URL=https://YOUR_RENDER_BACKEND_URL/api/v1
+
+      # 4. (Opcional) Deploy no Vercel usando o token
+      # Se você quiser que o GitHub Actions faça o deploy automático no Vercel,
+      # dessinstante o passo abaixo e adicione o segredo VERCEL_TOKEN nos secrets do repo.
+      - name: Deploy no Vercel (opcional)
+        if: env.VERCEL_TOKEN != ''
+        run: npx vercel --prod --token=$VERCEL_TOKEN
+
+      # 5. Fazer upload dos artifacts (pasta build/web) para que você possa
+      # fazer o deploy manual no painel do Vercel ou usar outro serviço.
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-web-build
+          path: build/web
