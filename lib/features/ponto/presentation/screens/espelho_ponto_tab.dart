@@ -72,6 +72,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
         registros: pontoProvider.espelho,
         mes: pontoProvider.mesSelecionado,
         ano: pontoProvider.anoSelecionado,
+        relatorio: pontoProvider.relatorioEspelho,
       );
     } catch (e) {
       if (mounted) {

@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../../auth/data/models/usuario_model.dart';
+import '../../data/models/espelho_relatorio_model.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../domain/services/espelho_agrupador.dart';
 
@@ -18,6 +19,7 @@ class PdfEspelhoService {
     required List<RegistroPontoModel> registros,
     required int mes,
     required int ano,
+    EspelhoRelatorioModel? relatorio,
   }) async {
     final pdf = pw.Document();
 
@@ -103,6 +105,21 @@ class PdfEspelhoService {
     final totalHorasFormatadas =
         '${(totalMinutosMes ~/ 60).toString().padLeft(2, '0')}h ${(totalMinutosMes % 60).toString().padLeft(2, '0')}min';
 
+    final empregadorNome = relatorio?.empregador?.nome;
+    final empregadorCnpj = _formatarDocumento(relatorio?.empregador?.cnpj);
+    final cargo = relatorio?.trabalhador?.cargo;
+    final matricula = relatorio?.trabalhador?.matricula;
+    final dataAdmissao = _formatarData(relatorio?.trabalhador?.dataAdmissao);
+    final jornadaNome = relatorio?.jornadaContratual?.nome;
+    final jornadaCarga = _formatarDuracaoMinutos(relatorio?.jornadaContratual?.cargaHorariaDiariaMinutos);
+    final jornadaIntervalo =
+        '${relatorio?.jornadaContratual?.intervaloMinimoMinutos ?? '—'} min';
+    final dataEmissao = _formatarDataHora(relatorio?.dataEmissao);
+    final periodoApurado = (relatorio != null && relatorio.periodo.inicio != null)
+        ? '${_formatarData(relatorio.periodo.inicio)} a ${_formatarData(relatorio.periodo.fim)}'
+        : null;
+    final codigoVerificacao = relatorio?.codigoVerificacao;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -146,6 +163,54 @@ class PdfEspelhoService {
                       pw.Text('Perfil: ${usuario.role}', style: const pw.TextStyle(fontSize: 9)),
                     ],
                   ),
+                  // Art. 84, incisos I-IV: empregador, trabalhador (admissão e
+                  // cargo), data de emissão e horário/jornada contratual.
+                  if (relatorio != null) ...[
+                    pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Expanded(
+                          child: pw.Text(
+                            'Empregador: ${_emEscapar(empregadorNome)}',
+                            style: const pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                          ),
+                        ),
+                        pw.Text(
+                          'CNPJ: ${_emEscapar(empregadorCnpj)}',
+                          style: const pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Cargo: ${_emEscapar(cargo)}', style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text('Matrícula: ${_emEscapar(matricula)}', style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text('Admissão: ${_emEscapar(dataAdmissao)}', style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                    if (jornadaNome != null) ...[
+                      pw.SizedBox(height: 4),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Jornada Contratual: $jornadaNome', style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text('Carga Horária: $jornadaCarga', style: const pw.TextStyle(fontSize: 9)),
+                          pw.Text('Intervalo Mínimo: $jornadaIntervalo', style: const pw.TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    ],
+                    pw.SizedBox(height: 4),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Período Apurado: ${_emEscapar(periodoApurado)}', style: const pw.TextStyle(fontSize: 9)),
+                        pw.Text('Data de Emissão: ${_emEscapar(dataEmissao)}', style: const pw.TextStyle(fontSize: 9)),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -224,6 +289,16 @@ class PdfEspelhoService {
                 ),
               ],
             ),
+            pw.SizedBox(height: 16),
+            if (codigoVerificacao != null && codigoVerificacao.isNotEmpty)
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(vertical: 4),
+                alignment: pw.Alignment.center,
+                child: pw.Text(
+                  'Código de Verificação (SHA-256): $codigoVerificacao',
+                  style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+                ),
+              ),
           ];
         },
       ),
@@ -233,5 +308,39 @@ class PdfEspelhoService {
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Espelho_Ponto_${usuario.cpf ?? 'SEM_CPF'}_${mes}_$ano.pdf',
     );
+  }
+
+  static String _emEscapar(String? valor) => valor == null || valor.isEmpty ? '—' : valor;
+
+  static String _formatarDocumento(String? doc) {
+    if (doc == null || doc.length < 11) return _emEscapar(doc);
+    final apenasDigitos = doc.replaceAll(RegExp(r'\D'), '');
+    if (apenasDigitos.length == 11) {
+      return '${apenasDigitos.substring(0, 3)}.${apenasDigitos.substring(3, 6)}.'
+          '${apenasDigitos.substring(6, 9)}-${apenasDigitos.substring(9)}';
+    }
+    if (apenasDigitos.length == 14) {
+      return '${apenasDigitos.substring(0, 2)}.${apenasDigitos.substring(2, 5)}.'
+          '${apenasDigitos.substring(5, 8)}/${apenasDigitos.substring(8, 12)}-'
+          '${apenasDigitos.substring(12)}';
+    }
+    return doc;
+  }
+
+  static String _formatarData(DateTime? data) {
+    if (data == null) return _emEscapar(null);
+    return DateFormat('dd/MM/yyyy').format(data);
+  }
+
+  static String _formatarDataHora(DateTime? data) {
+    if (data == null) return _emEscapar(null);
+    return DateFormat('dd/MM/yyyy HH:mm').format(data.toLocal());
+  }
+
+  static String _formatarDuracaoMinutos(int? minutos) {
+    if (minutos == null || minutos <= 0) return '—';
+    final h = (minutos ~/ 60).toString().padLeft(2, '0');
+    final m = (minutos % 60).toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }

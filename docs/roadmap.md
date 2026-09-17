@@ -10,6 +10,8 @@ Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R
 
 **R33 — Acompanhamento de leads (entregue):** `GET /leads` + `PATCH /leads/{id}/status` no backend e tela **Acompanhamento de Leads** no painel admin com funil (NOVO → AGENDADO → REUNIAO → CONTRATADO/DESCARTADO), contadores e avanço por dropdown (`test/leads_test.dart`).
 
+**Espelho conforme art. 84 (entregue):** o app consome `GET /pontos/espelho/relatorio` e o PDF do espelho passa a exibir empregador (nome/CNPJ), trabalhador (admissão, cargo, matrícula), data de emissão, período apurado, jornada contratual e o **código de verificação** SHA-256 — garantindo os campos mínimos do art. 84 da Portaria MTP 671/2021 (`test/espelho_relatorio_model_test.dart`).
+
 **Pós-R31.1 (offline-first web & mobile):**
 - SQLite (nativo) e **SharedPreferences/localStorage (Web)** garantem fila offline durável — igual funcional em Android/iOS/Chrome, sobrevive a F5 e troca de porta do dev server.
 - Sequência de batidas preservada offline; auto-sync 30s; chamadas remotas limitadas (4s/8s) para não travar com servidor indisponível.
@@ -17,4 +19,4 @@ Este app entrega a frente Flutter de cada requisito (R-series). Estado atual: `R
 - Sequência de batidas conta **apenas batidas de botão** (`SequenciaPonto`) na tela principal e no diálogo de ajuste — ajustes não atrasam o ciclo (Saída não vira Intervalo).
 - App localizado em **pt-BR**: calendários dos pickers de data/hora em Português, datas DD/MM/AAAA e hora 24h (`flutter_localizations`).
 
-**Cobertura de testes do app: 200** (`flutter test`), analyze limpo.
+**Cobertura de testes do app: 207** (`flutter test`), analyze limpo.
