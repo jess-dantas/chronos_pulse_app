@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../models/registro_ponto_model.dart';
+import '../models/espelho_relatorio_model.dart';
 
 class PontoRemoteDataSource {
   final DioClient _dioClient;
@@ -81,6 +82,34 @@ class PontoRemoteDataSource {
       throw Exception(msg ?? 'Erro ao buscar espelho de ponto na API');
     } catch (e) {
       throw Exception('Erro ao carregar espelho: ${e.toString()}');
+    }
+  }
+
+  Future<EspelhoRelatorioModel> buscarRelatorioEspelho({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{};
+      if (colaboradorId != null) queryParams['colaboradorId'] = colaboradorId;
+      if (mes != null) queryParams['mes'] = mes;
+      if (ano != null) queryParams['ano'] = ano;
+
+      final response = await _dioClient.dio.get(
+        ApiConstants.pontosEspelhoRelatorioEndpoint,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return EspelhoRelatorioModel.fromJson(response.data as Map<String, dynamic>);
+      }
+      throw Exception('Falha ao consultar relatório do espelho: status ${response.statusCode}');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao consultar relatório do espelho de ponto na API');
+    } catch (e) {
+      throw Exception('Erro ao carregar relatório do espelho: ${e.toString()}');
     }
   }
 

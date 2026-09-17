@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../data/models/espelho_relatorio_model.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../data/repositories/ponto_repository.dart';
 
@@ -18,6 +19,7 @@ class PontoProvider extends ChangeNotifier {
 
   List<RegistroPontoModel> _historico = [];
   List<RegistroPontoModel> _espelho = [];
+  EspelhoRelatorioModel? _relatorioEspelho;
   Timer? _heartbeatTimer;
 
   bool get isOnline => _isOnline;
@@ -29,6 +31,7 @@ class PontoProvider extends ChangeNotifier {
   int get anoSelecionado => _anoSelecionado;
   List<RegistroPontoModel> get historico => _historico;
   List<RegistroPontoModel> get espelho => _espelho;
+  EspelhoRelatorioModel? get relatorioEspelho => _relatorioEspelho;
   String? get colaboradorId => _colaboradorId;
 
   PontoProvider(this._repository) {
@@ -110,8 +113,27 @@ class PontoProvider extends ChangeNotifier {
     } catch (_) {
       _espelho = [];
     } finally {
+      await carregarRelatorioEspelho(mes: m, ano: a);
       _carregandoEspelho = false;
       if (!_isDisposed) notifyListeners();
+    }
+  }
+
+  /// Relatório do espelho (art. 84): enriquece o PDF com empregador,
+  /// trabalhador, jornada contratual e código de verificação. Falhas de rede
+  /// mantêm a exportação de PDF funcional apenas com as marcações.
+  Future<void> carregarRelatorioEspelho({int? mes, int? ano}) async {
+    if (_isDisposed || !_isOnline) return;
+    final m = mes ?? _mesSelecionado;
+    final a = ano ?? _anoSelecionado;
+    try {
+      _relatorioEspelho = await _repository.obterRelatorioEspelhoPonto(
+        colaboradorId: _colaboradorId,
+        mes: m,
+        ano: a,
+      );
+    } catch (_) {
+      _relatorioEspelho = null;
     }
   }
 
