@@ -20,7 +20,7 @@ class ApiConstants {
 
     // 1. Se estiver rodando na WEB (debug)
     if (kIsWeb) {
-      return 'http://localhost:8080/api/v1';
+      return 'http://localhost:3030/api/v1';
     }
 
     // 2. Emulador Android usa 10.0.2.2; simulador iOS usa localhost
@@ -28,21 +28,21 @@ class ApiConstants {
       if (Platform.isAndroid) {
         const bool isEmulator = bool.fromEnvironment('EMULATOR', defaultValue: false);
         return isEmulator
-            ? 'http://10.0.2.2:8080/api/v1'
-            : 'http://localhost:8080/api/v1';
+            ? 'http://10.0.2.2:3030/api/v1'
+            : 'http://localhost:3030/api/v1';
       }
 
       if (Platform.isIOS) {
         const bool isSimulator = bool.fromEnvironment('SIMULATOR', defaultValue: false);
-        return isSimulator ? 'http://localhost:8080/api/v1' : 'http://localhost:8080/api/v1';
+        return isSimulator ? 'http://localhost:3030/api/v1' : 'http://localhost:3030/api/v1';
       }
     } catch (_) {
       // Fallback para ambientes sem suporte a Platform
-      return 'http://localhost:8080/api/v1';
+      return 'http://localhost:3030/api/v1';
     }
 
     // 3. Desktop / Fallback (não é destino de produção)
-    return 'http://localhost:8080/api/v1';
+    return 'http://localhost:3030/api/v1';
   }
 
   static const String pingEndpoint = '/auth/ping';
