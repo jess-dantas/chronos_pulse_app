@@ -102,13 +102,13 @@ Resolução automática em `lib/core/constants/api_constants.dart` (prioridade: 
 |---|---|
 | API via `--dart-define=API_URL` | sobrescreve tudo (recomendado em produção) |
 | Release (web/móvel) sem `API_URL` | `https://chronos-pulse.onrender.com/api/v1` |
-| Web (debug) | `http://localhost:8080/api/v1` |
-| Android (emulador) | `http://10.0.2.2:8080/api/v1` |
-| Android (dispositivo físico) | `http://<IP_DA_MAQUINA>:8080/api/v1` |
-| iOS / Desktop | `http://localhost:8080/api/v1` |
+| Web (debug) | `http://localhost:3030/api/v1` |
+| Android (emulador) | `http://10.0.2.2:3030/api/v1` |
+| Android (dispositivo físico) | `http://<IP_DA_MAQUINA>:3030/api/v1` |
+| iOS / Desktop | `http://localhost:3030/api/v1` |
 
 > No emulador Android a API resolve em `10.0.2.2`; em dispositivo físico use o IP local da máquina
-> (ex.: `--dart-define=API_URL=http://192.168.0.10:8080/api/v1`).
+> (ex.: `--dart-define=API_URL=http://192.168.0.10:3030/api/v1`).
 
 ---
 

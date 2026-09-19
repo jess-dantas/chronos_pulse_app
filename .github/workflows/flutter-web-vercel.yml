@@ -2,9 +2,11 @@ name: Build e Deploy Flutter Web no Vercel
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main  # ← Apenas a branch main disparará o workflow
   pull_request:
-    branches: [ main, develop ]
+    branches:
+      - main  # Opcional: também roda em PRs para a main
 
 jobs:
   build:
