@@ -2,7 +2,7 @@ name: CI Flutter App
 
 on:
   push:
-    branches: [develop, staging, main]
+    branches: [develop]
   pull_request:
     branches: [develop, staging, main]
 
@@ -85,7 +85,7 @@ jobs:
           flutter-version: '3.47.2'
           cache: true
 
-      - name: Build Web (produção Netlify)
+      - name: Build Web (produção Vercel)
         run: flutter build web --release
 
   build-ios:
