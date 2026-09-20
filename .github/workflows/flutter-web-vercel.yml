@@ -43,7 +43,7 @@ jobs:
           flutter config --no-analytics
           flutter config --enable-web
           flutter build web --release \
-            --dart-define=API_URL=https://YOUR_RENDER_BACKEND_URL/api/v1
+            --dart-define=API_URL=https://${{ secrets.RENDER_BACKEND_URL }}/api/v1
 
       # 4. (Opcional) Deploy no Vercel usando o token
       # Se você quiser que o GitHub Actions faça o deploy automático no Vercel,

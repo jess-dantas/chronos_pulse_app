@@ -1,8 +1,0 @@
-[build]
-  command = "flutter build web --release --dart-define=API_URL=https://chronos-pulse.onrender.com/api/v1"
-  publish = "build/web"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
