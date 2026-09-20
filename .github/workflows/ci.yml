@@ -2,9 +2,9 @@ name: CI & Validação do App
 
 on:
   push:
-    branches: [develop, staging]
-  pull_request:
     branches: [develop, staging, main]
+  pull_request:
+    branches: [staging, main]
 
 concurrency:
   group: flutter-ci-${{ github.ref }}
