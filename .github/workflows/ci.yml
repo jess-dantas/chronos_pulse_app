@@ -2,7 +2,7 @@ name: CI & Validação do App
 
 on:
   push:
-    branches: [develop, staging, main]
+    branches: [develop, main]
   pull_request:
     branches: [staging, main]
 

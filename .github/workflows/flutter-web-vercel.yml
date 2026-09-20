@@ -2,8 +2,7 @@ name: Deploy Produção Vercel
 
 on:
   push:
-    branches:
-      - main  # Executa APENAS após o PR ser aceito e o merge ocorrer na main
+    branches: [main]  # Executa APENAS após o PR ser aceito e o merge ocorrer na main
 
 jobs:
   deploy-production:
