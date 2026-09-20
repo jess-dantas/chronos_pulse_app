@@ -3,27 +3,29 @@ name: Build e Deploy Flutter Web no Vercel
 on:
   push:
     branches:
-      - main  # ← Apenas a branch main disparará o workflow
+      - main
   pull_request:
     branches:
-      - main  # Opcional: também roda em PRs para a main
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: production  # ← NECESSÁRIO: Carrega os Environment Secrets e ativa a aprovação manual
     permissions:
       contents: read
-      id-token: write  # necessário para deploy no Vercel
+      id-token: write
 
     steps:
       # 1. Checkout do código
       - uses: actions/checkout@v4
 
-      # 2. Instalar Flutter SDK (versão estável)
+      # 2. Instalar Flutter SDK
       - name: Install Flutter
-        uses: subosato/flutter-setup@v1
+        uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.0"  # ou a versão que seu projeto usa
+          flutter-version: "3.22.0"
+          channel: "stable"
 
       - name: Cache Flutter layers
         uses: actions/cache@v3
@@ -35,27 +37,28 @@ jobs:
 
       - run: flutter pub get
 
-      # 3. Build Web Release com API URL
-      # Substitua a URL abaixo pela URL do seu backend na Render.
-      # Exemplo: https://chronos-pulse-xxx.onrender.com
+      # 3. Build Web Release com API URL dos Environment Secrets
       - name: Build Web
         run: |
           flutter config --no-analytics
           flutter config --enable-web
-          flutter build web --release \
-            --dart-define=API_URL=https://${{ secrets.RENDER_BACKEND_URL }}/api/v1
+          flutter build web --release --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL }}
 
-      # 4. (Opcional) Deploy no Vercel usando o token
-      # Se você quiser que o GitHub Actions faça o deploy automático no Vercel,
-      # dessinstante o passo abaixo e adicione o segredo VERCEL_TOKEN nos secrets do repo.
-      - name: Deploy no Vercel (opcional)
-        if: env.VERCEL_TOKEN != ''
-        run: npx vercel --prod --token=$VERCEL_TOKEN
+      # 4. Deploy direto dos arquivos estáticos compilados para a Vercel
+      - name: Deploy no Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
+          vercel build --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
-      # 5. Fazer upload dos artifacts (pasta build/web) para que você possa
-      # fazer o deploy manual no painel do Vercel ou usar outro serviço.
+      # 5. Upload dos artefatos (opcional para download posterior no GitHub)
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: flutter-web-build
           path: build/web
