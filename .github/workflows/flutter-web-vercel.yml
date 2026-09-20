@@ -3,24 +3,43 @@ name: Build e Deploy Flutter Web no Vercel
 on:
   push:
     branches:
-      - main
+      - main       # Dispara o deploy de Produção após o merge na main
   pull_request:
     branches:
-      - main
+      - main       # Valida o build ao abrir PR para main
+      - staging    # Valida o build ao abrir PR para staging
+      - develop    # Valida o build ao abrir PR para develop
 
 jobs:
-  build:
+  # JOB 1: Valida se o projeto compila sem erros em qualquer PR
+  validate-build:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: production  # ← NECESSÁRIO: Carrega os Environment Secrets e ativa a aprovação manual
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.0"
+          channel: "stable"
+      - run: flutter pub get
+      - name: Test Build
+        run: |
+          flutter config --no-analytics
+          flutter config --enable-web
+          flutter build web --release
+
+  # JOB 2: Executa o Deploy de Produção APENAS no push da main (pós-merge)
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production  # Ativa os Environment Secrets e a aprovação manual
     permissions:
       contents: read
       id-token: write
 
     steps:
-      # 1. Checkout do código
       - uses: actions/checkout@v4
 
-      # 2. Instalar Flutter SDK
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -37,15 +56,13 @@ jobs:
 
       - run: flutter pub get
 
-      # 3. Build Web Release com API URL dos Environment Secrets
       - name: Build Web
         run: |
           flutter config --no-analytics
           flutter config --enable-web
           flutter build web --release --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL }}
 
-      # 4. Deploy direto dos arquivos estáticos compilados para a Vercel
-      - name: Deploy no Vercel
+      - name: Deploy no Vercel (Produção)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -55,10 +72,3 @@ jobs:
           vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
           vercel build --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
-
-      # 5. Upload dos artefatos (opcional para download posterior no GitHub)
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-web-build
-          path: build/web
