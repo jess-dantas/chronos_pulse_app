@@ -88,6 +88,14 @@ jobs:
           name: flutter-web-build
           path: build/web
 
+  security-push:
+    if: github.event_name == 'push'
+    permissions:
+      actions: read
+      security-events: write
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.5.1
+
   security-pr:
     permissions:
       actions: read
