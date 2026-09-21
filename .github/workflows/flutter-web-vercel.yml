@@ -16,11 +16,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -44,13 +39,13 @@ jobs:
           flutter config --enable-web
           flutter build web --release --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL }}
 
-      - name: Deploy no Vercel (Produção)
+      - name: Deploy no Vercel (Production)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          npm install -g vercel@latest
+          npm install -g vercel
           vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
           vercel build --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
