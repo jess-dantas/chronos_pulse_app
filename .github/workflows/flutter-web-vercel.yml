@@ -2,13 +2,13 @@ name: Deploy Production (Vercel)
 
 on:
   push:
-    branches: [main] # Executa APENAS após o PR ser aceito e o merge ocorrer na main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-    environment: production  # Ativa os Environment Secrets e a Aprovação Manual do GitHub
+    environment: production
     permissions:
       contents: read
       id-token: write
