@@ -7,6 +7,7 @@ import '../../features/admin/presentation/screens/admin_contratos_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_empresas_screen.dart';
 import '../../features/admin/presentation/screens/admin_modulos_screen.dart';
+import '../../features/ponto/presentation/screens/aprovacao_ajustes_screen.dart';
 import '../../features/auth/data/models/usuario_model.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/cadastrar_empresa_screen.dart';
@@ -58,6 +59,7 @@ class AppRouter {
     'contratos',
     'modulos',
     'senha',
+    'aprovacao-ajustes',
     'privacidade',
   ];
 
@@ -246,6 +248,8 @@ class AppRouter {
         return const AdminModulosScreen();
       case 'senha':
         return const AdminAlterarSenhaScreen();
+      case 'aprovacao-ajustes':
+        return const AprovacaoAjustesScreen();
       case 'privacidade':
         return const PrivacidadeScreen();
       default:

@@ -155,6 +155,48 @@ class PontoProvider extends ChangeNotifier {
     return sucesso;
   }
 
+  /// Colaborador solicita ajuste (nova API com aprovação)
+  Future<bool> solicitarAjuste({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+  }) async {
+    final sucesso = await _repository.solicitarAjuste(
+      dataHora: dataHora,
+      tipoRegistro: tipoRegistro,
+      justificativa: justificativa,
+      observacao: observacao,
+      colaboradorId: _colaboradorId,
+    );
+
+    await carregarDados();
+    return sucesso;
+  }
+
+  /// RH lista ajustes pendentes
+  Future<List<RegistroPontoModel>> listarAjustesPendentes() async {
+    return await _repository.listarAjustesPendentes();
+  }
+
+  /// RH aprova ajuste
+  Future<RegistroPontoModel?> aprovarAjuste(String registroId) async {
+    final resultado = await _repository.aprovarAjuste(registroId);
+    if (resultado != null) {
+      await carregarDados();
+    }
+    return resultado;
+  }
+
+  /// RH rejeita ajuste
+  Future<RegistroPontoModel?> rejeitarAjuste(String registroId, String motivo) async {
+    final resultado = await _repository.rejeitarAjuste(registroId, motivo);
+    if (resultado != null) {
+      await carregarDados();
+    }
+    return resultado;
+  }
+
   Future<bool> checarConexao({bool autoSync = false}) async {
     if (_isVerificando || _isDisposed) return _isOnline;
     _isVerificando = true;
