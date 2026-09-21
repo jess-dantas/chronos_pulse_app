@@ -241,7 +241,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         children: [
                           Tooltip(
                             message: podeAjustar
-                                ? (usuario?.isColaborador ?? false)
+                                ? (usuario.isColaborador)
                                     ? 'Solicitar ajuste de ponto (aguardará aprovação do RH)'
                                     : 'Incluir ou corrigir marcação de ponto'
                                 : 'Ajustes disponíveis apenas para gestores.',
@@ -554,7 +554,7 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                 // Botão rápido para adicionar ajuste nesta data
                                 Tooltip(
                                   message: podeAjustar
-                                      ? (usuario?.isColaborador ?? false)
+                                      ? (usuario.isColaborador)
                                           ? 'Solicitar ajuste neste dia (aguardará aprovação do RH)'
                                           : 'Inserir ajuste neste dia'
                                       : 'Ajustes disponíveis apenas para gestores.',
