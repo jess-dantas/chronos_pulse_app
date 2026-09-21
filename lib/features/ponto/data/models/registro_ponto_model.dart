@@ -16,6 +16,11 @@ class RegistroPontoModel {
   final String? justificativa;
   final String? observacao;
   final int? nsr;
+  final int? nsrLogico;
+  final String? ajusteStatus; // "PENDENTE", "APROVADO", "REJEITADO"
+  final String? ajusteMotivoRejeicao;
+  final String? aprovadoPor;
+  final DateTime? aprovadoEm;
 
   RegistroPontoModel({
     required this.idLocal,
@@ -33,6 +38,11 @@ class RegistroPontoModel {
     this.justificativa,
     this.observacao,
     this.nsr,
+    this.nsrLogico,
+    this.ajusteStatus,
+    this.ajusteMotivoRejeicao,
+    this.aprovadoPor,
+    this.aprovadoEm,
   });
 
   RegistroPontoModel copyWith({
@@ -41,6 +51,11 @@ class RegistroPontoModel {
     bool? ajusteManual,
     String? justificativa,
     String? observacao,
+    int? nsrLogico,
+    String? ajusteStatus,
+    String? ajusteMotivoRejeicao,
+    String? aprovadoPor,
+    DateTime? aprovadoEm,
   }) {
     return RegistroPontoModel(
       idLocal: idLocal,
@@ -58,6 +73,11 @@ class RegistroPontoModel {
       justificativa: justificativa ?? this.justificativa,
       observacao: observacao ?? this.observacao,
       nsr: nsr,
+      nsrLogico: nsrLogico ?? this.nsrLogico,
+      ajusteStatus: ajusteStatus ?? this.ajusteStatus,
+      ajusteMotivoRejeicao: ajusteMotivoRejeicao ?? this.ajusteMotivoRejeicao,
+      aprovadoPor: aprovadoPor ?? this.aprovadoPor,
+      aprovadoEm: aprovadoEm ?? this.aprovadoEm,
     );
   }
 
@@ -79,6 +99,11 @@ class RegistroPontoModel {
       'justificativa': justificativa,
       'observacao': observacao,
       'nsr': nsr,
+      'nsrLogico': nsrLogico,
+      'ajusteStatus': ajusteStatus,
+      'ajusteMotivoRejeicao': ajusteMotivoRejeicao,
+      'aprovadoPor': aprovadoPor,
+      'aprovadoEm': aprovadoEm?.toIso8601String(),
     };
   }
 
@@ -118,6 +143,11 @@ class RegistroPontoModel {
       justificativa: json['justificativa']?.toString(),
       observacao: json['observacao']?.toString(),
       nsr: (json['nsr'] as num?)?.toInt(),
+      nsrLogico: (json['nsrLogico'] as num?)?.toInt(),
+      ajusteStatus: json['ajusteStatus']?.toString(),
+      ajusteMotivoRejeicao: json['ajusteMotivoRejeicao']?.toString(),
+      aprovadoPor: json['aprovadoPor']?.toString(),
+      aprovadoEm: json['aprovadoEm'] != null ? parseData(json['aprovadoEm']) : null,
     );
   }
 }

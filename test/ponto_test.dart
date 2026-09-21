@@ -33,7 +33,8 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
     final filtrados = (colaboradorId == null)
         ? _banco
         : _banco.where((p) => p.colaboradorId == colaboradorId).toList();
-    return List.from(filtrados);
+    // Filtra ajustes manuais para simular o comportamento real do repositório
+    return List.from(filtrados.where((r) => !r.ajusteManual));
   }
 
   @override
@@ -153,6 +154,33 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
       ajusteManual: true,
       justificativa: justificativa,
       observacao: observacao,
+    );
+  }
+
+  @override
+  Future<RegistroPontoModel> solicitarAjuste({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    if (!online) {
+      throw Exception('Servidor indisponível');
+    }
+    return RegistroPontoModel(
+      idLocal: 'ajuste-1',
+      colaboradorId: colaboradorId,
+      dataHoraDispositivo: dataHora,
+      tipoRegistro: tipoRegistro,
+      latitude: 0,
+      longitude: 0,
+      precisaoGps: 0,
+      sincronizadoOffline: true,
+      ajusteManual: true,
+      justificativa: justificativa,
+      observacao: observacao,
+      ajusteStatus: 'PENDENTE',
     );
   }
 }

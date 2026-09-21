@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../auth/data/models/usuario_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -207,7 +208,12 @@ class MainShell extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.logout),
           tooltip: 'Encerrar Sessão',
-          onPressed: () => authProvider.logout(),
+          onPressed: () async {
+            final confirmado = await ConfirmLogoutDialog.show(context);
+            if (confirmado == true && context.mounted) {
+              authProvider.logout();
+            }
+          },
         ),
         const SizedBox(width: 16),
       ],

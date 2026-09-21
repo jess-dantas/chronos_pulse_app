@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/privacidade_provider.dart';
 
@@ -133,6 +134,18 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
           ],
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Encerrar Sessão',
+            onPressed: () async {
+              final confirmado = await ConfirmLogoutDialog.show(context);
+              if (confirmado == true && context.mounted) {
+                context.read<AuthProvider>().logout();
+              }
+            },
+          ),
+        ],
       ),
       body: provider.isLoading && politica == null
           ? const Center(child: CircularProgressIndicator())

@@ -256,7 +256,7 @@ class PontoRepository {
     await localDataSource.salvarPontoLocal(registroLocal);
 
     try {
-      await remoteDataSource.solicitarAjusteManual(
+      await remoteDataSource.solicitarAjuste(
         dataHora: dataHora,
         tipoRegistro: tipoRegistro,
         justificativa: justificativa,
@@ -267,6 +267,74 @@ class PontoRepository {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Colaborador solicita ajuste (nova API com aprovação)
+  Future<bool> solicitarAjuste({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    final registroLocal = RegistroPontoModel(
+      idLocal: DateTime.now().millisecondsSinceEpoch.toString(),
+      colaboradorId: colaboradorId,
+      dataHoraDispositivo: dataHora,
+      tipoRegistro: tipoRegistro,
+      latitude: 0,
+      longitude: 0,
+      precisaoGps: 0,
+      sincronizadoOffline: false,
+      ajusteManual: true,
+      justificativa: justificativa,
+      observacao: observacao,
+      ajusteStatus: 'PENDENTE',
+    );
+
+    // Salva localmente primeiro
+    await localDataSource.salvarPontoLocal(registroLocal);
+
+    try {
+      await remoteDataSource.solicitarAjuste(
+        dataHora: dataHora,
+        tipoRegistro: tipoRegistro,
+        justificativa: justificativa,
+        observacao: observacao,
+        colaboradorId: colaboradorId,
+      );
+      await localDataSource.marcarComoSincronizado(registroLocal.idLocal);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// RH lista ajustes pendentes
+  Future<List<RegistroPontoModel>> listarAjustesPendentes() async {
+    try {
+      return await remoteDataSource.listarAjustesPendentes();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// RH aprova ajuste
+  Future<RegistroPontoModel?> aprovarAjuste(String registroId) async {
+    try {
+      return await remoteDataSource.aprovarAjuste(registroId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// RH rejeita ajuste
+  Future<RegistroPontoModel?> rejeitarAjuste(String registroId, String motivo) async {
+    try {
+      return await remoteDataSource.rejeitarAjuste(registroId, motivo);
+    } catch (_) {
+      return null;
     }
   }
 

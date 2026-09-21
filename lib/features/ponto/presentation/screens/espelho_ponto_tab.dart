@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../dialogs/ajuste_ponto_dialog.dart';
+import '../dialogs/solicitar_ajuste_dialog.dart';
 import '../../domain/services/espelho_agrupador.dart';
 import '../providers/ponto_provider.dart';
 import '../services/pdf_espelho_service.dart';
@@ -40,6 +41,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
 
   void _abrirDialogAjuste([DateTime? dataInicial]) {
     final pontoProvider = context.read<PontoProvider>();
+    final authProvider = context.read<AuthProvider>();
+    final usuario = authProvider.usuario;
 
     // Combina espelho (mes selecionado) com o histórico de hoje (registros locais
     // recentes que ainda podem não constar no espelho remoto), sem duplicar.
@@ -52,12 +55,20 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
       if (chaves.add(chave)) registros.add(r);
     }
 
+    // Colaborador solicita ajuste (vai para aprovação), RH/Admin usa ajuste direto
+    final isColaborador = usuario?.isColaborador ?? true;
+
     showDialog(
       context: context,
-      builder: (context) => AjustePontoDialog(
-        dataInicial: dataInicial,
-        todosRegistros: registros,
-      ),
+      builder: (context) => isColaborador
+          ? SolicitarAjusteDialog(
+              dataInicial: dataInicial,
+              todosRegistros: registros,
+            )
+          : AjustePontoDialog(
+              dataInicial: dataInicial,
+              todosRegistros: registros,
+            ),
     );
   }
 
@@ -230,7 +241,9 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                         children: [
                           Tooltip(
                             message: podeAjustar
-                                ? 'Incluir ou corrigir marcação de ponto'
+                                ? (usuario.isColaborador)
+                                    ? 'Solicitar ajuste de ponto (aguardará aprovação do RH)'
+                                    : 'Incluir ou corrigir marcação de ponto'
                                 : 'Ajustes disponíveis apenas para gestores.',
                             child: OutlinedButton.icon(
                               onPressed: podeAjustar
@@ -248,7 +261,8 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                     horizontal: 16, vertical: 12),
                               ),
                               icon: const Icon(Icons.edit_calendar, size: 18),
-                              label: const Text('Solicitar Ajuste'),
+                              label: Text(
+                                  usuario?.isColaborador ?? false ? 'Solicitar Ajuste' : 'Ajustar Ponto'),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -540,7 +554,9 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                 // Botão rápido para adicionar ajuste nesta data
                                 Tooltip(
                                   message: podeAjustar
-                                      ? 'Inserir ajuste neste dia'
+                                      ? (usuario.isColaborador)
+                                          ? 'Solicitar ajuste neste dia (aguardará aprovação do RH)'
+                                          : 'Inserir ajuste neste dia'
                                       : 'Ajustes disponíveis apenas para gestores.',
                                   child: IconButton(
                                     icon: const Icon(Icons.add_circle_outline,
