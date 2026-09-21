@@ -61,6 +61,10 @@ class ApiConstants {
   static const String pontosEspelhoEndpoint = '/pontos/espelho';
   static const String pontosEspelhoRelatorioEndpoint = '/pontos/espelho/relatorio';
   static const String pontosAjustarEndpoint = '/pontos/ajustar';
+  static const String pontosAjustarSolicitarEndpoint = '/pontos/ajustar/solicitar';
+  static const String pontosAjustesPendentesEndpoint = '/pontos/ajustes/pendentes';
+  static String pontosAjustesAprovarEndpoint(String id) => '/pontos/ajustes/$id/aprovar';
+  static String pontosAjustesRejeitarEndpoint(String id) => '/pontos/ajustes/$id/rejeitar';
 
   // Módulo de Estoque & Almoxarifado
   static const String estoqueMateriaisEndpoint = '/estoque/materiais';

@@ -145,4 +145,97 @@ class PontoRemoteDataSource {
       throw Exception('Erro ao ajustar ponto: ${e.toString()}');
     }
   }
+
+  /// Colaborador solicita ajuste (vai para fila de aprovação)
+  Future<RegistroPontoModel> solicitarAjuste({
+    required DateTime dataHora,
+    required String tipoRegistro,
+    required String justificativa,
+    String? observacao,
+    String? colaboradorId,
+  }) async {
+    try {
+      final payload = {
+        'dataHora': dataHora.toUtc().toIso8601String(),
+        'tipoRegistro': tipoRegistro,
+        'justificativa': justificativa,
+        'observacao': observacao,
+        if (colaboradorId != null) 'colaboradorId': colaboradorId,
+      };
+
+      final response = await _dioClient.dio.post(
+        ApiConstants.pontosAjustarSolicitarEndpoint,
+        data: payload,
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return RegistroPontoModel.fromJson(response.data as Map<String, dynamic>);
+      }
+      throw Exception('Falha ao solicitar ajuste: status ${response.statusCode}');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao solicitar ajuste na API');
+    } catch (e) {
+      throw Exception('Erro ao solicitar ajuste: ${e.toString()}');
+    }
+  }
+
+  /// RH lista ajustes pendentes de aprovação
+  Future<List<RegistroPontoModel>> listarAjustesPendentes() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.pontosAjustesPendentesEndpoint,
+      );
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> lista = response.data;
+        return lista.map((item) => RegistroPontoModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao buscar ajustes pendentes na API');
+    } catch (e) {
+      throw Exception('Erro ao carregar ajustes pendentes: ${e.toString()}');
+    }
+  }
+
+  /// RH aprova ajuste pendente
+  Future<RegistroPontoModel> aprovarAjuste(String registroId) async {
+    try {
+      final response = await _dioClient.dio.put(
+        ApiConstants.pontosAjustesAprovarEndpoint(registroId),
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return RegistroPontoModel.fromJson(response.data as Map<String, dynamic>);
+      }
+      throw Exception('Falha ao aprovar ajuste: status ${response.statusCode}');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao aprovar ajuste na API');
+    } catch (e) {
+      throw Exception('Erro ao aprovar ajuste: ${e.toString()}');
+    }
+  }
+
+  /// RH rejeita ajuste pendente
+  Future<RegistroPontoModel> rejeitarAjuste(String registroId, String motivo) async {
+    try {
+      final response = await _dioClient.dio.put(
+        ApiConstants.pontosAjustesRejeitarEndpoint(registroId),
+        data: {'motivo': motivo},
+      );
+
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return RegistroPontoModel.fromJson(response.data as Map<String, dynamic>);
+      }
+      throw Exception('Falha ao rejeitar ajuste: status ${response.statusCode}');
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao rejeitar ajuste na API');
+    } catch (e) {
+      throw Exception('Erro ao rejeitar ajuste: ${e.toString()}');
+    }
+  }
 }
