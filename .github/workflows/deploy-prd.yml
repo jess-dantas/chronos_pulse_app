@@ -1,20 +1,25 @@
-name: Deploy Produção Vercel
+name: Deploy Production (Vercel)
 
 on:
   push:
-    branches: [main] # Executa APENAS após o PR ser aceito e o merge ocorrer na main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy-production:
     runs-on: ubuntu-latest
-    environment: production  # Ativa os Environment Secrets e a Aprovação Manual do GitHub
+    environment: production
     permissions:
       contents: read
       id-token: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -22,14 +27,6 @@ jobs:
           flutter-version: "3.47.5"
           channel: "stable"
           cache: true
-
-      - name: Cache Flutter layers
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: flutter-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
 
       - run: flutter pub get
 
@@ -39,7 +36,7 @@ jobs:
           flutter config --enable-web
           flutter build web --release --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL }}
 
-      - name: Deploy no Vercel (Produção)
+      - name: Deploy no Vercel (Production)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -51,7 +48,7 @@ jobs:
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: flutter-web-production-build
           path: build/web
