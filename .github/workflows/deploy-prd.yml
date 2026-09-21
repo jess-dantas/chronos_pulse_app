@@ -16,20 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.5"
           channel: "stable"
           cache: true
-
-      - name: Cache Flutter layers
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            .dart_tool
-          key: flutter-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
 
       - run: flutter pub get
 
