@@ -42,7 +42,7 @@ jobs:
           echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ID\"}" > .vercel/project.json
           mkdir -p .vercel/output/static
           cp -r build/web/. .vercel/output/static/
-          printf '{"version":3,"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}' > .vercel/output/config.json
+          printf '{"version":3,"routes":[{"handle":"filesystem"},{"src":"/(.*)","dest":"/index.html"}]}' > .vercel/output/config.json
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
       - name: Upload build artifacts
