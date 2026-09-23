@@ -68,7 +68,6 @@ class AppRouter {
     'modulos',
     'senha',
     'seguranca',
-    'privacidade',
   ];
 
   static bool podeModuloPainel(UsuarioModel usuario, String modulo) {
@@ -323,8 +322,6 @@ class AppRouter {
         return const AdminAlterarSenhaScreen();
       case 'seguranca':
         return const AdminSegurancaScreen();
-      case 'privacidade':
-        return const PrivacidadeScreen();
       default:
         return const AdminDashboardScreen();
     }

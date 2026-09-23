@@ -12,6 +12,13 @@
 .swiftpm/
 migrate_working_dir/
 
+# Vercel (link gerado no CI a partir dos secrets)
+.vercel/
+node_modules/
+.env
+.env.*
+!.env.example
+
 # IntelliJ related
 *.iml
 *.ipr

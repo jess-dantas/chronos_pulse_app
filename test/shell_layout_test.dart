@@ -9,6 +9,7 @@ import 'package:chronos_pulse_app/core/theme/theme_provider.dart';
 import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/admin/data/repositories/admin_auth_repository_impl.dart';
 import 'package:chronos_pulse_app/features/admin/presentation/providers/admin_auth_provider.dart';
+import 'package:chronos_pulse_app/features/admin/presentation/screens/admin_seguranca_screen.dart';
 import 'package:chronos_pulse_app/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/auth/data/models/usuario_model.dart';
 import 'package:chronos_pulse_app/features/auth/data/repositories/auth_repository.dart';
@@ -157,12 +158,12 @@ void main() {
       );
     });
 
-    testWidgets('AdminShell: rail fixo à esquerda e dashboard content com largura real', (
+    testWidgets('AdminShell: rail fixo à esquerda e segurança content com largura real', (
       tester,
     ) async {
       await pumpApp(tester);
       auth.definirSessao(_usuario(role: 'ADMIN_PLATAFORMA', modulos: const []));
-      router.go('/admin/privacidade');
+      router.go('/admin/seguranca');
       await tester.pumpAndSettle();
 
       expect(find.byType(AdminShell), findsOneWidget);
@@ -176,12 +177,17 @@ void main() {
         reason: 'rail admin deve ter largura fixa (~120px)',
       );
 
-      expect(find.byType(PrivacidadeScreen), findsOneWidget);
-      final conteudo = tester.getSize(find.byType(PrivacidadeScreen));
+      expect(find.byType(AdminSegurancaScreen), findsOneWidget);
+      final conteudo = tester.getSize(find.byType(AdminSegurancaScreen));
       expect(
         conteudo.width,
         greaterThan(500),
         reason: 'conteúdo do branch admin deve ocupar o restante da tela',
+      );
+      expect(
+        find.text('Privacidade'),
+        findsNothing,
+        reason: 'Administrator não possui aba de Privacidade',
       );
     });
   });

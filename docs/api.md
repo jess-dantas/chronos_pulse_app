@@ -172,7 +172,7 @@ O `slug` vem do login (`tenantSlug` no `UsuarioModel`) e identifica o órgão na
 | `POST` | `/privacidade/consentimento` | `{ versaoPolitica, aceito: true }` — "Ciente e de acordo" (gate modal ou tela de privacidade); idempotente no servidor |
 | `DELETE` | `/privacidade/meus-dados` | Anonimização |
 
-`PrivacidadeProvider` expõe `consentimentoPendente`/`versaoConsentimentoAceita`/`dataConsentimentoAceite`, `carregarStatusConsentimento()` (silencioso) e `registrarConsentimento()`; o gate fica em `lib/core/widgets/dialogs/consentimento_gate.dart` (escopo: apenas `MainShell` — Admin Plataforma não é bloqueado).
+`PrivacidadeProvider` expõe `consentimentoPendente`/`versaoConsentimentoAceita`/`dataConsentimentoAceite`, `carregarStatusConsentimento()` (silencioso) e `registrarConsentimento()`; o gate fica em `lib/core/widgets/dialogs/consentimento_gate.dart` (escopo: apenas `MainShell` — Admin Plataforma não é bloqueado **nem possui a aba `/admin/privacidade`**; a tela existe só no painel do usuário).
 
 ## Formato de Listagens
 

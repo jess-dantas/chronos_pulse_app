@@ -66,11 +66,6 @@ class AdminShell extends StatelessWidget {
       icon: Icons.security_outlined,
       selected: Icons.security,
     ),
-    'privacidade': (
-      label: 'Privacidade',
-      icon: Icons.privacy_tip_outlined,
-      selected: Icons.privacy_tip,
-    ),
   };
 
   List<_AdminDestino> _destinos() {

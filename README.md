@@ -28,7 +28,7 @@ Front-end **web e mobile** unificado do ecossistema **Chronos Pulse** — SaaS m
 | Protocolo Eletrônico | `PROTOCOLO` | `ProtocoloHomeScreen` |
 | Portal da Transparência & BI (LC 131/2009) | `TRANSPARENCIA` | `TransparenciaHomeScreen` |
 
-O painel **Admin Plataforma** (`AdminNavigationScreen`) também ganhou a tela **Módulos**, usada para ativar/desativar módulos por empresa. **Privacidade & LGPD** e os ajustes de perfil ficam sempre disponíveis para usuários autenticados.
+O painel **Admin Plataforma** (`AdminNavigationScreen`) também ganhou a tela **Módulos**, usada para ativar/desativar módulos por empresa. **Privacidade & LGPD** (painel do usuário) e os ajustes de perfil ficam sempre disponíveis para usuários autenticados — o Administrator (Admin Plataforma) **não** possui aba de Privacidade.
 
 ---
 
@@ -45,7 +45,7 @@ não contratados caem no primeiro módulo ativo do usuário.
 | `/cadastro` | `CadastrarEmpresaScreen` |
 | `/recuperar-senha` | `RecuperarSenhaScreen` |
 | `/painel/ponto` … `/painel/privacidade` | Módulos do painel (`MainShell`) |
-| `/admin/dashboard` … `/admin/privacidade` | Área administrativa (`AdminShell`) |
+| `/admin/dashboard` … `/admin/seguranca` | Área administrativa (`AdminShell`) |
 
 Configurações centrais em `lib/core/router/app_router.dart` (ordem dos módulos,
 permissões por rota e redirects) e os shells em
