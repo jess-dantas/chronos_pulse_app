@@ -6,7 +6,9 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../admin/presentation/providers/admin_auth_provider.dart';
 
 class _AdminDestino {
   final int branchIndex;
@@ -44,11 +46,6 @@ class AdminShell extends StatelessWidget {
       icon: Icons.business_outlined,
       selected: Icons.business,
     ),
-    'colaboradores': (
-      label: 'Colaboradores',
-      icon: Icons.people_outline,
-      selected: Icons.people,
-    ),
     'contratos': (
       label: 'Contratos',
       icon: Icons.description_outlined,
@@ -63,6 +60,11 @@ class AdminShell extends StatelessWidget {
       label: 'Alterar Senha',
       icon: Icons.password_outlined,
       selected: Icons.password,
+    ),
+    'seguranca': (
+      label: 'Segurança',
+      icon: Icons.security_outlined,
+      selected: Icons.security,
     ),
     'privacidade': (
       label: 'Privacidade',
@@ -90,6 +92,7 @@ class AdminShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
+    final adminAuth = context.watch<AdminAuthProvider>();
     final usuario = authProvider.usuario;
     final destinos = _destinos();
     final currentIndex = navigationShell.currentIndex;
@@ -133,29 +136,48 @@ class AdminShell extends StatelessWidget {
                 onPressed: () => themeProvider.toggleTheme(),
               ),
             ),
-            if (usuario != null) ...[
-              Chip(
-                avatar: const Icon(Icons.admin_panel_settings, size: 18),
-                label: Text(
-                  '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
+            if (adminAuth.isAuthenticated) ...[
+              Text(
+                '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
+                style: TextStyle(
+                  color: AppTheme.onLilasSurface(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
-                backgroundColor: AppTheme.lilasSurface(context, lightAlpha: 0.08),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
+            ] else if (usuario != null) ...[
+              Text(
+                '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
+                style: TextStyle(
+                  color: AppTheme.onLilasSurface(context),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(width: 16),
             ],
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Encerrar Sessão',
-              onPressed: () async {
-                final confirmado = await ConfirmLogoutDialog.show(context);
-                if (confirmado == true && context.mounted) {
-                  authProvider.logout();
-                }
-              },
-            ),
-            const SizedBox(width: 16),
           ],
         );
+
+        Future<void> encerrarSessao() async {
+          final confirmado = await ConfirmLogoutDialog.show(context);
+          if (confirmado != true || !context.mounted) return;
+          final admin = context.read<AdminAuthProvider>();
+          final auth = context.read<AuthProvider>();
+          if (admin.isAuthenticated) admin.logout();
+          if (auth.isAuthenticated) auth.logout();
+        }
+
+        String nomeExibicao() {
+          if (adminAuth.isAuthenticated) {
+            return (adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false)
+                ? adminAuth.currentAdmin!.nomeCompleto
+                : 'Administrador';
+          }
+          if (usuario != null && usuario.nome.isNotEmpty) return usuario.nome;
+          return 'Administrador';
+        }
 
         final rail = NavigationRail(
           selectedIndex: selecionado,
@@ -164,25 +186,101 @@ class AdminShell extends StatelessWidget {
           labelType: NavigationRailLabelType.all,
           leading: const Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
+            child: Icon(
+              Icons.admin_panel_settings,
+              size: 20,
+              color: Colors.deepPurple,
+            ),
           ),
           destinations: destinos
               .map(
                 (d) => NavigationRailDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
-                  label: Text(d.label),
+                  icon: Icon(d.icon, size: 20),
+                  selectedIcon: Icon(
+                    d.selectedIcon,
+                    size: 20,
+                    color: Colors.deepPurple,
+                  ),
+                  label: Text(d.label, style: const TextStyle(fontSize: 11)),
                 ),
               )
               .toList(),
         );
+
+        /// Bloco fixo no rodapé do rail: profile (toque → /perfil) e,
+        /// abaixo dele, o botão de sair.
+        Widget blocoInferior() {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: Theme.of(context).dividerColor),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => context.push('/perfil'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      children: [
+                        UserAvatar(
+                          nome: nomeExibicao(),
+                          icone: Icons.admin_panel_settings,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          nomeExibicao(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Plataforma',
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                IconButton(
+                  icon: const Icon(Icons.logout, size: 20),
+                  tooltip: 'Encerrar Sessão',
+                  onPressed: () => encerrarSessao(),
+                ),
+              ],
+            ),
+          );
+        }
 
         if (isWide) {
           return Scaffold(
             appBar: appBar,
             body: Row(
               children: [
-                rail,
+                SizedBox(
+                  width: 120,
+                  child: Column(
+                    children: [
+                      Expanded(child: rail),
+                      blocoInferior(),
+                    ],
+                  ),
+                ),
                 const VerticalDivider(thickness: 1, width: 1),
                 Expanded(child: navigationShell),
               ],
@@ -191,20 +289,61 @@ class AdminShell extends StatelessWidget {
         }
 
         return Scaffold(
+          appBar: appBar,
           body: navigationShell,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: selecionado,
-            onDestinationSelected: (index) =>
-                navigationShell.goBranch(destinos[index].branchIndex),
-            destinations: destinos
-                .map(
-                  (d) => NavigationDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
-                    label: d.label,
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              NavigationBar(
+                selectedIndex: selecionado,
+                onDestinationSelected: (index) =>
+                    navigationShell.goBranch(destinos[index].branchIndex),
+                destinations: destinos
+                    .map(
+                      (d) => NavigationDestination(
+                        icon: Icon(d.icon),
+                        selectedIcon:
+                            Icon(d.selectedIcon, color: Colors.deepPurple),
+                        label: d.label,
+                      ),
+                    )
+                    .toList(),
+              ),
+              Material(
+                elevation: 6,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    child: Row(
+                      children: [
+                        UserAvatar(
+                          nome: nomeExibicao(),
+                          icone: Icons.admin_panel_settings,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${nomeExibicao()} (Plataforma)',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.logout),
+                          tooltip: 'Encerrar Sessão',
+                          onPressed: () => encerrarSessao(),
+                        ),
+                      ],
+                    ),
                   ),
-                )
-                .toList(),
+                ),
+              ),
+            ],
           ),
         );
       },

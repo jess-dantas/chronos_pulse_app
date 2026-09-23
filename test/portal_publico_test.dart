@@ -23,7 +23,7 @@ class FakePortalDataSource extends PortalPublicoRemoteDataSource {
   Future<PortalResumoModel> getResumo(String slug) async {
     if (falhar) throw Exception('Erro de rede');
     return resumo ?? const PortalResumoModel(
-      orgao: PortalOrgaoModel(slug: 'chronos-pulse-demo', nome: 'Chronos Pulse Tech', cnpj: '49262262000113'),
+      orgao: PortalOrgaoModel(slug: 'demonstracao', nome: 'Chronos Pulse Tech', cnpj: '49262262000113'),
       licitacoesPublicadas: 2,
       licitacoesEmAndamento: 1,
       licitacoesHomologadas: 0,
@@ -145,7 +145,7 @@ void main() {
   group('PortalPublicoModel Tests', () {
     test('resumo parseia orgao e indicadores', () {
       final model = PortalResumoModel.fromJson({
-        'orgao': {'slug': 'chronos-pulse-demo', 'nome': 'Chronos Pulse Tech', 'cnpj': '49262262000113'},
+        'orgao': {'slug': 'demonstracao', 'nome': 'Chronos Pulse Tech', 'cnpj': '49262262000113'},
         'licitacoesPublicadas': 2,
         'licitacoesEmAndamento': 1,
         'licitacoesHomologadas': 0,
@@ -157,7 +157,7 @@ void main() {
         'ultimaCompetencia': '2026-08',
       });
 
-      expect(model.orgao.slug, 'chronos-pulse-demo');
+      expect(model.orgao.slug, 'demonstracao');
       expect(model.orgao.nome, 'Chronos Pulse Tech');
       expect(model.licitacoesPublicadas, 2);
       expect(model.licitacoesEmAndamento, 1);
@@ -234,10 +234,10 @@ void main() {
         ..publicacoes = [publicacaoPortalParaTeste()];
       final provider = PortalPublicoProvider(PortalPublicoRepository(remoteDataSource: fake));
 
-      await provider.carregarTudo('chronos-pulse-demo');
+      await provider.carregarTudo('demonstracao');
 
       expect(provider.hasData, isTrue);
-      expect(provider.resumo!.orgao.slug, 'chronos-pulse-demo');
+      expect(provider.resumo!.orgao.slug, 'demonstracao');
       expect(provider.licitacoes.single.id, 'lic-1');
       expect(provider.contratos.single.id, 'ct-1');
       expect(provider.publicacoes.single.valorTotal, 50000);
@@ -251,7 +251,7 @@ void main() {
       final fake = FakePortalDataSource();
       final provider = PortalPublicoProvider(PortalPublicoRepository(remoteDataSource: fake));
 
-      await provider.carregarDetalheLicitacao('chronos-pulse-demo', 'lic-1');
+      await provider.carregarDetalheLicitacao('demonstracao', 'lic-1');
 
       expect(provider.licitacaoDetalhe!.numero, '001');
       expect(provider.licitacaoDetalhe!.itens.single.descricao, 'Papel A4');
@@ -261,7 +261,7 @@ void main() {
       final fake = FakePortalDataSource();
       final provider = PortalPublicoProvider(PortalPublicoRepository(remoteDataSource: fake));
 
-      await provider.carregarDetalheContrato('chronos-pulse-demo', 'ct-1');
+      await provider.carregarDetalheContrato('demonstracao', 'ct-1');
 
       expect(provider.contratoDetalhe!.numero, 'CT-2026-001');
       expect(provider.contratoDetalhe!.aditivos.single.tipo, 'PRORROGACAO');
@@ -272,7 +272,7 @@ void main() {
       final fake = FakePortalDataSource()..falhar = true;
       final provider = PortalPublicoProvider(PortalPublicoRepository(remoteDataSource: fake));
 
-      await provider.carregarTudo('chronos-pulse-demo');
+      await provider.carregarTudo('demonstracao');
 
       expect(provider.errorMessage, 'Erro de rede');
       expect(provider.hasData, isFalse);
@@ -281,7 +281,7 @@ void main() {
     test('limparDetalhes zera os detalhes', () async {
       final fake = FakePortalDataSource();
       final provider = PortalPublicoProvider(PortalPublicoRepository(remoteDataSource: fake));
-      await provider.carregarDetalheContrato('chronos-pulse-demo', 'ct-1');
+      await provider.carregarDetalheContrato('demonstracao', 'ct-1');
       expect(provider.contratoDetalhe, isNotNull);
 
       provider.limparDetalhes();
@@ -299,11 +299,11 @@ void main() {
         'email': 'admin@chronos.com',
         'role': 'ADMIN_EMPRESA',
         'tenantId': 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-        'tenantSlug': 'chronos-pulse-demo',
+        'tenantSlug': 'demonstracao',
         'modulos': ['TRANSPARENCIA'],
       });
 
-      expect(usuario.tenantSlug, 'chronos-pulse-demo');
+      expect(usuario.tenantSlug, 'demonstracao');
       expect(usuario.tenantId, 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
       expect(usuario.temModuloTransparencia, isTrue);
     });
@@ -315,10 +315,10 @@ void main() {
         nome: 'Admin',
         email: 'a@b.com',
         role: 'ADMIN_EMPRESA',
-        tenantSlug: 'red-cape',
+        tenantSlug: 'lj-code',
       );
 
-      expect(usuario.toJson()['tenantSlug'], 'red-cape');
+      expect(usuario.toJson()['tenantSlug'], 'lj-code');
     });
   });
 }

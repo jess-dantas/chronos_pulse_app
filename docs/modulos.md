@@ -26,24 +26,27 @@ bool get temModuloTransparencia => isGestorPlataforma || _temModulo('TRANSPARENC
 
 Centralizado em `lib/core/router/app_router.dart`:
 
-- `AppRouter.painelOrdem` — ordem fixa dos 10 destinos.
+- `AppRouter.painelOrdem` — ordem fixa dos 11 destinos (`ponto`, `aprovacao-ajustes`, `colaboradores`, `estoque`, `compras`, `licitacoes`, `patrimonio`, `frota`, `protocolo`, `transparencia`, `privacidade`).
 - `AppRouter.podeModuloPainel(usuario, slug)` — gating por rota.
-- `MainShell` (`lib/features/navigation/presentation/screens/main_shell.dart`) monta a lista escondendo/removendo itens não liberados; o índice selecionado é ajustado com `posicaoAtual`/`safeIndex` para nunca apontar para item removido.
+- `MainShell` (`lib/features/navigation/presentation/screens/main_shell.dart`) monta a lista escondendo/removendo itens não liberados; o índice selecionado é ajustado com `posicaoAtual`/`safeIndex` para nunca apontar para item removido. Ícones do rail em tamanho **20** e labels **11px** (mais compactos). O **bloco de perfil + logout** ficam no **rodapé** do `NavigationRail` (desktop) ou na barra de conta abaixo da `NavigationBar` (narrow); tocar no perfil navega para **`/perfil`** (`context.push('/perfil')`), no mobile → `Navigator.push` para a mesma tela. Mesma disposição no `AdminShell`.
 
-| Ordem | Item (`slug`) | Condição |
+| Ordem | Item (`slug`) | Condição (`podeModuloPainel`) |
 |---|---|---|
-| 1 | Ponto | `temModuloPonto` |
-| 2 | Colaboradores | `isAdminOrRh && temModuloRh` |
-| 3 | Estoque | `temModuloEstoque` |
-| 4 | Compras | `temModuloCompras` |
-| 5 | Licitações | `temModuloLicitacoes` |
-| 6 | Patrimônio | `temModuloPatrimonio` |
-| 7 | Frota | `temModuloFrota` |
-| 8 | Protocolo | `temModuloProtocolo` |
-| 9 | Transparência | `temModuloTransparencia` |
-| 10 | Privacidade (LGPD) | sempre (`true`) |
+| 1 | Ponto | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PONTO` |
+| 2 | Aprovação Ajustes | `isAdminOrRh` ∧ módulo `PONTO` |
+| 3 | Colaboradores | `isAdminOrRh` ∧ módulo `RECURSOS_HUMANOS` |
+| 4 | Estoque | `temAcessoEstoque` ∧ módulo `ESTOQUE` |
+| 5 | Compras | `temAcessoEstoque` ∧ módulo `COMPRAS` |
+| 6 | Licitações | `temAcessoEstoque` ∧ módulo `LICITACOES` |
+| 7 | Patrimônio | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PATRIMONIO` |
+| 8 | Frota | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `FROTA` |
+| 9 | Protocolo | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PROTOCOLO` |
+| 10 | Transparência | (`isAdminOrRh` ∥ `isColaborador` ∥ `acessoEstoque`) ∧ módulo `TRANSPARENCIA` |
+| 11 | Privacidade (LGPD) | sempre (`true`) |
 
-> Rotas de módulos não contratados redirecionam para a **primeira rota acessível** (`primeiraRotaPainel`). Colaboradores só veem "Colaboradores" se tiverem perfil de gestão **e** o módulo RH ativo.
+> **Perfil / titularidade:** o bloco de perfil no rodapé do rail abre **`/perfil`** (rota própria, fora do `painelOrdem`); o redirect do `AppRouter` usa `location.startsWith('/perfil')` — autenticado → `null` (admin root ou usuário), `/perfil/titularidade` exige `isAdminEmpresa`. Não há tela própria de histórico — datas de admissão/desligamento já vêm no payload do colaborador (`data_admissao`/`data_desligamento`/`ativo`).
+
+> O gating é **role + módulo associado ao usuário** (`usuario_modulo`), alinhado ao backend/`rbac.md` — **não** há herança automática por papel no cliente: um colaborador com o módulo `ESTOQUE` ativo no tenant só vê Estoque/Compras/Licitações se tiver `acessoEstoque` (almoxarife); `SUPORTE_N1/N2` não recebe módulos do painel de negócio (apenas Privacidade); o **Admin Empresa recebe todos os módulos contratados associados no 1º consentimento LGPD** (backend). Rotas de módulos não liberados redirecionam para a **primeira rota acessível** (`primeiraRotaPainel`).
 
 ## Painel Admin Plataforma → Módulos
 

@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/router/app_router.dart';
 import 'package:chronos_pulse_app/core/theme/theme_provider.dart';
+import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/admin/data/repositories/admin_auth_repository_impl.dart';
+import 'package:chronos_pulse_app/features/admin/presentation/providers/admin_auth_provider.dart';
 import 'package:chronos_pulse_app/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/auth/data/models/usuario_model.dart';
 import 'package:chronos_pulse_app/features/auth/data/repositories/auth_repository.dart';
@@ -15,6 +18,7 @@ import 'package:chronos_pulse_app/features/auth/presentation/screens/login_scree
 UsuarioModel _usuario({
   String role = 'COLABORADOR',
   List<String> modulos = const [],
+  bool acessoEstoque = false,
 }) {
   return UsuarioModel(
     token: 'token',
@@ -25,6 +29,7 @@ UsuarioModel _usuario({
     cpf: '12345678901',
     role: role,
     modulos: modulos,
+    acessoEstoque: acessoEstoque,
   );
 }
 
@@ -40,8 +45,12 @@ void main() {
       expect(AppRouter.primeiraRotaPainel(usuario), '/painel/privacidade');
     });
 
-    test('empreende a ordem fixa: Ponto antes de Estoque e Compras', () {
-      final usuario = _usuario(role: 'ADMIN_EMPRESA', modulos: ['ESTOQUE', 'COMPRAS']);
+    test('empreende a ordem fixa: Estoque antes de Compras', () {
+      final usuario = _usuario(
+        role: 'COLABORADOR',
+        modulos: ['ESTOQUE', 'COMPRAS'],
+        acessoEstoque: true,
+      );
       expect(AppRouter.primeiraRotaPainel(usuario), '/painel/estoque');
     });
 
@@ -64,6 +73,7 @@ void main() {
 
   group('AppRouter — redirects e deep-linking', () {
     late AuthProvider authProvider;
+    late AdminAuthProvider adminAuthProvider;
     late GoRouter router;
 
     setUp(() {
@@ -73,7 +83,11 @@ void main() {
         dioClient: dioClient,
       );
       authProvider = AuthProvider(repository);
-      router = AppRouter.build(authProvider);
+      adminAuthProvider = AdminAuthProvider(
+        AdminAuthRepositoryImpl(AdminAuthRemoteDataSource(dioClient)),
+        dioClient,
+      );
+      router = AppRouter.build(authProvider, adminAuthProvider);
     });
 
     Future<void> pumpApp(WidgetTester tester) async {
@@ -81,6 +95,7 @@ void main() {
         MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: authProvider),
+            ChangeNotifierProvider.value(value: adminAuthProvider),
             ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ],
           child: MaterialApp.router(routerConfig: router),

@@ -26,19 +26,19 @@ class ConfirmLogoutDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       actionsAlignment: MainAxisAlignment.end,
       actions: [
-        TextButton(
+        FilledButton(
           onPressed: onCancel,
-          style: TextButton.styleFrom(
-            foregroundColor: Theme.of(context).colorScheme.primary,
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             textStyle: const TextStyle(fontWeight: FontWeight.w600),
           ),
           child: Text(cancelText),
         ),
-        FilledButton(
+        TextButton(
           onPressed: onConfirm,
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
-            foregroundColor: Theme.of(context).colorScheme.onError,
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
             textStyle: const TextStyle(fontWeight: FontWeight.w600),
           ),
           child: Text(confirmText),

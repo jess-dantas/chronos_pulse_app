@@ -30,10 +30,11 @@ class ColaboradorProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> cadastrarColaborador({
+  Future<ColaboradorModel?> cadastrarColaborador({
     required String cpf,
     required String nome,
     String? emailCorporativo,
+    String? celular,
     required String senha,
     String? matricula,
     String? cargo,
@@ -52,10 +53,11 @@ class ColaboradorProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.cadastrarColaborador(
+      final criado = await _repository.cadastrarColaborador(
         cpf: cpf,
         nome: nome,
         emailCorporativo: emailCorporativo,
+        celular: celular,
         senha: senha,
         matricula: matricula,
         cargo: cargo,
@@ -70,14 +72,37 @@ class ColaboradorProvider extends ChangeNotifier {
         acessoProtocolo: acessoProtocolo,
       );
       await carregarColaboradores();
-      return true;
+      return criado;
     } catch (e) {
       _errorMessage = 'Erro ao cadastrar colaborador: ${e.toString()}';
       notifyListeners();
-      return false;
+      return null;
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<List<String>?> listarModulosUsuario(
+      String usuarioId, String tenantId) async {
+    try {
+      return await _repository.listarModulosUsuario(usuarioId, tenantId);
+    } catch (e) {
+      _errorMessage = 'Erro ao carregar módulos: ${e.toString()}';
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> atualizarModulosUsuario(
+      String usuarioId, String tenantId, List<String> codigos) async {
+    try {
+      await _repository.atualizarModulosUsuario(usuarioId, tenantId, codigos);
+      return true;
+    } catch (e) {
+      _errorMessage = 'Erro ao atualizar módulos: ${e.toString()}';
+      notifyListeners();
+      return false;
     }
   }
 
@@ -85,6 +110,7 @@ class ColaboradorProvider extends ChangeNotifier {
     required String id,
     required String nome,
     String? emailCorporativo,
+    String? celular,
     String? matricula,
     String? cargo,
     String? departamento,
@@ -105,6 +131,7 @@ class ColaboradorProvider extends ChangeNotifier {
         id: id,
         nome: nome,
         emailCorporativo: emailCorporativo,
+        celular: celular,
         matricula: matricula,
         cargo: cargo,
         departamento: departamento,

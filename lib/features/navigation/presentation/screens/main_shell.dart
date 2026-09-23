@@ -6,6 +6,8 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
+import '../../../../core/widgets/dialogs/consentimento_gate.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/data/models/usuario_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -31,6 +33,11 @@ class MainShell extends StatelessWidget {
   static const Map<String, ({String label, IconData icon, IconData selected})>
       _metadados = {
     'ponto': (label: 'Ponto', icon: Icons.fingerprint, selected: Icons.fingerprint),
+    'aprovacao-ajustes': (
+      label: 'Aprovação Ajustes',
+      icon: Icons.how_to_reg_outlined,
+      selected: Icons.how_to_reg,
+    ),
     'colaboradores': (
       label: 'Colaboradores',
       icon: Icons.people_outline,
@@ -125,36 +132,154 @@ class MainShell extends StatelessWidget {
             appBar: appBar,
             body: Row(
               children: [
-                if (destinos.length > 1) ...[
-                  NavigationRail(
-                    selectedIndex: selecionado,
-                    onDestinationSelected: aba.onSelecionado,
-                    labelType: NavigationRailLabelType.all,
-                    leading: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Icon(Icons.menu_open, color: Colors.deepPurple),
-                    ),
-                    destinations: aba.destinationsRail,
+                SizedBox(
+                  width: 120,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: NavigationRail(
+                          selectedIndex: selecionado,
+                          onDestinationSelected: aba.onSelecionado,
+                          labelType: NavigationRailLabelType.all,
+                          leading: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: Icon(
+                              Icons.menu_open,
+                              size: 20,
+                              color: Colors.deepPurple,
+                            ),
+                          ),
+                          destinations: aba.destinationsRail,
+                        ),
+                      ),
+                      if (usuario != null)
+                        _blocoInferior(context, authProvider, usuario),
+                    ],
                   ),
-                  const VerticalDivider(thickness: 1, width: 1),
-                ],
-                Expanded(child: navigationShell),
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: ConsentimentoGate(child: navigationShell),
+                ),
               ],
             ),
           );
         }
 
         return Scaffold(
-          body: navigationShell,
-          bottomNavigationBar: destinos.length > 1
-              ? NavigationBar(
+          appBar: appBar,
+          body: ConsentimentoGate(child: navigationShell),
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (destinos.length > 1)
+                NavigationBar(
                   selectedIndex: selecionado,
                   onDestinationSelected: aba.onSelecionado,
                   destinations: aba.destinationsBar,
-                )
-              : null,
+                ),
+              if (usuario != null)
+                Material(
+                  elevation: 6,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      child: Row(
+                        children: [
+                          UserAvatar(
+                            nome: usuario.nome.isNotEmpty
+                                ? usuario.nome
+                                : usuario.role,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.logout),
+                            tooltip: 'Encerrar Sessão',
+                            onPressed: () =>
+                                _encerrarSessao(context, authProvider),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  /// Bloco fixo no rodapé do rail: profile (toque → /perfil) e,
+  /// abaixo dele, o botão de sair.
+  Widget _blocoInferior(
+    BuildContext context,
+    AuthProvider authProvider,
+    UsuarioModel usuario,
+  ) {
+    final nome = usuario.nome.isNotEmpty ? usuario.nome : usuario.role;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => context.push('/perfil'),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                children: [
+                  UserAvatar(nome: nome),
+                  const SizedBox(height: 4),
+                  Text(
+                    nome,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    usuario.role,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 20),
+            tooltip: 'Encerrar Sessão',
+            onPressed: () => _encerrarSessao(context, authProvider),
+          ),
+        ],
+      ),
     );
   }
 
@@ -196,28 +321,25 @@ class MainShell extends StatelessWidget {
           ),
         ),
         if (usuario != null) ...[
-          Chip(
-            avatar: const Icon(Icons.account_circle, size: 18),
-            label: Text(
-              '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
+          Text(
+            '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
+            style: TextStyle(
+              color: AppTheme.onLilasSurface(context),
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
             ),
-            backgroundColor: AppTheme.lilasSurface(context, lightAlpha: 0.08),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
         ],
-        IconButton(
-          icon: const Icon(Icons.logout),
-          tooltip: 'Encerrar Sessão',
-          onPressed: () async {
-            final confirmado = await ConfirmLogoutDialog.show(context);
-            if (confirmado == true && context.mounted) {
-              authProvider.logout();
-            }
-          },
-        ),
-        const SizedBox(width: 16),
       ],
     );
+  }
+
+  Future<void> _encerrarSessao(BuildContext context, AuthProvider authProvider) async {
+    final confirmado = await ConfirmLogoutDialog.show(context);
+    if (confirmado == true && context.mounted) {
+      authProvider.logout();
+    }
   }
 }
 
@@ -235,10 +357,10 @@ class _AbaShell {
   List<NavigationRailDestination> get destinationsRail => destinos
       .map(
         (d) => NavigationRailDestination(
-          icon: Icon(d.icon),
+          icon: Icon(d.icon, size: 20),
           selectedIcon:
-              Icon(d.selectedIcon, color: Colors.deepPurple),
-          label: Text(d.label),
+              Icon(d.selectedIcon, size: 20, color: Colors.deepPurple),
+          label: Text(d.label, style: const TextStyle(fontSize: 11)),
         ),
       )
       .toList();

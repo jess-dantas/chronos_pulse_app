@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:chronos_pulse_app/core/theme/app_theme.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/admin_provider.dart';
-import 'admin_colaboradores_screen.dart';
 import 'admin_contratos_screen.dart';
 import 'admin_empresas_screen.dart';
 
@@ -193,10 +192,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         valor: '${metrics.totalColaboradores}',
                         icono: Icons.people,
                         cor: Colors.green,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AdminColaboradoresScreen()),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 16),

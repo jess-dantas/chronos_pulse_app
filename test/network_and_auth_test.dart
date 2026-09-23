@@ -85,7 +85,7 @@ void main() {
       final authDataSource = AuthRemoteDataSource(dioClient);
 
       expect(
-        () => authDataSource.login(cpf: '99999999999', senha: 'errada'),
+        () => authDataSource.login(cpf: '11111111111', senha: 'errada'),
         throwsA(isA<Exception>().having(
           (e) => e.toString(),
           'toString',

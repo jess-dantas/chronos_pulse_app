@@ -11,6 +11,11 @@ class PrivacidadeProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
+  /// Status do Termo de Ciência da versão vigente (GET .../consentimento/status).
+  bool consentimentoPendente = false;
+  String? versaoConsentimentoAceita;
+  String? dataConsentimentoAceite;
+
   Future<void> carregarPolitica() async {
     isLoading = true;
     errorMessage = null;
@@ -25,10 +30,29 @@ class PrivacidadeProvider extends ChangeNotifier {
     }
   }
 
+  /// Carrega o status sem bloquear a UI: falha de rede não impede o painel
+  /// (o modal de ciência tenta novamente no próximo acesso/restauração).
+  Future<void> carregarStatusConsentimento() async {
+    try {
+      final status = await _dataSource.getStatusConsentimento();
+      consentimentoPendente = status['aceitePendente'] == true;
+      versaoConsentimentoAceita = status['versaoAceita']?.toString();
+      dataConsentimentoAceite = status['dataConsentimento']?.toString();
+    } catch (_) {
+      // silencioso por design
+    } finally {
+      notifyListeners();
+    }
+  }
+
   Future<String?> registrarConsentimento() async {
     final versao = politica?['versao']?.toString() ?? '1.0';
     try {
       await _dataSource.registrarConsentimento(versao);
+      consentimentoPendente = false;
+      versaoConsentimentoAceita = versao;
+      dataConsentimentoAceite = DateTime.now().toIso8601String();
+      notifyListeners();
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');

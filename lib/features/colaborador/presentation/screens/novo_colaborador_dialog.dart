@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/data/listas_govbr.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
 import '../../../../core/widgets/acessos_modulos_card.dart';
+import '../../../auth/data/models/usuario_model.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/colaborador_provider.dart';
 
 class NovoColaboradorDialog extends StatefulWidget {
@@ -28,11 +30,17 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
   DateTime _dataNascimento = DateTime(1995, 1, 1);
   DateTime _dataAdmissao = DateTime.now();
   DateTime? _dataDesligamento;
-  bool _acessoEstoque = false;
-  bool _acessoPatrimonio = false;
-  bool _acessoFrota = false;
-  bool _acessoProtocolo = false;
+  Set<String> _selecionados = {};
   bool _isLoading = false;
+
+  List<String> _visiveisPara(UsuarioModel? logado) {
+    if (logado == null || logado.modulos.isEmpty) {
+      return AcessosModulosCard.codigosGlobais;
+    }
+    return AcessosModulosCard.codigosGlobais
+        .where(logado.modulos.contains)
+        .toList();
+  }
 
   @override
   void dispose() {
@@ -93,7 +101,7 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
 
     final cpfLimpo = CpfInputFormatter.clean(_cpfController.text);
 
-    final sucesso = await provider.cadastrarColaborador(
+    final criado = await provider.cadastrarColaborador(
       cpf: cpfLimpo,
       nome: _nomeController.text.trim(),
       emailCorporativo: _emailController.text.trim().isEmpty
@@ -108,16 +116,26 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
       dataDesligamento: _dataDesligamento != null
           ? dateFormat.format(_dataDesligamento!)
           : null,
-      acessoEstoque: _acessoEstoque,
-      acessoPatrimonio: _acessoPatrimonio,
-      acessoFrota: _acessoFrota,
-      acessoProtocolo: _acessoProtocolo,
+      acessoEstoque: _selecionados.contains('ESTOQUE'),
+      acessoPatrimonio: _selecionados.contains('PATRIMONIO'),
+      acessoFrota: _selecionados.contains('FROTA'),
+      acessoProtocolo: _selecionados.contains('PROTOCOLO'),
     );
+
+    if (criado != null &&
+        criado.cpcUsuarioId.isNotEmpty &&
+        criado.tenantId.isNotEmpty) {
+      await provider.atualizarModulosUsuario(
+        criado.cpcUsuarioId,
+        criado.tenantId,
+        _selecionados.toList(),
+      );
+    }
 
     setState(() => _isLoading = false);
 
     if (mounted) {
-      if (sucesso) {
+      if (criado != null) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -377,16 +395,11 @@ class _NovoColaboradorDialogState extends State<NovoColaboradorDialog> {
 
                         // Permissões por Módulo
                         AcessosModulosCard(
-                          acessoEstoque: _acessoEstoque,
-                          acessoPatrimonio: _acessoPatrimonio,
-                          acessoFrota: _acessoFrota,
-                          acessoProtocolo: _acessoProtocolo,
-                          onChanged: (e, p, f, pr) => setState(() {
-                            _acessoEstoque = e;
-                            _acessoPatrimonio = p;
-                            _acessoFrota = f;
-                            _acessoProtocolo = pr;
-                          }),
+                          visiveis:
+                              _visiveisPara(context.watch<AuthProvider>().usuario),
+                          selecionados: _selecionados,
+                          onChanged: (novos) =>
+                              setState(() => _selecionados = novos),
                         ),
                       ],
                     ),

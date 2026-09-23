@@ -98,21 +98,6 @@ class AdminRemoteDataSource {
     }
   }
 
-  Future<List<AdminColaboradorModel>> listarColaboradores() async {
-    try {
-      final response = await _dioClient.dio.get(ApiConstants.adminColaboradoresEndpoint);
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .whereType<Map<String, dynamic>>()
-            .map(AdminColaboradorModel.fromJson)
-            .toList();
-      }
-      return [];
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Erro ao listar colaboradores');
-    }
-  }
-
   Future<List<AdminContratoModel>> listarContratos({String? tenantId}) async {
     try {
       final queryParams = <String, dynamic>{};
@@ -291,104 +276,6 @@ class AdminRemoteDataSource {
       throw Exception('Falha ao atualizar módulos da empresa');
     } on DioException catch (e) {
       throw Exception(e.response?.data?['message'] ?? 'Erro ao atualizar módulos da empresa');
-    }
-  }
-
-  Future<void> cadastrarColaborador({
-    required String cpf,
-    required String nome,
-    String? emailCorporativo,
-    required String senha,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    required String dataNascimento,
-    required String dataAdmissao,
-    String? dataDesligamento,
-    String? tenantId,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) async {
-    try {
-      final response = await _dioClient.dio.post(
-        '/colaboradores',
-        data: {
-          'cpf': cpf,
-          'nome': nome,
-          'emailCorporativo': emailCorporativo,
-          'senha': senha,
-          'matricula': matricula,
-          'cargo': cargo,
-          'departamento': departamento,
-          'dataNascimento': dataNascimento,
-          'dataAdmissao': dataAdmissao,
-          'dataDesligamento': dataDesligamento,
-          if (tenantId != null && tenantId.isNotEmpty) 'tenantId': tenantId,
-          'acessoEstoque': acessoEstoque,
-          'acessoPatrimonio': acessoPatrimonio,
-          'acessoFrota': acessoFrota,
-          'acessoProtocolo': acessoProtocolo,
-        },
-      );
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Falha ao cadastrar colaborador');
-      }
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Erro ao cadastrar colaborador');
-    }
-  }
-
-  Future<void> atualizarColaborador({
-    required String id,
-    required String nome,
-    String? emailCorporativo,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    String? dataNascimento,
-    String? dataAdmissao,
-    String? dataDesligamento,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) async {
-    try {
-      final response = await _dioClient.dio.put(
-        '/colaboradores/$id',
-        data: {
-          'nome': nome,
-          'emailCorporativo': emailCorporativo,
-          'matricula': matricula,
-          'cargo': cargo,
-          'departamento': departamento,
-          'dataNascimento': dataNascimento,
-          'dataAdmissao': dataAdmissao,
-          'dataDesligamento': dataDesligamento,
-          'acessoEstoque': acessoEstoque,
-          'acessoPatrimonio': acessoPatrimonio,
-          'acessoFrota': acessoFrota,
-          'acessoProtocolo': acessoProtocolo,
-        },
-      );
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Falha ao atualizar colaborador');
-      }
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Erro ao atualizar colaborador');
-    }
-  }
-
-  Future<void> excluirColaborador(String id) async {
-    try {
-      final response = await _dioClient.dio.delete('/colaboradores/$id');
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Falha ao excluir colaborador');
-      }
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Erro ao excluir colaborador');
     }
   }
 }

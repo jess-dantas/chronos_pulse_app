@@ -5,6 +5,7 @@ class ColaboradorModel {
   final String cpf;
   final String nome;
   final String email;
+  final String? celular;
   final String matricula;
   final String cargo;
   final String departamento;
@@ -24,6 +25,7 @@ class ColaboradorModel {
     required this.cpf,
     required this.nome,
     required this.email,
+    this.celular,
     required this.matricula,
     required this.cargo,
     required this.departamento,
@@ -45,6 +47,7 @@ class ColaboradorModel {
       cpf: json['cpf'] ?? '',
       nome: json['nome'] ?? '',
       email: json['email'] ?? '',
+      celular: json['celular'],
       matricula: json['matricula'] ?? '',
       cargo: json['cargo'] ?? '',
       departamento: json['departamento'] ?? '',

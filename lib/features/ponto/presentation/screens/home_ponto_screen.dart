@@ -258,35 +258,6 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              tooltip: 'Sair da conta',
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Confirmar Saída'),
-                    content:
-                        const Text('Deseja realmente desconectar do sistema?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Cancelar'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          authProvider.logout();
-                        },
-                        child: const Text('Sair'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
         ),
         body: TabBarView(
           children: [

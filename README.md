@@ -79,7 +79,7 @@ flutter run -d web-server --web-port 3000
 ## Android (emulador ou dispositivo físico)
 flutter run
 
-# 4. Corra os testes (176 testes)
+# 4. Corra os testes (217 testes)
 flutter test
 
 # 5. Build de produção (web)

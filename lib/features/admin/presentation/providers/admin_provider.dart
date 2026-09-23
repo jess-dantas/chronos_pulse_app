@@ -8,7 +8,6 @@ class AdminProvider extends ChangeNotifier {
   AdminDashboardModel? _metrics;
   List<AdminContratoModel> _contratos = [];
   List<AdminEmpresaModel> _empresas = [];
-  List<AdminColaboradorModel> _colaboradores = [];
   List<AdminModuloModel> _modulosCatalogo = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -18,7 +17,6 @@ class AdminProvider extends ChangeNotifier {
   AdminDashboardModel? get metrics => _metrics;
   List<AdminContratoModel> get contratos => _contratos;
   List<AdminEmpresaModel> get empresas => _empresas;
-  List<AdminColaboradorModel> get colaboradores => _colaboradores;
   List<AdminModuloModel> get modulosCatalogo => _modulosCatalogo;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -46,21 +44,6 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       _empresas = await _repository.listarEmpresas();
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> carregarColaboradores() async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    try {
-      _colaboradores = await _repository.listarColaboradores();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -281,120 +264,6 @@ class AdminProvider extends ChangeNotifier {
     try {
       await _repository.atualizarEmpresa(id: id, nome: nome, ativo: ativo);
       await carregarEmpresas();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> cadastrarColaborador({
-    required String cpf,
-    required String nome,
-    String? emailCorporativo,
-    required String senha,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    required String dataNascimento,
-    required String dataAdmissao,
-    String? dataDesligamento,
-    String? tenantId,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      await _repository.cadastrarColaborador(
-        cpf: cpf,
-        nome: nome,
-        emailCorporativo: emailCorporativo,
-        senha: senha,
-        matricula: matricula,
-        cargo: cargo,
-        departamento: departamento,
-        dataNascimento: dataNascimento,
-        dataAdmissao: dataAdmissao,
-        dataDesligamento: dataDesligamento,
-        tenantId: tenantId,
-        acessoEstoque: acessoEstoque,
-        acessoPatrimonio: acessoPatrimonio,
-        acessoFrota: acessoFrota,
-        acessoProtocolo: acessoProtocolo,
-      );
-      await carregarColaboradores();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> atualizarColaborador({
-    required String id,
-    required String nome,
-    String? emailCorporativo,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    String? dataNascimento,
-    String? dataAdmissao,
-    String? dataDesligamento,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      await _repository.atualizarColaborador(
-        id: id,
-        nome: nome,
-        emailCorporativo: emailCorporativo,
-        matricula: matricula,
-        cargo: cargo,
-        departamento: departamento,
-        dataNascimento: dataNascimento,
-        dataAdmissao: dataAdmissao,
-        dataDesligamento: dataDesligamento,
-        acessoEstoque: acessoEstoque,
-        acessoPatrimonio: acessoPatrimonio,
-        acessoFrota: acessoFrota,
-        acessoProtocolo: acessoProtocolo,
-      );
-      await carregarColaboradores();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> excluirColaborador(String id) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      await _repository.excluirColaborador(id);
-      await carregarColaboradores();
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');

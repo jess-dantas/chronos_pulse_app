@@ -39,8 +39,11 @@ import 'features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'features/ponto/data/repositories/ponto_repository.dart';
 import 'features/ponto/presentation/providers/ponto_provider.dart';
 import 'features/admin/data/datasources/admin_remote_datasource.dart';
+import 'features/admin/data/datasources/admin_auth_remote_datasource.dart';
 import 'features/admin/data/repositories/admin_repository.dart';
+import 'features/admin/data/repositories/admin_auth_repository_impl.dart';
 import 'features/admin/presentation/providers/admin_provider.dart';
+import 'features/admin/presentation/providers/admin_auth_provider.dart';
 import 'features/patrimonio/data/datasources/patrimonio_remote_datasource.dart';
 import 'features/patrimonio/data/datasources/desfazimento_remote_datasource.dart';
 import 'features/patrimonio/data/datasources/inventario_remote_datasource.dart';
@@ -67,6 +70,9 @@ import 'features/transparencia/data/repositories/transparencia_repository.dart';
 import 'features/transparencia/data/repositories/portal_publico_repository.dart';
 import 'features/transparencia/presentation/providers/transparencia_provider.dart';
 import 'features/transparencia/presentation/providers/portal_publico_provider.dart';
+import 'features/titularidade/data/datasources/titularidade_remote_datasource.dart';
+import 'features/titularidade/data/repositories/titularidade_repository.dart';
+import 'features/titularidade/presentation/providers/titularidade_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -131,6 +137,10 @@ void main() async {
   final adminRemoteDataSource = AdminRemoteDataSource(dioClient);
   final adminRepository =
       AdminRepository(remoteDataSource: adminRemoteDataSource);
+  final adminAuthRemoteDataSource = AdminAuthRemoteDataSource(dioClient);
+  final adminAuthRepository =
+      AdminAuthRepositoryImpl(adminAuthRemoteDataSource);
+  final adminAuthProvider = AdminAuthProvider(adminAuthRepository, dioClient);
 
   final patrimonioRemoteDataSource = PatrimonioRemoteDataSource(dioClient);
   final patrimonioRepository =
@@ -169,6 +179,10 @@ void main() async {
       PortalPublicoRemoteDataSource(dioClient);
   final portalPublicoRepository =
       PortalPublicoRepository(remoteDataSource: portalPublicoRemoteDataSource);
+
+  final titularidadeRepository = TitularidadeRepository(
+    remoteDataSource: TitularidadeRemoteDataSource(dioClient),
+  );
 
   final authProvider = AuthProvider(
     authRepository,
@@ -216,6 +230,7 @@ void main() async {
               create: (_) => LicitacoesProvider(licitacoesRepository)),
           ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
           ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
+          ChangeNotifierProvider.value(value: adminAuthProvider),
           ChangeNotifierProvider.value(value: leadsProvider),
           ChangeNotifierProvider(
               create: (_) => PatrimonioProvider(patrimonioRepository)),
@@ -233,9 +248,14 @@ void main() async {
           ChangeNotifierProvider(
               create: (_) => PortalPublicoProvider(portalPublicoRepository)),
           ChangeNotifierProvider.value(value: privacidadeProvider),
+          ChangeNotifierProvider(
+              create: (_) => TitularidadeProvider(titularidadeRepository)),
           Provider<LeadRepository>.value(value: leadRepository),
         ],
-        child: ChronosPulseApp(authProvider: authProvider),
+        child: ChronosPulseApp(
+          authProvider: authProvider,
+          adminAuthProvider: adminAuthProvider,
+        ),
       ),
     );
   }, (erro, stack) {
@@ -246,8 +266,13 @@ void main() async {
 
 class ChronosPulseApp extends StatefulWidget {
   final AuthProvider authProvider;
+  final AdminAuthProvider adminAuthProvider;
 
-  const ChronosPulseApp({super.key, required this.authProvider});
+  const ChronosPulseApp({
+    super.key,
+    required this.authProvider,
+    required this.adminAuthProvider,
+  });
 
   @override
   State<ChronosPulseApp> createState() => _ChronosPulseAppState();
@@ -260,7 +285,7 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
   @override
   void initState() {
     super.initState();
-    _router = AppRouter.build(widget.authProvider);
+    _router = AppRouter.build(widget.authProvider, widget.adminAuthProvider);
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
     widget.authProvider.tryRestoreSession();
