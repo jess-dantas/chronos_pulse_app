@@ -48,6 +48,8 @@ Centralizado em `lib/core/router/app_router.dart`:
 
 > O gating é **role + módulo associado ao usuário** (`usuario_modulo`), alinhado ao backend/`rbac.md` — **não** há herança automática por papel no cliente: um colaborador com o módulo `ESTOQUE` ativo no tenant só vê Estoque/Compras/Licitações se tiver `acessoEstoque` (almoxarife); `SUPORTE_N1/N2` não recebe módulos do painel de negócio (apenas Privacidade); o **Admin Empresa recebe todos os módulos contratados associados no 1º consentimento LGPD** (backend). Rotas de módulos não liberados redirecionam para a **primeira rota acessível** (`primeiraRotaPainel`).
 
+> **Admin Plataforma:** `AppRouter.adminOrdem` (`dashboard`, `leads`, `empresas`, `contratos`, `modulos`, `senha`, `seguranca`) **não** inclui `privacidade` — o Administrator não vê aba de Privacidade no `AdminShell` (escopo LGPD dele é sem CPF/tenant; o `ConsentimentoGate` também fica de fora).
+
 ## Painel Admin Plataforma → Módulos
 
 `AdminShell` exibe o item **Módulos** (`AdminModulosScreen`), que lista as empresas e permite **ativar/desativar** módulos, chamando:

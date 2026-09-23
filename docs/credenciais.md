@@ -25,6 +25,6 @@
 - **Username:** `Administrator` — tela **"Login Administrator"** (`/admin/auth/login`, fora de `/api/v1`).
 - **Produção:** a tabela nasce **vazia** — primeiro acesso pelo wizard `/admin/auth/bootstrap` (username ≤20, senha 8–100); setup **obrigatório** de 2FA (`chronos.admin.two-factor-required`, default `true`) gera **8 códigos de recuperação** exibidos uma única vez (`/admin/auth/setup-2fa` + dialog); recuperação em `/admin/auth/recover`.
 - **Desenvolvimento:** seed `db/seed/R__seed_admin_dev.sql` cria `Administrator` / senha `admin123`, 2FA desabilitado (`two-factor-required: false` no dev) — login direto, sem wizard.
-- Escopo LGPD: **sem CPF, sem tenant, sem acesso a dados de tenant** — apenas catálogo/ativação de módulos, gestão de empresas e telemetria.
+- Escopo LGPD: **sem CPF, sem tenant, sem acesso a dados de tenant** — apenas catálogo/ativação de módulos, gestão de empresas e telemetria. **Não há aba de Privacidade** no painel do Administrator (`/admin/privacidade` não existe).
 
 Para saber como subir o app, ver [`README.md`](../README.md). Checklist de smoke do backend: `chronos-pulse/docs/smoke.md`.
