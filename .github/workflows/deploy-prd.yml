@@ -40,8 +40,9 @@ jobs:
           npm install -g vercel@59.25.4
           mkdir -p .vercel
           echo "{\"orgId\":\"$VERCEL_ORG_ID\",\"projectId\":\"$VERCEL_PROJECT_ID\"}" > .vercel/project.json
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel build --prod --token=$VERCEL_TOKEN
+          mkdir -p .vercel/output/static
+          cp -r build/web/. .vercel/output/static/
+          printf '{"version":3,"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}' > .vercel/output/config.json
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
 
       - name: Upload build artifacts
