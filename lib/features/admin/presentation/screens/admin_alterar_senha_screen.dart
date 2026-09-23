@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../providers/admin_auth_provider.dart';
 
 class AdminAlterarSenhaScreen extends StatefulWidget {
   const AdminAlterarSenhaScreen({super.key});
@@ -28,8 +28,8 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final authProvider = context.read<AuthProvider>();
-    final sucesso = await authProvider.alterarSenha(
+    final adminAuth = context.read<AdminAuthProvider>();
+    final sucesso = await adminAuth.alterarSenha(
       senhaAtual: _senhaAtualController.text,
       novaSenha: _novaSenhaController.text,
     );
@@ -49,7 +49,7 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text(authProvider.errorMessage ?? 'Erro ao alterar a senha.'),
+              Text(adminAuth.errorMessage ?? 'Erro ao alterar a senha.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -58,8 +58,8 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final isCarregando = authProvider.isLoading;
+    final adminAuth = context.watch<AdminAuthProvider>();
+    final isCarregando = adminAuth.isLoading;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -142,8 +142,11 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Informe a nova senha';
                           }
-                          if (value.length < 6) {
-                            return 'A senha deve ter no mínimo 6 caracteres';
+                          if (value.length < 8) {
+                            return 'A senha deve ter no mínimo 8 caracteres';
+                          }
+                          if (value.length > 100) {
+                            return 'A senha deve ter no máximo 100 caracteres';
                           }
                           return null;
                         },

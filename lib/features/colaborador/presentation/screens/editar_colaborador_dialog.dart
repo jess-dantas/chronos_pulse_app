@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/data/listas_govbr.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
 import '../../../../core/widgets/acessos_modulos_card.dart';
+import '../../../auth/data/models/usuario_model.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/colaborador_model.dart';
 import '../providers/colaborador_provider.dart';
 
@@ -30,11 +32,28 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
   late DateTime _dataNascimento;
   late DateTime _dataAdmissao;
   DateTime? _dataDesligamento;
-  late bool _acessoEstoque;
-  late bool _acessoPatrimonio;
-  late bool _acessoFrota;
-  late bool _acessoProtocolo;
+  Set<String> _selecionados = {};
   bool _isLoading = false;
+
+  List<String> _visiveisPara(UsuarioModel? logado) {
+    if (logado == null || logado.modulos.isEmpty) {
+      return AcessosModulosCard.codigosGlobais;
+    }
+    return AcessosModulosCard.codigosGlobais
+        .where(logado.modulos.contains)
+        .toList();
+  }
+
+  Future<void> _carregarModulos() async {
+    final colab = widget.colaborador;
+    if (colab.cpcUsuarioId.isEmpty || colab.tenantId.isEmpty) return;
+    final provider = context.read<ColaboradorProvider>();
+    final codigos = await provider.listarModulosUsuario(
+        colab.cpcUsuarioId, colab.tenantId);
+    if (codigos != null && mounted) {
+      setState(() => _selecionados = codigos.toSet());
+    }
+  }
 
   @override
   void initState() {
@@ -55,10 +74,13 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
     _dataDesligamento = colab.dataDesligamento != null
         ? DateTime.tryParse(colab.dataDesligamento!)
         : null;
-    _acessoEstoque = colab.acessoEstoque;
-    _acessoPatrimonio = colab.acessoPatrimonio;
-    _acessoFrota = colab.acessoFrota;
-    _acessoProtocolo = colab.acessoProtocolo;
+    _selecionados = {
+      if (colab.acessoEstoque) 'ESTOQUE',
+      if (colab.acessoPatrimonio) 'PATRIMONIO',
+      if (colab.acessoFrota) 'FROTA',
+      if (colab.acessoProtocolo) 'PROTOCOLO',
+    };
+    _carregarModulos();
   }
 
   @override
@@ -131,16 +153,27 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
       dataDesligamento: _dataDesligamento != null
           ? dateFormat.format(_dataDesligamento!)
           : null,
-      acessoEstoque: _acessoEstoque,
-      acessoPatrimonio: _acessoPatrimonio,
-      acessoFrota: _acessoFrota,
-      acessoProtocolo: _acessoProtocolo,
+      acessoEstoque: _selecionados.contains('ESTOQUE'),
+      acessoPatrimonio: _selecionados.contains('PATRIMONIO'),
+      acessoFrota: _selecionados.contains('FROTA'),
+      acessoProtocolo: _selecionados.contains('PROTOCOLO'),
     );
+
+    bool modulosOk = true;
+    if (sucesso &&
+        widget.colaborador.cpcUsuarioId.isNotEmpty &&
+        widget.colaborador.tenantId.isNotEmpty) {
+      modulosOk = await provider.atualizarModulosUsuario(
+        widget.colaborador.cpcUsuarioId,
+        widget.colaborador.tenantId,
+        _selecionados.toList(),
+      );
+    }
 
     setState(() => _isLoading = false);
 
     if (mounted) {
-      if (sucesso) {
+      if (sucesso && modulosOk) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -415,16 +448,11 @@ class _EditarColaboradorDialogState extends State<EditarColaboradorDialog> {
                         const SizedBox(height: 20),
 
                         AcessosModulosCard(
-                          acessoEstoque: _acessoEstoque,
-                          acessoPatrimonio: _acessoPatrimonio,
-                          acessoFrota: _acessoFrota,
-                          acessoProtocolo: _acessoProtocolo,
-                          onChanged: (e, p, f, pr) => setState(() {
-                            _acessoEstoque = e;
-                            _acessoPatrimonio = p;
-                            _acessoFrota = f;
-                            _acessoProtocolo = pr;
-                          }),
+                          visiveis:
+                              _visiveisPara(context.watch<AuthProvider>().usuario),
+                          selecionados: _selecionados,
+                          onChanged: (novos) =>
+                              setState(() => _selecionados = novos),
                         ),
                       ],
                     ),

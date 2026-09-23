@@ -15,10 +15,6 @@ class AdminRepository {
     return _remoteDataSource.listarEmpresas();
   }
 
-  Future<List<AdminColaboradorModel>> listarColaboradores() {
-    return _remoteDataSource.listarColaboradores();
-  }
-
   Future<void> cadastrarEmpresa({
     required String cnpj,
     required String nome,
@@ -135,77 +131,5 @@ class AdminRepository {
 
   Future<List<String>> atualizarModulosEmpresa(String tenantId, List<String> modulos) {
     return _remoteDataSource.atualizarModulosEmpresa(tenantId, modulos);
-  }
-
-  Future<void> cadastrarColaborador({
-    required String cpf,
-    required String nome,
-    String? emailCorporativo,
-    required String senha,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    required String dataNascimento,
-    required String dataAdmissao,
-    String? dataDesligamento,
-    String? tenantId,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) {
-    return _remoteDataSource.cadastrarColaborador(
-      cpf: cpf,
-      nome: nome,
-      emailCorporativo: emailCorporativo,
-      senha: senha,
-      matricula: matricula,
-      cargo: cargo,
-      departamento: departamento,
-      dataNascimento: dataNascimento,
-      dataAdmissao: dataAdmissao,
-      dataDesligamento: dataDesligamento,
-      tenantId: tenantId,
-      acessoEstoque: acessoEstoque,
-      acessoPatrimonio: acessoPatrimonio,
-      acessoFrota: acessoFrota,
-      acessoProtocolo: acessoProtocolo,
-    );
-  }
-
-  Future<void> atualizarColaborador({
-    required String id,
-    required String nome,
-    String? emailCorporativo,
-    String? matricula,
-    String? cargo,
-    String? departamento,
-    String? dataNascimento,
-    String? dataAdmissao,
-    String? dataDesligamento,
-    bool acessoEstoque = false,
-    bool acessoPatrimonio = false,
-    bool acessoFrota = false,
-    bool acessoProtocolo = false,
-  }) {
-    return _remoteDataSource.atualizarColaborador(
-      id: id,
-      nome: nome,
-      emailCorporativo: emailCorporativo,
-      matricula: matricula,
-      cargo: cargo,
-      departamento: departamento,
-      dataNascimento: dataNascimento,
-      dataAdmissao: dataAdmissao,
-      dataDesligamento: dataDesligamento,
-      acessoEstoque: acessoEstoque,
-      acessoPatrimonio: acessoPatrimonio,
-      acessoFrota: acessoFrota,
-      acessoProtocolo: acessoProtocolo,
-    );
-  }
-
-  Future<void> excluirColaborador(String id) {
-    return _remoteDataSource.excluirColaborador(id);
   }
 }

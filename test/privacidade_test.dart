@@ -13,6 +13,8 @@ class FakePrivacidadeDataSource extends PrivacidadeDataSource {
   bool falharConsentimento = false;
   bool falharExportar = false;
   bool falharApagar = false;
+  bool falharStatus = false;
+  bool aceitePendente = true;
   String? ultimaVersaoConsentida;
   bool apagou = false;
 
@@ -25,6 +27,17 @@ class FakePrivacidadeDataSource extends PrivacidadeDataSource {
   }
 
   @override
+  Future<Map<String, dynamic>> getStatusConsentimento() async {
+    if (falharStatus) throw Exception('Falha ao verificar status');
+    return {
+      'versaoAtual': '1.0',
+      'versaoAceita': aceitePendente ? null : '1.0',
+      'dataConsentimento': aceitePendente ? null : '2026-09-08T10:00:00Z',
+      'aceitePendente': aceitePendente,
+    };
+  }
+
+  @override
   Future<Map<String, dynamic>> getMeusDados() async {
     if (falharExportar) throw Exception('Falha ao exportar dados');
     return meusDados ?? {'nome': 'João', 'cpf': '***.456.789-**'};
@@ -34,6 +47,7 @@ class FakePrivacidadeDataSource extends PrivacidadeDataSource {
   Future<void> registrarConsentimento(String versaoPolitica) async {
     if (falharConsentimento) throw Exception('Falha ao registrar consentimento');
     ultimaVersaoConsentida = versaoPolitica;
+    aceitePendente = false;
   }
 
   @override
@@ -82,10 +96,56 @@ void main() {
       final fake = FakePrivacidadeDataSource()..falharConsentimento = true;
       final provider = PrivacidadeProvider(fake);
       await provider.carregarPolitica();
+      await provider.carregarStatusConsentimento();
+      expect(provider.consentimentoPendente, isTrue);
 
       final erro = await provider.registrarConsentimento();
 
       expect(erro, contains('Falha ao registrar consentimento'));
+      expect(provider.consentimentoPendente, isTrue);
+    });
+
+    test('carregarStatusConsentimento reflete aceite pendente', () async {
+      final fake = FakePrivacidadeDataSource()..aceitePendente = true;
+      final provider = PrivacidadeProvider(fake);
+
+      await provider.carregarStatusConsentimento();
+
+      expect(provider.consentimentoPendente, isTrue);
+      expect(provider.versaoConsentimentoAceita, isNull);
+    });
+
+    test('carregarStatusConsentimento reflete versão já aceita', () async {
+      final fake = FakePrivacidadeDataSource()..aceitePendente = false;
+      final provider = PrivacidadeProvider(fake);
+
+      await provider.carregarStatusConsentimento();
+
+      expect(provider.consentimentoPendente, isFalse);
+      expect(provider.versaoConsentimentoAceita, '1.0');
+    });
+
+    test('carregarStatusConsentimento não bloqueia em falha de rede', () async {
+      final fake = FakePrivacidadeDataSource()..falharStatus = true;
+      final provider = PrivacidadeProvider(fake);
+
+      await provider.carregarStatusConsentimento();
+
+      expect(provider.consentimentoPendente, isFalse);
+    });
+
+    test('registrarConsentimento limpa o pendente com sucesso', () async {
+      final fake = FakePrivacidadeDataSource()..aceitePendente = true;
+      final provider = PrivacidadeProvider(fake);
+      await provider.carregarPolitica();
+      await provider.carregarStatusConsentimento();
+      expect(provider.consentimentoPendente, isTrue);
+
+      final erro = await provider.registrarConsentimento();
+
+      expect(erro, isNull);
+      expect(provider.consentimentoPendente, isFalse);
+      expect(provider.versaoConsentimentoAceita, '1.0');
     });
 
     test('exportarMeusDados preenche dados e retorna nulo', () async {
@@ -145,11 +205,13 @@ void main() {
       expect(find.textContaining('Política de privacidade v1'), findsOneWidget);
       expect(find.text('Privacidade & LGPD'), findsOneWidget);
 
-      await tester.tap(find.textContaining('Registrar consentimento (v1.0)'));
+      await tester.tap(find.textContaining('Ciente e de acordo (v1.0)'));
       await tester.pumpAndSettle();
 
       expect(fake.ultimaVersaoConsentida, '1.0');
-      expect(find.text('Consentimento registrado com sucesso.'), findsOneWidget);
+      expect(find.text('Termo de ciência registrado com sucesso.'),
+          findsOneWidget);
+      expect(find.textContaining('Ciência registrada — v1.0'), findsOneWidget);
     });
 
     testWidgets('mostra erro quando a política não carrega', (tester) async {

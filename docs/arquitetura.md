@@ -21,7 +21,8 @@ lib/
 │   ├── frota/                          # Veículos + abastecimentos (abas)
 │   ├── protocolo/                      # Protocolo eletrônico (status em PATCH)
 │   ├── admin/                          # Painel Admin Plataforma (empresas, contratos,
-│   │                                   #   colaboradores, dashboard e Módulos)
+│   │                                   #   leads, módulos, dashboard, senha/2FA via
+│   │                                   #   AdminAuthProvider)
 │   ├── landing/                        # Landing page pública
 │   └── navigation/                     # Shell adaptativo (Rail Web / Bar Mobile)
 └── main.dart                           # MultiProvider + restauração de sessão
@@ -44,6 +45,14 @@ Os providers são registrados em `main.dart` no `MultiProvider` e injetados via 
 - `navigation/` decide entre **NavigationRail** (web/desktop, largura > 800px) e **NavigationBar** (mobile).
 - Os itens são construídos **condicionalmente** pelos getters `temModulo*` do usuário (ver [`modulos.md`](modulos.md)).
 - O índice atual é ajustado para `0` caso o item selecionado não exista mais (`safeIndex`).
+
+### Convenção de "Voltar"
+
+- **Telas empurradas** (`context.push` / `Navigator.push` a partir de uma tela do painel): AppBar usa a seta padrão do `Navigator` (auto `leading`) — ex.: detalhes de licitação, `/perfil`, wizard de titularidade.
+- **Fluxos de entrada/autenticação** (landing, login, cadastro, wizard admin 2FA): botão "Voltar" **explícito** no AppBar (não confiam no histórico).
+- **Telas raiz de branch** (abas do `MainShell`/`AdminShell`): **sem** seta de voltar — o branch é navegado pelo rail/NavigationBar; em telas estreitas o shell exibe AppBar com título + logout.
+- **Exceção intencional:** `AdminSetup2FAScreen` **não** expõe voltar (setup forçado — sair é só pelo fluxo).
+- Diálogos destrutivos (logout, transferir titularidade) usam `ConfirmLogoutDialog` com **"Não" em destaque** (`FilledButton` primário) e "Sim" em `TextButton` de erro.
 
 ## Inicialização
 

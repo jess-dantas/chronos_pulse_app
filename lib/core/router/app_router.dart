@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/screens/admin_alterar_senha_screen.dart';
-import '../../features/admin/presentation/screens/admin_colaboradores_screen.dart';
+import '../../features/admin/presentation/screens/admin_auth_screen.dart';
+import '../../features/admin/presentation/screens/admin_bootstrap_screen.dart';
 import '../../features/admin/presentation/screens/admin_contratos_screen.dart';
+import '../../features/admin/presentation/screens/admin_recover_screen.dart';
+import '../../features/admin/presentation/screens/admin_recovery_codes_screen.dart';
+import '../../features/admin/presentation/screens/admin_setup_2fa_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_empresas_screen.dart';
 import '../../features/admin/presentation/screens/admin_modulos_screen.dart';
+import '../../features/admin/presentation/screens/admin_seguranca_screen.dart';
+import '../../features/admin/presentation/providers/admin_auth_provider.dart';
 import '../../features/ponto/presentation/screens/aprovacao_ajustes_screen.dart';
 import '../../features/auth/data/models/usuario_model.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
@@ -23,9 +29,11 @@ import '../../features/licitacoes/presentation/screens/licitacoes_home_screen.da
 import '../../features/navigation/presentation/screens/admin_shell.dart';
 import '../../features/navigation/presentation/screens/main_shell.dart';
 import '../../features/patrimonio/presentation/screens/patrimonio_home_screen.dart';
+import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../../features/ponto/presentation/screens/home_ponto_screen.dart';
 import '../../features/privacidade/presentation/screens/privacidade_screen.dart';
 import '../../features/protocolo/presentation/screens/protocolo_home_screen.dart';
+import '../../features/titularidade/presentation/screens/transferir_titularidade_screen.dart';
 import '../../features/transparencia/presentation/screens/transparencia_home_screen.dart';
 
 /// Roteamento centralizado com URLs limpas (`/`, `/login`, `/painel/<modulo>`, `/admin`).
@@ -39,6 +47,7 @@ class AppRouter {
   /// `NavigationRail` no [MainShell]).
   static const List<String> painelOrdem = [
     'ponto',
+    'aprovacao-ajustes',
     'colaboradores',
     'estoque',
     'compras',
@@ -55,50 +64,46 @@ class AppRouter {
     'dashboard',
     'leads',
     'empresas',
-    'colaboradores',
     'contratos',
     'modulos',
     'senha',
-    'aprovacao-ajustes',
+    'seguranca',
     'privacidade',
   ];
 
   static bool podeModuloPainel(UsuarioModel usuario, String modulo) {
-    // O tenant pode ter comprado o módulo, mas o acesso efetivo depende da
-    // role/permissões do usuário (alinhado às authorities do backend).
-    final temModuloTenant = switch (modulo) {
-      'ponto' => usuario.temModuloPonto,
-      'colaboradores' => usuario.temModuloRh,
-      'estoque' => usuario.temModuloEstoque,
-      'compras' => usuario.temModuloCompras,
-      'licitacoes' => usuario.temModuloLicitacoes,
-      'patrimonio' => usuario.temModuloPatrimonio,
-      'frota' => usuario.temModuloFrota,
-      'protocolo' => usuario.temModuloProtocolo,
-      'transparencia' => usuario.temModuloTransparencia,
-      'privacidade' => true,
+    if (modulo == 'privacidade') return true;
+
+    // Associação estrita: o módulo precisa estar na lista do usuário.
+    // (Admin Empresa recebe a lista completa dos módulos contratados no login/refresh/me.)
+    bool contratado(String codigo) => usuario.modulos.contains(codigo);
+
+    // Gate por role (alinhado ao backend / rbac.md) E por módulo associado.
+    return switch (modulo) {
+      'ponto' =>
+        (usuario.isAdminOrRh || usuario.isColaborador) && contratado('PONTO'),
+      'aprovacao-ajustes' =>
+        usuario.isAdminOrRh && contratado('PONTO'),
+      'colaboradores' =>
+        usuario.isAdminOrRh && contratado('RECURSOS_HUMANOS'),
+      'estoque' => usuario.temAcessoEstoque && contratado('ESTOQUE'),
+      'compras' => usuario.temAcessoEstoque && contratado('COMPRAS'),
+      'licitacoes' => usuario.temAcessoEstoque && contratado('LICITACOES'),
+      'patrimonio' =>
+        (usuario.isAdminOrRh || usuario.isColaborador) &&
+            contratado('PATRIMONIO'),
+      'frota' =>
+        (usuario.isAdminOrRh || usuario.isColaborador) && contratado('FROTA'),
+      'protocolo' =>
+        (usuario.isAdminOrRh || usuario.isColaborador) &&
+            contratado('PROTOCOLO'),
+      'transparencia' =>
+        (usuario.isAdminOrRh ||
+            usuario.isColaborador ||
+            usuario.acessoEstoque) &&
+            contratado('TRANSPARENCIA'),
       _ => false,
     };
-    if (!temModuloTenant) return false;
-
-    switch (modulo) {
-      case 'ponto':
-        return usuario.isAdminOrRh || usuario.isColaborador;
-      case 'colaboradores':
-        return usuario.isAdminOrRh;
-      case 'estoque':
-      case 'compras':
-      case 'licitacoes':
-        return usuario.temAcessoEstoque;
-      case 'patrimonio':
-      case 'frota':
-      case 'protocolo':
-        return usuario.isAdminOrRh || usuario.isColaborador;
-      case 'transparencia':
-        return usuario.isAdminOrRh || usuario.isColaborador || usuario.acessoEstoque;
-      default:
-        return true;
-    }
   }
 
   /// Primeira rota acessível do painel para o usuário, na ordem fixa dos módulos.
@@ -110,11 +115,15 @@ class AppRouter {
     return '/painel/$modulo';
   }
 
-  static GoRouter build(AuthProvider authProvider) {
+  static GoRouter build(
+    AuthProvider authProvider,
+    AdminAuthProvider adminAuthProvider,
+  ) {
     return GoRouter(
       initialLocation: rotaInicial,
-      refreshListenable: authProvider,
-      redirect: (context, state) => _redirect(authProvider, state),
+      refreshListenable: Listenable.merge([authProvider, adminAuthProvider]),
+      redirect: (context, state) =>
+          _redirect(authProvider, adminAuthProvider, state),
       routes: [
         GoRoute(
           path: '/',
@@ -131,6 +140,40 @@ class AppRouter {
         GoRoute(
           path: '/recuperar-senha',
           builder: (context, state) => const RecuperarSenhaScreen(),
+        ),
+        // Profile (acessível pelo toque no profile do rail; não é item de menu)
+        GoRoute(
+          path: '/perfil',
+          builder: (context, state) => const PerfilScreen(),
+        ),
+        GoRoute(
+          path: '/perfil/titularidade',
+          builder: (context, state) => const TransferirTitularidadeScreen(),
+        ),
+        // Admin auth routes (públicas, não requerem autenticação)
+        GoRoute(
+          path: '/admin/auth/login',
+          builder: (context, state) => const AdminAuthScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/logout',
+          builder: (context, state) => const AdminAuthScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/bootstrap',
+          builder: (context, state) => const AdminBootstrapScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/setup-2fa',
+          builder: (context, state) => const AdminSetup2FAScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/codigos-recuperacao',
+          builder: (context, state) => const AdminRecoveryCodesScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/recover',
+          builder: (context, state) => const AdminRecoverScreen(),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) =>
@@ -167,13 +210,43 @@ class AppRouter {
     );
   }
 
-  static String? _redirect(AuthProvider auth, GoRouterState state) {
+  static String? _redirect(
+    AuthProvider auth,
+    AdminAuthProvider adminAuth,
+    GoRouterState state,
+  ) {
     final location = state.matchedLocation;
+
+    // Login/ logout/ bootstrap/ setup/ recover do AdminPlataforma:
+    // rotas separadas, sempre públicas (podem usar tempToken ou nenhum token).
+    if (location.startsWith('/admin/auth/')) {
+      return null;
+    }
+
+    // Profile (inclui /perfil/titularidade): acessível a qualquer sessão
+    // ativa (admin root ou usuário). A sub-rota de transferência é
+    // exclusiva de ADMIN_EMPRESA.
+    if (location.startsWith('/perfil')) {
+      if (!(auth.isAuthenticated || adminAuth.isAuthenticated)) return '/';
+      if (location == '/perfil/titularidade') {
+        final usuario = auth.usuario;
+        if (usuario == null || !usuario.isAdminEmpresa) return '/perfil';
+      }
+      return null;
+    }
+
+    final areaAdmin = location == '/admin' || location.startsWith('/admin/');
+
+    // Sessão AdminPlataforma (root): acesso exclusivo à área /admin.
+    // Não cai no painel de usuário nem na landing (rotas não se misturam).
+    if (adminAuth.isAuthenticated) {
+      return areaAdmin ? null : '/admin/dashboard';
+    }
+
     final autenticado = auth.isAuthenticated;
     final usuario = auth.usuario;
 
     const publicas = ['/', '/login', '/cadastro', '/recuperar-senha'];
-    final areaAdmin = location == '/admin' || location.startsWith('/admin/');
     final areaPainel = location == '/painel' || location.startsWith('/painel/');
 
     if (!autenticado) {
@@ -209,6 +282,8 @@ class AppRouter {
     switch (modulo) {
       case 'ponto':
         return const HomePontoScreen();
+      case 'aprovacao-ajustes':
+        return const AprovacaoAjustesScreen();
       case 'colaboradores':
         return const ColaboradoresScreen();
       case 'estoque':
@@ -240,16 +315,14 @@ class AppRouter {
         return const AdminLeadsScreen();
       case 'empresas':
         return const AdminEmpresasScreen();
-      case 'colaboradores':
-        return const AdminColaboradoresScreen();
       case 'contratos':
         return const AdminContratosScreen();
       case 'modulos':
         return const AdminModulosScreen();
       case 'senha':
         return const AdminAlterarSenhaScreen();
-      case 'aprovacao-ajustes':
-        return const AprovacaoAjustesScreen();
+      case 'seguranca':
+        return const AdminSegurancaScreen();
       case 'privacidade':
         return const PrivacidadeScreen();
       default:

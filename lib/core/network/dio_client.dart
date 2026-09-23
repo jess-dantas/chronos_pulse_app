@@ -4,6 +4,7 @@ import '../constants/api_constants.dart';
 class DioClient {
   late final Dio dio;
   String? _authToken;
+  String? _adminToken;
 
   /// Chamado quando uma requisição autenticada recebe 401.
   /// Deve renovar o token (e persistir) e retornar `true` se teve sucesso.
@@ -28,8 +29,9 @@ class DioClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          if (_authToken != null && _authToken!.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $_authToken';
+          final token = _tokenPara(options.path);
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
         },
@@ -67,14 +69,15 @@ class DioClient {
           } else if (error.type == DioExceptionType.connectionError) {
             userFriendlyMessage =
                 'Não foi possível conectar ao servidor. Verifique sua conexão ou se a API está online.';
-          } else if (error.type == DioExceptionType.badResponse) {
-            final dynamic data = error.response?.data;
-            if (data is Map && data['message'] != null) {
-              userFriendlyMessage = data['message'].toString();
-            } else {
-              userFriendlyMessage = 'Erro no servidor (${error.response?.statusCode}).';
-            }
-          } else {
+      } else if (error.type == DioExceptionType.badResponse) {
+        final dynamic data = error.response?.data;
+        if (data is Map && (data['mensagem'] ?? data['message']) != null) {
+          userFriendlyMessage =
+              (data['mensagem'] ?? data['message']).toString();
+        } else {
+          userFriendlyMessage = 'Erro no servidor (${error.response?.statusCode}).';
+        }
+      } else {
             userFriendlyMessage =
                 error.message ?? 'Erro inesperado na comunicação com o servidor.';
           }
@@ -110,9 +113,25 @@ class DioClient {
     return path.endsWith(endpoint) || path.endsWith('$endpoint/');
   }
 
+  /// Rotas `/admin/**` usam o token AdminPlataforma (root) quando existe;
+  /// demais rotas usam o token da sessão regular, com fallback para o token
+  /// admin (sessão root ativa sem usuário logado).
+  String? _tokenPara(String path) {
+    final ehRotaAdmin = path.contains('/admin/');
+    return ehRotaAdmin
+        ? (_adminToken ?? _authToken)
+        : (_authToken ?? _adminToken);
+  }
+
   void updateToken(String? token) {
     _authToken = token;
   }
 
   String? get token => _authToken;
+
+  void updateAdminToken(String? token) {
+    _adminToken = token;
+  }
+
+  String? get adminToken => _adminToken;
 }

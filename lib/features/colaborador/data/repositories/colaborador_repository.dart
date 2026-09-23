@@ -10,10 +10,22 @@ class ColaboradorRepository {
     return await remoteDataSource.listarColaboradores();
   }
 
-  Future<void> cadastrarColaborador({
+  Future<List<String>> listarModulosUsuario(
+      String usuarioId, String tenantId) async {
+    return await remoteDataSource.listarModulosUsuario(usuarioId, tenantId);
+  }
+
+  Future<void> atualizarModulosUsuario(
+      String usuarioId, String tenantId, List<String> codigos) async {
+    return await remoteDataSource.atualizarModulosUsuario(
+        usuarioId, tenantId, codigos);
+  }
+
+  Future<ColaboradorModel> cadastrarColaborador({
     required String cpf,
     required String nome,
     String? emailCorporativo,
+    String? celular,
     required String senha,
     String? matricula,
     String? cargo,
@@ -31,6 +43,7 @@ class ColaboradorRepository {
       cpf: cpf,
       nome: nome,
       emailCorporativo: emailCorporativo,
+      celular: celular,
       senha: senha,
       matricula: matricula,
       cargo: cargo,
@@ -50,6 +63,7 @@ class ColaboradorRepository {
     required String id,
     required String nome,
     String? emailCorporativo,
+    String? celular,
     String? matricula,
     String? cargo,
     String? departamento,
@@ -65,6 +79,7 @@ class ColaboradorRepository {
       id: id,
       nome: nome,
       emailCorporativo: emailCorporativo,
+      celular: celular,
       matricula: matricula,
       cargo: cargo,
       departamento: departamento,

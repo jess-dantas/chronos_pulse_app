@@ -124,12 +124,25 @@ class ApiConstants {
 
   // Módulo Admin (Gestão de Contratos e Métricas)
   static const String adminDashboardEndpoint = '/admin/dashboard';
+  static const String adminAuthLoginEndpoint = '/admin/auth/login';
+  static const String adminAuthLogoutEndpoint = '/admin/auth/logout';
+  static const String adminAuthAlterarSenhaEndpoint = '/admin/auth/alterar-senha';
+  static const String adminAuthBootstrapEndpoint = '/admin/auth/bootstrap';
+  static const String adminAuthBootstrapStatusEndpoint = '/admin/auth/bootstrap/status';
+  static const String adminAuthTwoFactorVerifyEndpoint = '/admin/auth/2fa/verify';
+  static const String adminAuthTwoFactorStatusEndpoint = '/admin/auth/2fa/status';
+  static const String adminAuthTwoFactorSetupEndpoint = '/admin/auth/2fa/setup';
+  static const String adminAuthTwoFactorConfirmEndpoint = '/admin/auth/2fa/confirm';
+  static const String adminAuthTwoFactorRecoverEndpoint = '/admin/auth/2fa/recover';
   static const String adminContratosEndpoint = '/admin/contratos';
   static String adminContratoEventosEndpoint(String contratoId) => '/admin/contratos/$contratoId/eventos';
   static const String adminContratoEventoEndpoint = '/admin/contratos/eventos';
   static String adminContratoSaldoEndpoint(String contratoId) => '/admin/contratos/$contratoId/saldo';
   static const String adminEmpresasEndpoint = '/empresas';
-  static const String adminColaboradoresEndpoint = '/admin/colaboradores';
+
+  // Associação usuário ↔ módulo (gating por usuário)
+  static String usuarioModulosEndpoint(String usuarioId) =>
+      '/usuarios/$usuarioId/modulos';
 
   // Módulo Plataforma (Catálogo de Módulos e Ativação por Empresa)
   static const String adminModulosCatalogoEndpoint = '/admin/modulos';
@@ -193,4 +206,6 @@ class ApiConstants {
   static const String privacidadePoliticaEndpoint = '/privacidade/politica';
   static const String privacidadeMeusDadosEndpoint = '/privacidade/meus-dados';
   static const String privacidadeConsentimentoEndpoint = '/privacidade/consentimento';
+  static const String privacidadeConsentimentoStatusEndpoint =
+      '/privacidade/consentimento/status';
 }

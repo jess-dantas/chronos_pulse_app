@@ -50,6 +50,9 @@ dependencies:
   # Roteamento (URLs limpas no Flutter Web)
   go_router: ^18.0.1
 
+  # QR Code do setup 2FA (otpauth://)
+  qr_flutter: ^4.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

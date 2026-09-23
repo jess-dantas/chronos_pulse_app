@@ -32,6 +32,16 @@ class PrivacidadeDataSource {
     }
   }
 
+  Future<Map<String, dynamic>> getStatusConsentimento() async {
+    final response =
+        await _dioClient.dio.get(ApiConstants.privacidadeConsentimentoStatusEndpoint);
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(response.data);
+    }
+    throw Exception(
+        'Falha ao verificar status do consentimento (${response.statusCode})');
+  }
+
   Future<void> apagarMeusDados() async {
     final response = await _dioClient.dio.delete(ApiConstants.privacidadeMeusDadosEndpoint);
     if (response.statusCode != 204 && response.statusCode != 200) {

@@ -16,6 +16,9 @@ import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_da
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
+import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/admin/data/repositories/admin_auth_repository_impl.dart';
+import 'package:chronos_pulse_app/features/admin/presentation/providers/admin_auth_provider.dart';
 import 'package:chronos_pulse_app/main.dart';
 
 void main() {
@@ -53,7 +56,13 @@ void main() {
           ChangeNotifierProvider(create: (_) => EstoqueProvider(estoqueRepository)),
           ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
         ],
-        child: ChronosPulseApp(authProvider: AuthProvider(authRepository)),
+        child: ChronosPulseApp(
+          authProvider: AuthProvider(authRepository),
+          adminAuthProvider: AdminAuthProvider(
+            AdminAuthRepositoryImpl(AdminAuthRemoteDataSource(dioClient)),
+            dioClient,
+          ),
+        ),
       ),
     );
 

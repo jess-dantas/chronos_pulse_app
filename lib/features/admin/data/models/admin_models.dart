@@ -127,68 +127,6 @@ class AdminContratoEventoModel {
   }
 }
 
-class AdminColaboradorModel {
-  final String id;
-  final String cpf;
-  final String nome;
-  final String? email;
-  final String? matricula;
-  final String? cargo;
-  final String? departamento;
-  final String? tenantNome;
-  final bool ativo;
-  final bool acessoEstoque;
-  final bool acessoPatrimonio;
-  final bool acessoFrota;
-  final bool acessoProtocolo;
-  final String? dataDesligamento;
-  final String? dataAdmissao;
-  final String? dataNascimento;
-  final String? tenantId;
-
-  const AdminColaboradorModel({
-    required this.id,
-    required this.cpf,
-    required this.nome,
-    this.email,
-    this.matricula,
-    this.cargo,
-    this.departamento,
-    this.tenantNome,
-    this.ativo = true,
-    this.acessoEstoque = false,
-    this.acessoPatrimonio = false,
-    this.acessoFrota = false,
-    this.acessoProtocolo = false,
-    this.dataDesligamento,
-    this.dataAdmissao,
-    this.dataNascimento,
-    this.tenantId,
-  });
-
-  factory AdminColaboradorModel.fromJson(Map<String, dynamic> json) {
-    return AdminColaboradorModel(
-      id: (json['id'] ?? '').toString(),
-      cpf: (json['cpf'] ?? '').toString(),
-      nome: (json['nome'] ?? '').toString(),
-      email: json['email']?.toString(),
-      matricula: json['matricula']?.toString(),
-      cargo: json['cargo']?.toString(),
-      departamento: json['departamento']?.toString(),
-      tenantNome: json['tenantNome']?.toString(),
-      ativo: json['ativo'] != false,
-      acessoEstoque: json['acessoEstoque'] == true,
-      acessoPatrimonio: json['acessoPatrimonio'] == true,
-      acessoFrota: json['acessoFrota'] == true,
-      acessoProtocolo: json['acessoProtocolo'] == true,
-      dataDesligamento: json['dataDesligamento']?.toString(),
-      dataAdmissao: json['dataAdmissao']?.toString(),
-      dataNascimento: json['dataNascimento']?.toString(),
-      tenantId: json['tenantId']?.toString(),
-    );
-  }
-}
-
 class AdminModuloModel {
   final String codigo;
   final String nome;
@@ -233,6 +171,47 @@ class AdminDashboardModel {
       contratosAtivos: inteiro(json['contratosAtivos']),
       totalColaboradores: inteiro(json['totalColaboradores']),
       bruto: json,
+    );
+  }
+}
+
+class AdminPlataformaModel {
+  final String id;
+  final String username;
+  final String nomeCompleto;
+  final String email;
+  final String? ultimoLogin;
+  final int tentativasLoginFalhas;
+  final String? bloqueioLoginAte;
+  final bool ativo;
+  final String criadoEm;
+  final String? atualizadoEm;
+
+  const AdminPlataformaModel({
+    required this.id,
+    required this.username,
+    required this.nomeCompleto,
+    required this.email,
+    this.ultimoLogin,
+    this.tentativasLoginFalhas = 0,
+    this.bloqueioLoginAte,
+    this.ativo = true,
+    required this.criadoEm,
+    this.atualizadoEm,
+  });
+
+  factory AdminPlataformaModel.fromJson(Map<String, dynamic> json) {
+    return AdminPlataformaModel(
+      id: (json['id'] ?? '').toString(),
+      username: (json['username'] ?? '').toString(),
+      nomeCompleto: (json['nomeCompleto'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      ultimoLogin: json['ultimoLogin']?.toString(),
+      tentativasLoginFalhas: (json['tentativasLoginFalhas'] as num?)?.toInt() ?? 0,
+      bloqueioLoginAte: json['bloqueioLoginAte']?.toString(),
+      ativo: json['ativo'] != false,
+      criadoEm: (json['criadoEm'] ?? '').toString(),
+      atualizadoEm: json['atualizadoEm']?.toString(),
     );
   }
 }

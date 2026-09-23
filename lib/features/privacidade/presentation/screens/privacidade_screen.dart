@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/privacidade_provider.dart';
 
@@ -23,7 +22,9 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<PrivacidadeProvider>().carregarPolitica();
+      final provider = context.read<PrivacidadeProvider>();
+      provider.carregarPolitica();
+      provider.carregarStatusConsentimento();
     });
   }
 
@@ -48,7 +49,7 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
       _mostrarSnack(erro, cor: Colors.red.shade700);
       return;
     }
-    _mostrarSnack('Consentimento registrado com sucesso.');
+    _mostrarSnack('Termo de ciência registrado com sucesso.');
   }
 
   Future<void> _exportarDados() async {
@@ -134,18 +135,6 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
           ],
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Encerrar Sessão',
-            onPressed: () async {
-              final confirmado = await ConfirmLogoutDialog.show(context);
-              if (confirmado == true && context.mounted) {
-                context.read<AuthProvider>().logout();
-              }
-            },
-          ),
-        ],
       ),
       body: provider.isLoading && politica == null
           ? const Center(child: CircularProgressIndicator())
@@ -183,7 +172,7 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                     children: [
                       _CardSection(
                         icon: Icons.description_outlined,
-                        title: 'Política de Privacidade',
+                        title: 'Termo de Ciência & Política',
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -207,30 +196,60 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                       const SizedBox(height: 16),
                       _CardSection(
                         icon: Icons.fact_check_outlined,
-                        title: 'Consentimento',
+                        title: 'Termo de Ciência',
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Ao registrar o consentimento, você concorda de forma '
-                              'expressa com o tratamento dos dados descritos na política. '
-                              'O consentimento pode ser revogado a qualquer momento.',
-                              style: TextStyle(fontSize: 13, height: 1.5),
-                            ),
-                            const SizedBox(height: 12),
-                            FilledButton.icon(
-                              onPressed:
-                                  _processando ? null : _registrarConsentimento,
-                              icon: _processando
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : const Icon(Icons.check_circle_outline),
-                              label: Text('Registrar consentimento (v$versao)'),
-                            ),
+                            if (!provider.consentimentoPendente &&
+                                provider.versaoConsentimentoAceita != null) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.check_circle,
+                                      color: Colors.green, size: 18),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Ciência registrada — v${provider.versaoConsentimentoAceita}'
+                                      '${provider.dataConsentimentoAceite != null ? ' em ${provider.dataConsentimentoAceite!.substring(0, 10)}' : ''}.',
+                                      style: const TextStyle(
+                                          fontSize: 13, height: 1.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Consulte o texto completo acima sempre que '
+                                'desejar. Novas versões do termo exigem novo '
+                                'aceite no próximo acesso.',
+                                style:
+                                    TextStyle(fontSize: 13, height: 1.5),
+                              ),
+                            ] else ...[
+                              const Text(
+                                'No primeiro acesso (ou quando o termo mudar), '
+                                'confirme que leu como seus dados são tratados. '
+                                'O aceite registra versão, data, IP e user-agent.',
+                                style:
+                                    TextStyle(fontSize: 13, height: 1.5),
+                              ),
+                              const SizedBox(height: 12),
+                              FilledButton.icon(
+                                onPressed: _processando
+                                    ? null
+                                    : _registrarConsentimento,
+                                icon: _processando
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.check_circle_outline),
+                                label: Text(
+                                    'Ciente e de acordo (v$versao)'),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -287,7 +306,7 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
                       const SizedBox(height: 16),
                       const Center(
                         child: Text(
-                          'Encarregado (DPO): privacidade@chronos-pulse.com.br',
+                          'Encarregado (DPO): dpo@chronos-pulse.com.br',
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ),
