@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 import '../datasources/ponto_local_datasource.dart';
 import '../datasources/ponto_remote_datasource.dart';
 import '../models/espelho_relatorio_model.dart';
@@ -6,6 +8,12 @@ import '../models/registro_ponto_model.dart';
 class PontoRepository {
   final PontoLocalDataSource localDataSource;
   final PontoRemoteDataSource remoteDataSource;
+
+  String? _ultimaFalhaServidor;
+
+  /// Motivo da última recusa explícita do servidor (null = sem rejeição;
+  /// falha de rede NÃO preenche este campo — ela é "offline", não rejeição).
+  String? get ultimaFalhaServidor => _ultimaFalhaServidor;
 
   PontoRepository({
     required this.localDataSource,
@@ -20,6 +28,8 @@ class PontoRepository {
   Future<bool> registrarPonto({
     required RegistroPontoModel registro,
   }) async {
+    _ultimaFalhaServidor = null;
+
     // 1. Salva no banco local primeiro (com limite de tempo: nunca bloqueia a UI)
     final localOk = await _salvarLocalComTimeout(registro);
 
@@ -42,6 +52,11 @@ class PontoRepository {
         return true; // Sincronizado online com sucesso
       }
       return false; // Salvo offline
+    } on RejeicaoServidorException catch (e) {
+      // Servidor online mas recusou gravar: registra o motivo para a UI
+      // mostrar snackbar vermelho em vez de "offline" enganoso.
+      _ultimaFalhaServidor = e.mensagem;
+      return false;
     } catch (_) {
       // Falha de rede ou servidor indisponível: ponto permanece salvo offline
       return false;
@@ -61,6 +76,8 @@ class PontoRepository {
 
   /// Sincroniza em lote todos os registros pendentes acumulados offline
   Future<int> sincronizarPendentes({String? colaboradorId}) async {
+    _ultimaFalhaServidor = null;
+
     final pendentes = await localDataSource.obterPontosNaoSincronizados(
         colaboradorId: colaboradorId);
     if (pendentes.isEmpty) return 0;
@@ -73,6 +90,9 @@ class PontoRepository {
         await localDataSource.marcarComoSincronizado(id);
       }
       return idsSucesso.length;
+    } on RejeicaoServidorException catch (e) {
+      _ultimaFalhaServidor = e.mensagem;
+      return 0;
     } catch (_) {
       return 0;
     }
@@ -147,7 +167,7 @@ class PontoRepository {
     final chaves = remotos.map(_chaveRegistro).toSet();
     final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras]
-      ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   Future<List<RegistroPontoModel>> obterEspelhoPonto({
@@ -239,7 +259,7 @@ class PontoRepository {
     String? colaboradorId,
   }) async {
     final registroLocal = RegistroPontoModel(
-      idLocal: DateTime.now().millisecondsSinceEpoch.toString(),
+      idLocal: const Uuid().v4(),
       colaboradorId: colaboradorId,
       dataHoraDispositivo: dataHora,
       tipoRegistro: tipoRegistro,
@@ -279,7 +299,7 @@ class PontoRepository {
     String? colaboradorId,
   }) async {
     final registroLocal = RegistroPontoModel(
-      idLocal: DateTime.now().millisecondsSinceEpoch.toString(),
+      idLocal: const Uuid().v4(),
       colaboradorId: colaboradorId,
       dataHoraDispositivo: dataHora,
       tipoRegistro: tipoRegistro,

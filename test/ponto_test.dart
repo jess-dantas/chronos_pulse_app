@@ -34,7 +34,11 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
         ? _banco
         : _banco.where((p) => p.colaboradorId == colaboradorId).toList();
     // Filtra ajustes manuais para simular o comportamento real do repositório
-    return List.from(filtrados.where((r) => !r.ajusteManual));
+    final lista =
+        List<RegistroPontoModel>.from(filtrados.where((r) => !r.ajusteManual));
+    // Espelha o datasource real: ordem cronológica crescente.
+    lista.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    return lista;
   }
 
   @override
@@ -63,6 +67,7 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
 
 class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   bool online = true;
+  bool rejeitar = false;
   List<RegistroPontoModel> ultimosSincronizados = [];
   List<RegistroPontoModel> espelhoRemoto = [];
 
@@ -75,6 +80,10 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
 
   @override
   Future<List<String>> sincronizarPontos(List<RegistroPontoModel> registros) async {
+    if (rejeitar) {
+      throw const RejeicaoServidorException(
+          'O servidor recebeu a batida, mas não foi possível gravá-la. Tente novamente.');
+    }
     if (!online) {
       throw Exception('Servidor indisponível');
     }
@@ -562,6 +571,127 @@ void main() {
       expect(tipos, contains('INTERVALO'));
       expect(tipos, contains('RETORNO'));
     });
+
+    test('Batidas de hoje aparecem em ordem crescente (Entrada #1 → Retorno #N)',
+        () async {
+      final agora = DateTime.now().toUtc();
+      remoteDataSource.online = false;
+      // Insere fora de ordem de escrita para provar que a ordenação
+      // (e não a ordem de inserção) define a exibição.
+      final batidas = [
+        ('r2', agora.add(const Duration(minutes: 10)), 'RETORNO'),
+        ('r1', agora, 'ENTRADA'),
+        ('r3', agora.add(const Duration(minutes: 5)), 'INTERVALO'),
+      ];
+      for (final (id, quando, tipo) in batidas) {
+        await localDataSource.salvarPontoLocal(RegistroPontoModel(
+          idLocal: id,
+          dataHoraDispositivo: quando,
+          tipoRegistro: tipo,
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h-$id',
+          sincronizadoOffline: false,
+        ));
+      }
+
+      await provider.carregarDados();
+
+      final tipos = provider.historico.map((r) => r.tipoRegistro).toList();
+      expect(tipos, equals(['ENTRADA', 'INTERVALO', 'RETORNO']),
+          reason: 'A lista deve ser cronológica: #1 Entrada, #2 Intervalo, #3 Retorno');
+      // Espelha o rótulo '#${index + 1}' da home: a mais antiga é #1.
+      expect(provider.historico.first.tipoRegistro, equals('ENTRADA'));
+      expect(provider.historico.last.tipoRegistro, equals('RETORNO'));
+    });
+
+    test('Rejeição explícita do servidor preenche ultimaFalhaServidor', () async {
+      remoteDataSource.online = true;
+      remoteDataSource.rejeitar = true;
+
+      final salvo = await provider.registrarPonto(RegistroPontoModel(
+        idLocal: 'uuid-rejeitado',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'hashR',
+        sincronizadoOffline: false,
+      ));
+
+      expect(salvo, isFalse);
+      expect(repository.ultimaFalhaServidor, isNotNull,
+          reason: 'Rejeição do servidor deve ser distinguível de "offline"');
+      expect(repository.ultimaFalhaServidor,
+          contains('não foi possível gravá-la'));
+    });
+
+    test('Falha de rede NÃO preenche ultimaFalhaServidor (é offline, não rejeição)',
+        () async {
+      remoteDataSource.online = false;
+
+      final salvo = await provider.registrarPonto(RegistroPontoModel(
+        idLocal: 'uuid-offline',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'hashO',
+        sincronizadoOffline: false,
+      ));
+
+      expect(salvo, isFalse);
+      expect(repository.ultimaFalhaServidor, isNull,
+          reason: 'Sem rede = pendente/offline, sem motivo de rejeição');
+    });
+
+    test('Ajuste manual gera idLocal UUID v4 (timestamp derrubava o lote no backend)',
+        () async {
+      remoteDataSource.online = false;
+
+      final ok = await repository.ajustarPontoManual(
+        dataHora: DateTime.now(),
+        tipoRegistro: 'ENTRADA',
+        justificativa: 'Esquecimento de marcação',
+      );
+      expect(ok, isFalse, reason: 'offline: ajuste fica pendente local');
+
+      final pendentes = await localDataSource.obterPontosNaoSincronizados();
+      expect(pendentes, hasLength(1));
+
+      final id = pendentes.first.idLocal;
+      final uuidV4 = RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+      expect(uuidV4.hasMatch(id), isTrue,
+          reason: 'idLocal="$id" deve ser UUID v4 — backend espera UUID '
+              'e um timestamp rejeitava o lote inteiro no Jackson');
+    });
+
+    test('Solicitação de ajuste também gera idLocal UUID v4', () async {
+      remoteDataSource.online = false;
+
+      final ok = await repository.solicitarAjuste(
+        dataHora: DateTime.now(),
+        tipoRegistro: 'INTERVALO',
+        justificativa: 'Falha técnica',
+      );
+      expect(ok, isFalse);
+
+      final pendentes = await localDataSource.obterPontosNaoSincronizados();
+      expect(pendentes, hasLength(1));
+
+      final id = pendentes.first.idLocal;
+      final uuidV4 = RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+      expect(uuidV4.hasMatch(id), isTrue,
+          reason: 'idLocal="$id" deve ser UUID v4');
+    });
   });
 
   group('EspelhoAgrupador (sobreposição de ajustes)', () {
@@ -767,6 +897,33 @@ void main() {
       expect(await reload.obterPontosNaoSincronizados(), isEmpty);
       expect((await reload.obterHistoricoHoje()).first.sincronizadoOffline,
           isTrue);
+    });
+
+    test('obterHistoricoHoje devolve em ordem crescente (não DESC)', () async {
+      final store = PontoLocalDataSourceWeb();
+      final base = DateTime.now().toUtc();
+      // Escrita em ordem inversa à cronológica.
+      for (final (id, offsetMin, tipo) in [
+        ('ord-3', 10, 'RETORNO'),
+        ('ord-1', 0, 'ENTRADA'),
+        ('ord-2', 5, 'INTERVALO'),
+      ]) {
+        await store.salvarPontoLocal(RegistroPontoModel(
+          idLocal: id,
+          dataHoraDispositivo: base.add(Duration(minutes: offsetMin)),
+          tipoRegistro: tipo,
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h-$id',
+          sincronizadoOffline: false,
+        ));
+      }
+
+      final lista = await store.obterHistoricoHoje();
+      expect(lista.map((r) => r.tipoRegistro).toList(),
+          equals(['ENTRADA', 'INTERVALO', 'RETORNO']));
     });
   });
 }

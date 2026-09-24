@@ -34,6 +34,9 @@ class PontoProvider extends ChangeNotifier {
   EspelhoRelatorioModel? get relatorioEspelho => _relatorioEspelho;
   String? get colaboradorId => _colaboradorId;
 
+  /// Motivo da última recusa explícita do servidor (null = sem rejeição).
+  String? get ultimaFalhaServidor => _repository.ultimaFalhaServidor;
+
   PontoProvider(this._repository) {
     carregarDados();
     iniciarMonitoramento();
