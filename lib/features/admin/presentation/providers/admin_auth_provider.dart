@@ -72,7 +72,7 @@ class AdminAuthProvider extends ChangeNotifier {
       }
 
       _errorMessage =
-          resultado['mensagem'] as String? ?? 'Credenciais inválidas';
+          resultado['mensagem'] as String? ?? 'Revise suas credenciais';
       _isLoading = false;
       notifyListeners();
       return false;

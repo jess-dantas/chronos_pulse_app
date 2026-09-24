@@ -28,7 +28,7 @@ class AdminAuthRemoteDataSource {
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
         return Map<String, dynamic>.from(response.data);
       }
-      throw Exception('Credenciais inválidas');
+      throw Exception('Revise suas credenciais');
     } on DioException catch (e) {
       throw Exception(_extrairMensagem(e, 'Erro ao autenticar'));
     }
