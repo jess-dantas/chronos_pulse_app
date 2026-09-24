@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../features/auth/presentation/providers/auth_provider.dart';
@@ -92,7 +93,9 @@ class _TermoCienciaDialogState extends State<_TermoCienciaDialog> {
 
   void _sair() {
     Navigator.of(context).pop();
-    if (mounted) context.read<AuthProvider>().logout();
+    if (!mounted) return;
+    context.read<AuthProvider>().logout();
+    context.go('/login');
   }
 
   @override
