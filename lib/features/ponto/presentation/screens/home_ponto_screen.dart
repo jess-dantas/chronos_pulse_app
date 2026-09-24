@@ -73,6 +73,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
   Future<void> _sincronizarPendentes(PontoProvider pontoProvider) async {
     final sincronizados = await pontoProvider.sincronizar();
+    final falhaServidor = pontoProvider.ultimaFalhaServidor;
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,13 +81,17 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
           content: Text(
             sincronizados > 0
                 ? '$sincronizados batida(s) sincronizada(s) com sucesso!'
-                : (pontoProvider.isOnline
-                    ? 'Todos os registros já estão sincronizados com o servidor.'
-                    : 'Servidor offline. Os pontos permanecem salvos em segurança no dispositivo.'),
+                : (falhaServidor != null
+                    ? 'O servidor recusou a sincronização: $falhaServidor'
+                    : (pontoProvider.isOnline
+                        ? 'Todos os registros já estão sincronizados com o servidor.'
+                        : 'Servidor offline. Os pontos permanecem salvos em segurança no dispositivo.')),
           ),
-          backgroundColor: sincronizados > 0 || pontoProvider.isOnline
+          backgroundColor: sincronizados > 0
               ? Colors.green
-              : Colors.orange,
+              : (falhaServidor != null
+                  ? Colors.red
+                  : (pontoProvider.isOnline ? Colors.green : Colors.orange)),
         ),
       );
     }
@@ -202,6 +207,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
     // 5. Salva offline e tenta sincronizar online via PontoProvider
     final foiSincronizado = await pontoProvider.registrarPonto(novoRegistro);
+    final falhaServidor = pontoProvider.ultimaFalhaServidor;
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -209,9 +215,13 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
           content: Text(
             foiSincronizado
                 ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
-                : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.',
+                : (falhaServidor != null
+                    ? '${_nomesTipos[proximoTipo]} salva localmente. O servidor recusou a sincronização: $falhaServidor'
+                    : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.'),
           ),
-          backgroundColor: foiSincronizado ? Colors.green : Colors.orange,
+          backgroundColor: foiSincronizado
+              ? Colors.green
+              : (falhaServidor != null ? Colors.red : Colors.orange),
         ),
       );
     }

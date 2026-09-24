@@ -46,7 +46,7 @@ class PontoLocalDataSource {
       'pontos',
       where: whereClause,
       whereArgs: whereArgs,
-      orderBy: 'dataHoraDispositivo DESC',
+      orderBy: 'dataHoraDispositivo ASC',
     );
 
     return result.map((json) => RegistroPontoModel.fromJson(json)).where((p) {
@@ -68,7 +68,7 @@ class PontoLocalDataSource {
       'pontos',
       where: whereClause,
       whereArgs: whereArgs,
-      orderBy: 'dataHoraDispositivo DESC',
+      orderBy: 'dataHoraDispositivo ASC',
     );
 
     return result.map((json) => RegistroPontoModel.fromJson(json)).where((p) {
@@ -174,7 +174,7 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
           !data.isBefore(inicioDia) &&
           !data.isAfter(fimDia);
     }).toList()
-      ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   @override
@@ -192,7 +192,7 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
       final anoOk = ano == null || data.year == ano;
       return okColaborador && mesOk && anoOk;
     }).toList()
-      ..sort((a, b) => b.dataHoraDispositivo.compareTo(a.dataHoraDispositivo));
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   @override

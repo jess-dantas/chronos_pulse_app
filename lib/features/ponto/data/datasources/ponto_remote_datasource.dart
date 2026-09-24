@@ -4,6 +4,17 @@ import '../../../../core/constants/api_constants.dart';
 import '../models/registro_ponto_model.dart';
 import '../models/espelho_relatorio_model.dart';
 
+/// Servidor respondeu (HTTP de erro ou 200 com id em `idsFalha`), mas recusou
+/// gravar o registro. Diferente de falha de rede — a batida NÃO é "offline":
+/// o snackbar deve mostrar o motivo da rejeição em vermelho.
+class RejeicaoServidorException implements Exception {
+  final String mensagem;
+  const RejeicaoServidorException(this.mensagem);
+
+  @override
+  String toString() => mensagem;
+}
+
 class PontoRemoteDataSource {
   final DioClient _dioClient;
 
@@ -41,19 +52,43 @@ class PontoRemoteDataSource {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data is Map<String, dynamic> && data['idsSucesso'] != null) {
-          final List<dynamic> sucessos = data['idsSucesso'];
-          return sucessos.map((id) => id.toString()).toList();
+          final sucessos =
+              (data['idsSucesso'] as List).map((id) => id.toString()).toList();
+          final dynamic falhasRaw = data['idsFalha'];
+          final falhas = falhasRaw is List
+              ? falhasRaw.map((id) => id.toString()).toList()
+              : const <String>[];
+          if (sucessos.isEmpty && falhas.isNotEmpty) {
+            throw const RejeicaoServidorException(
+                'O servidor recebeu a batida, mas não foi possível gravá-la. Tente novamente.');
+          }
+          return sucessos;
         }
         return registros.map((r) => r.idLocal).toList();
       } else {
         throw Exception('Falha ao registrar ponto: status ${response.statusCode}');
       }
+    } on RejeicaoServidorException {
+      rethrow;
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
-      throw Exception(msg ?? 'Erro de rede ao conectar com a API');
+      if (e.response != null) {
+        // O servidor respondeu (400/401/403/500...): rejeição, não offline.
+        throw RejeicaoServidorException(
+            _mensagemServidor(e.response?.data) ??
+                'O servidor recusou a sincronização (HTTP ${e.response?.statusCode}).');
+      }
+      throw Exception(e.message ?? 'Erro de rede ao conectar com a API');
     } catch (e) {
       throw Exception('Erro ao sincronizar ponto: ${e.toString()}');
     }
+  }
+
+  String? _mensagemServidor(dynamic data) {
+    if (data is Map) {
+      final msg = data['mensagem'] ?? data['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg;
+    }
+    return null;
   }
 
   Future<List<RegistroPontoModel>> buscarEspelho({
