@@ -74,7 +74,7 @@ void main() {
         throwsA(isA<Exception>().having(
           (e) => e.toString(),
           'toString',
-          contains('CPF ou senha incorretos'),
+          contains('Revise suas credenciais'),
         )),
       );
     });

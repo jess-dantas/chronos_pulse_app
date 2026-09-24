@@ -26,14 +26,14 @@ class AuthRemoteDataSource {
       if (response.statusCode == 200) {
         return UsuarioModel.fromJson(response.data);
       } else {
-        throw Exception('Credenciais inválidas.');
+        throw Exception('Revise suas credenciais.');
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 400) {
         throw Exception('Revise os dados informados.');
       }
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        throw Exception('CPF ou senha incorretos.');
+        throw Exception('Revise suas credenciais.');
       }
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||

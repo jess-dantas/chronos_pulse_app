@@ -49,7 +49,7 @@ Feature: Autenticação, Rede e Controle de Acesso (Frontend)
     Given o servidor está online
     And o CPF "12345678901" existe mas a senha informada está errada
     When o AuthRemoteDataSource.login é chamado com a senha "wrong"
-    Then é lançada uma Exception contendo "CPF ou senha incorretos"
+    Then é lançada uma Exception contendo "Revise suas credenciais"
 
   @rbac
   Scenario: Perfil ADMIN_PLATAFORMA possui acesso irrestrito

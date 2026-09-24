@@ -59,8 +59,7 @@ class DioClient {
 
           String userFriendlyMessage;
           if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
-            userFriendlyMessage =
-                'Acesso não autorizado ou credenciais inválidas.';
+            userFriendlyMessage = 'Revise suas credenciais.';
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout) {
