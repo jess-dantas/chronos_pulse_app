@@ -198,7 +198,12 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     // 4. Montagem do modelo de ponto
     final novoRegistro = RegistroPontoModel(
       idLocal: const Uuid().v4(),
-      colaboradorId: authProvider.usuario?.colaboradorId,
+      // Mesmo fallback do build(): após restaurar sessão (ou refresh do token)
+      // o UsuarioModel pode vir sem colaboradorId (só cpcId). Salvar null aqui
+      // torna o registro invisível aos filtros locais (colaboradorId = ?) —
+      // a fila offline e o histórico local deixam de encontrar o registro.
+      colaboradorId: authProvider.usuario?.colaboradorId ??
+          authProvider.usuario?.cpcId,
       dataHoraDispositivo: DateTime.now().toUtc(),
       tipoRegistro: proximoTipo,
       latitude: latitude,

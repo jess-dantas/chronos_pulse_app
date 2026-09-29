@@ -24,6 +24,7 @@ class AuthProvider extends ChangeNotifier {
   static const _keyTenantId = 'chronos_tenant_id';
   static const _keyTenantSlug = 'chronos_tenant_slug';
   static const _keyCpcId = 'chronos_cpc_id';
+  static const _keyColaboradorId = 'chronos_colaborador_id';
   static const _keyAcessoEstoque = 'chronos_acesso_estoque';
   static const _keyModulos = 'chronos_modulos';
   static const _keySessionInicio = 'chronos_session_inicio';
@@ -111,6 +112,8 @@ class AuthProvider extends ChangeNotifier {
       final email = await _lerPerfil(_keyEmail) ?? '';
       final cpf = await _lerPerfil(_keyCpf);
       final foto = await _lerPerfil(_keyFoto);
+      final colaboradorId =
+          prefs.getString(_keyColaboradorId) ?? prefs.getString(_keyCpcId);
       _usuario = UsuarioModel(
         token: token,
         refreshToken: refreshToken,
@@ -122,6 +125,7 @@ class AuthProvider extends ChangeNotifier {
         tenantId: prefs.getString(_keyTenantId),
         tenantSlug: prefs.getString(_keyTenantSlug),
         cpcId: prefs.getString(_keyCpcId),
+        colaboradorId: colaboradorId,
         acessoEstoque: prefs.getBool(_keyAcessoEstoque) ?? false,
         foto: foto,
         modulos: prefs.getStringList(_keyModulos) ?? const [],
@@ -141,6 +145,8 @@ class AuthProvider extends ChangeNotifier {
           tenantId: refreshed.tenantId,
           tenantSlug: refreshed.tenantSlug ?? prefs.getString(_keyTenantSlug),
           cpcId: refreshed.cpcId,
+          colaboradorId:
+              refreshed.colaboradorId ?? refreshed.cpcId ?? colaboradorId,
           acessoEstoque: refreshed.acessoEstoque,
           foto: refreshed.foto ?? foto,
           modulos: refreshed.modulos.isNotEmpty
@@ -175,6 +181,10 @@ class AuthProvider extends ChangeNotifier {
         tenantId: renovado.tenantId ?? atual.tenantId,
         tenantSlug: renovado.tenantSlug ?? atual.tenantSlug,
         cpcId: renovado.cpcId ?? atual.cpcId,
+        colaboradorId: renovado.colaboradorId ??
+            renovado.cpcId ??
+            atual.colaboradorId ??
+            atual.cpcId,
         acessoEstoque: renovado.acessoEstoque,
         foto: renovado.foto ?? atual.foto,
         modulos: renovado.modulos.isNotEmpty ? renovado.modulos : atual.modulos,
@@ -394,6 +404,12 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString(_keyTenantSlug, usuario.tenantSlug!);
     }
     if (usuario.cpcId != null) await prefs.setString(_keyCpcId, usuario.cpcId!);
+    final colaboradorId = usuario.colaboradorId ?? usuario.cpcId;
+    if (colaboradorId != null) {
+      await prefs.setString(_keyColaboradorId, colaboradorId);
+    } else {
+      await prefs.remove(_keyColaboradorId);
+    }
     await prefs.setBool(_keyAcessoEstoque, usuario.acessoEstoque);
     await _salvarPerfil(_keyFoto, usuario.foto);
     if (usuario.modulos.isNotEmpty) {
@@ -418,6 +434,7 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyTenantId);
     await prefs.remove(_keyTenantSlug);
     await prefs.remove(_keyCpcId);
+    await prefs.remove(_keyColaboradorId);
     await prefs.remove(_keyAcessoEstoque);
     await prefs.remove(_keyModulos);
     await prefs.remove(_keySessionInicio);

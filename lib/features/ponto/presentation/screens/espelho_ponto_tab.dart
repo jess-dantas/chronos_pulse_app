@@ -113,9 +113,12 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
     // Agrupa batidas por dia
     final Map<int, List<RegistroPontoModel>> batidasPorDia = {};
     for (var r in registros) {
-      if (r.dataHoraDispositivo.month == mes &&
-          r.dataHoraDispositivo.year == ano) {
-        final dia = r.dataHoraDispositivo.day;
+      // A API devolve instante UTC; agrupar por dia/mês precisa do fuso local,
+      // senão batidas das 21h–23h59 caem no dia seguinte (e no mês seguinte na
+      // virada), sumindo do período selecionado.
+      final dataLocal = r.dataHoraDispositivo.toLocal();
+      if (dataLocal.month == mes && dataLocal.year == ano) {
+        final dia = dataLocal.day;
         batidasPorDia.putIfAbsent(dia, () => []).add(r);
       }
     }

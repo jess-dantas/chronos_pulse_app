@@ -25,10 +25,10 @@ class PdfEspelhoService {
 
     final nomeMes = DateFormat('MMMM yyyy', 'pt_BR').format(DateTime(ano, mes, 1)).toUpperCase();
 
-    // Agrupa batidas por dia (1..31)
+    // Agrupa batidas por dia (1..31) — fuso local, igual à tela do espelho
     final Map<int, List<RegistroPontoModel>> batidasPorDia = {};
     for (var r in registros) {
-      final dia = r.dataHoraDispositivo.day;
+      final dia = r.dataHoraDispositivo.toLocal().day;
       batidasPorDia.putIfAbsent(dia, () => []).add(r);
     }
 
