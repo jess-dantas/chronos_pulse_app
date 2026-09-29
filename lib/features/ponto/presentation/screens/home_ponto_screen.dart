@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/hardware/hardware_service.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../providers/ponto_provider.dart';
@@ -390,15 +391,13 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 26,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          child: Icon(
-                            Icons.person,
-                            size: 28,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                        UserAvatar(
+                          nome: usuario.nome.isNotEmpty
+                              ? usuario.nome
+                              : usuario.role,
+                          raio: 26,
+                          fotoBytes:
+                              usuario.temFoto ? usuario.fotoBytes : null,
                         ),
                         const SizedBox(width: 14),
                         Expanded(

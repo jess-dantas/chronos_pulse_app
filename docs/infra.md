@@ -122,9 +122,11 @@ O projeto tem **4 flavors** (`android/app/build.gradle.kts`), que geram apps
 Complemento `--dart-define`:
 
 - `API_URL` — backend de destino (obrigatório nos locais; obrigatório na CI de produção).
-- `APP_MODE` — `cliente` bloqueia as rotas `/admin/*` no app de clientes;
-  `admin` limita o app à área `/admin` (login de cliente vira redirect);
-  **sem o define o comportamento é o atual** (usado no web de produção, inalterado).
+- `APP_MODE` — `cliente` bloqueia as rotas `/admin/*` no app de clientes e o app
+  **abre direto no `/login`** (sem carregar a landing; o botão voltar do login
+  ainda leva a ela); `admin` limita o app à área `/admin` (login de cliente vira
+  redirect); **sem o define o comportamento é o atual** (usado no web de
+  produção, inalterado — home continua sendo a landing).
   Pares corretos: `cliente|clienteLocal → APP_MODE=cliente`; `admin|adminLocal → APP_MODE=admin`.
 
 ### Local — apontando para o backend no notebook (mesma rede Wi-Fi)

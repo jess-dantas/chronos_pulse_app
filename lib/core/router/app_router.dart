@@ -44,6 +44,14 @@ class AppRouter {
 
   static const String rotaInicial = '/';
 
+  /// Rota inicial conforme o modo do build:
+  /// - [AppModo.cliente] (app mobile): abre direto no `/login` — a landing
+  ///   continua acessível pelo botão voltar do login;
+  /// - [AppModo.completo] (web) e [AppModo.admin]: comportamento atual
+  ///   (web mantém a landing como home; admin cai no /admin/auth/login via redirect).
+  static String rotaInicialPara(String modo) =>
+      modo == AppModo.cliente ? '/login' : rotaInicial;
+
   /// Ordem fixa dos módulos do painel. Cada posição corresponde ao índice
   /// do branch no [StatefulShellRoute] do `/painel` (e também à ordem da
   /// `NavigationRail` no [MainShell]).
@@ -125,7 +133,7 @@ class AppRouter {
     String modo = AppModo.atual,
   }) {
     return GoRouter(
-      initialLocation: rotaInicial,
+      initialLocation: rotaInicialPara(modo),
       refreshListenable: Listenable.merge([authProvider, adminAuthProvider]),
       redirect: (context, state) =>
           _redirect(authProvider, adminAuthProvider, state, modo),
@@ -255,14 +263,16 @@ class AppRouter {
     // App cliente: nenhuma rota /admin é acessível (nem deep link).
     if (bloqueiaAdmin &&
         (location == '/admin' || location.startsWith('/admin/'))) {
-      return '/';
+      return rotaInicialPara(modo);
     }
 
     // Profile (inclui /perfil/titularidade): acessível a qualquer sessão
     // ativa (admin root ou usuário). A sub-rota de transferência é
     // exclusiva de ADMIN_EMPRESA.
     if (location.startsWith('/perfil')) {
-      if (!(auth.isAuthenticated || adminAuth.isAuthenticated)) return '/';
+      if (!(auth.isAuthenticated || adminAuth.isAuthenticated)) {
+        return rotaInicialPara(modo);
+      }
       if (location == '/perfil/titularidade') {
         final usuario = auth.usuario;
         if (usuario == null || !usuario.isAdminEmpresa) return '/perfil';
@@ -286,7 +296,7 @@ class AppRouter {
 
     if (!autenticado) {
       if (publicas.contains(location)) return null;
-      return '/';
+      return rotaInicialPara(modo);
     }
 
     if (usuario == null) return null;

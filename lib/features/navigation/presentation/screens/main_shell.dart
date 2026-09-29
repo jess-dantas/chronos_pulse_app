@@ -207,8 +207,9 @@ class MainShell extends StatelessWidget {
     );
   }
 
-  /// Dock inferior mobile: 4 itens fixos (Home, Ponto, Espelho, Perfil).
-  /// O restante dos módulos fica no drawer (hambúrguer).
+  /// Dock inferior mobile: 5 itens fixos (Home, Ponto, Espelho, Menu, Perfil).
+  /// O restante dos módulos fica no drawer (hambúrguer). O item Menu abre o
+  /// drawer direto da dock, alinhado à direita, logo antes de Perfil.
   Widget _dockMobile(
     BuildContext context,
     UsuarioModel? usuario, {
@@ -221,63 +222,76 @@ class MainShell extends StatelessWidget {
     final espelhoAtivo =
         pathAtual == '/painel/ponto' && queryAtual['aba'] == 'espelho';
 
-    final itens = <_DockItem>[
-      _DockItem(
-        label: 'Home',
-        icon: Icons.home_outlined,
-        selectedIcon: Icons.home,
-        onTap: () => context.go('/painel/home'),
-      ),
-      if (temPonto) ...[
-        _DockItem(
-          label: 'Ponto',
-          icon: Icons.fingerprint,
-          selectedIcon: Icons.fingerprint,
-          onTap: () => context.go('/painel/ponto'),
-        ),
-        _DockItem(
-          label: 'Espelho',
-          icon: Icons.receipt_long_outlined,
-          selectedIcon: Icons.receipt_long,
-          onTap: () => context.go('/painel/ponto?aba=espelho'),
-        ),
-      ],
-      _DockItem(
-        label: 'Perfil',
-        icon: Icons.person_outline,
-        selectedIcon: Icons.person,
-        onTap: () => context.push('/perfil'),
-      ),
-    ];
-
-    // Nenhum destaque quando a rota atual é outro módulo (chegou pelo drawer)
-    // ou o perfil, que fica fora do shell.
-    int selecionado = -1;
-    if (pathAtual == '/painel/home') {
-      selecionado = 0;
-    } else if (espelhoAtivo) {
-      selecionado = temPonto ? 2 : -1;
-    } else if (pathAtual == '/painel/ponto' && temPonto) {
-      selecionado = 1;
-    }
-
-    if (selecionado < 0 || selecionado >= itens.length) {
-      // NavigationBar não aceita -1: renderiza a dock sem destaque.
-      return _DockSemDestaque(itens: itens);
-    }
-
-    return NavigationBar(
-      selectedIndex: selecionado,
-      onDestinationSelected: (i) => itens[i].onTap(),
-      destinations: itens
-          .map(
-            (d) => NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
-              label: d.label,
+    // Builder: o context do bottomNavigationBar fica DENTRO do Scaffold,
+    // permitindo Scaffold.of(context).openDrawer() para o item Menu.
+    return Builder(
+      builder: (dockContext) {
+        final itens = <_DockItem>[
+          _DockItem(
+            label: 'Home',
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home,
+            onTap: () => context.go('/painel/home'),
+          ),
+          if (temPonto) ...[
+            _DockItem(
+              label: 'Ponto',
+              icon: Icons.fingerprint,
+              selectedIcon: Icons.fingerprint,
+              onTap: () => context.go('/painel/ponto'),
             ),
-          )
-          .toList(),
+            _DockItem(
+              label: 'Espelho',
+              icon: Icons.receipt_long_outlined,
+              selectedIcon: Icons.receipt_long,
+              onTap: () => context.go('/painel/ponto?aba=espelho'),
+            ),
+          ],
+          _DockItem(
+            label: 'Menu',
+            icon: Icons.menu,
+            selectedIcon: Icons.menu,
+            onTap: () => Scaffold.of(dockContext).openDrawer(),
+          ),
+          _DockItem(
+            label: 'Perfil',
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person,
+            onTap: () => context.push('/perfil'),
+          ),
+        ];
+
+        // Nenhum destaque quando a rota atual é outro módulo (chegou pelo drawer)
+        // ou o perfil, que fica fora do shell. Menu é ação (abre drawer),
+        // nunca fica destacado.
+        int selecionado = -1;
+        if (pathAtual == '/painel/home') {
+          selecionado = 0;
+        } else if (espelhoAtivo) {
+          selecionado = temPonto ? 2 : -1;
+        } else if (pathAtual == '/painel/ponto' && temPonto) {
+          selecionado = 1;
+        }
+
+        if (selecionado < 0 || selecionado >= itens.length) {
+          // NavigationBar não aceita -1: renderiza a dock sem destaque.
+          return _DockSemDestaque(itens: itens);
+        }
+
+        return NavigationBar(
+          selectedIndex: selecionado,
+          onDestinationSelected: (i) => itens[i].onTap(),
+          destinations: itens
+              .map(
+                (d) => NavigationDestination(
+                  icon: Icon(d.icon),
+                  selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
+                  label: d.label,
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -305,7 +319,10 @@ class MainShell extends StatelessWidget {
               padding: const EdgeInsets.all(4),
               child: Column(
                 children: [
-                  UserAvatar(nome: nome),
+                  UserAvatar(
+                    nome: nome,
+                    fotoBytes: usuario.temFoto ? usuario.fotoBytes : null,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     nome,
@@ -374,9 +391,15 @@ class MainShell extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          const Text(
-            'Chronos Pulse Suite',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          // Flexible + ellipsis: em telas estreitas o título encolhe em vez
+          // de estourar por cima do nome exibido em `actions`.
+          Flexible(
+            child: Text(
+              'Chronos Pulse Suite',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ),
         ],
       ),
@@ -391,12 +414,19 @@ class MainShell extends StatelessWidget {
           ),
         ),
         if (usuario != null) ...[
-          Text(
-            '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
-            style: TextStyle(
-              color: AppTheme.onLilasSurface(context),
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+          // ConstrainedBox + ellipsis: o nome nunca ultrapassa o limite,
+          // garantindo largura para o título (evita sobreposição).
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: comMenu ? 160 : 320),
+            child: Text(
+              '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppTheme.onLilasSurface(context),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -523,7 +553,10 @@ class _MenuLateral extends StatelessWidget {
           children: [
             if (usuario != null)
               ListTile(
-                leading: UserAvatar(nome: nome),
+                leading: UserAvatar(
+                  nome: nome,
+                  fotoBytes: usuario!.temFoto ? usuario!.fotoBytes : null,
+                ),
                 title: Text(
                   nome,
                   maxLines: 1,

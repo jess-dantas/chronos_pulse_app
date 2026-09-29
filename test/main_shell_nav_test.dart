@@ -151,7 +151,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('dock mobile tem 4 itens fixos: Home, Ponto, Espelho, Perfil',
+  testWidgets('dock mobile tem 5 itens fixos: Home, Ponto, Espelho, Menu, Perfil',
       (tester) async {
     await pumpMobile(tester);
 
@@ -160,7 +160,7 @@ void main() {
     final labels = nav.destinations
         .map((d) => (d as NavigationDestination).label)
         .toList();
-    expect(labels, ['Home', 'Ponto', 'Espelho', 'Perfil']);
+    expect(labels, ['Home', 'Ponto', 'Espelho', 'Menu', 'Perfil']);
     expect(nav.selectedIndex, 0, reason: 'Home é a rota inicial');
 
     // O drawer (hambúrguer) existe para o restante dos módulos.
@@ -269,5 +269,20 @@ void main() {
 
     expect(router.state.uri.toString(), '/perfil');
     expect(find.byType(PerfilScreen), findsOneWidget);
+  });
+
+  testWidgets('item Menu do dock abre o drawer', (tester) async {
+    await pumpMobile(tester);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Menu'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Drawer), findsOneWidget);
+    expect(find.text('Encerrar Sessão'), findsOneWidget);
   });
 }

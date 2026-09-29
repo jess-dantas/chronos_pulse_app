@@ -115,9 +115,13 @@ class AdminShell extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Chronos Pulse — Admin',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              Flexible(
+                child: Text(
+                  'Chronos Pulse — Admin',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
               ),
             ],
           ),
@@ -132,22 +136,32 @@ class AdminShell extends StatelessWidget {
               ),
             ),
             if (adminAuth.isAuthenticated) ...[
-              Text(
-                '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
-                style: TextStyle(
-                  color: AppTheme.onLilasSurface(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.onLilasSurface(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
             ] else if (usuario != null) ...[
-              Text(
-                '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
-                style: TextStyle(
-                  color: AppTheme.onLilasSurface(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.onLilasSurface(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
