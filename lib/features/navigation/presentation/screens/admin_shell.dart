@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
+import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
@@ -115,9 +115,13 @@ class AdminShell extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Chronos Pulse — Admin',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              Flexible(
+                child: Text(
+                  'Chronos Pulse — Admin',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
               ),
             ],
           ),
@@ -132,22 +136,32 @@ class AdminShell extends StatelessWidget {
               ),
             ),
             if (adminAuth.isAuthenticated) ...[
-              Text(
-                '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
-                style: TextStyle(
-                  color: AppTheme.onLilasSurface(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.onLilasSurface(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
             ] else if (usuario != null) ...[
-              Text(
-                '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
-                style: TextStyle(
-                  color: AppTheme.onLilasSurface(context),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppTheme.onLilasSurface(context),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -155,14 +169,7 @@ class AdminShell extends StatelessWidget {
           ],
         );
 
-        Future<void> encerrarSessao() async {
-          final confirmado = await ConfirmLogoutDialog.show(context);
-          if (confirmado != true || !context.mounted) return;
-          final admin = context.read<AdminAuthProvider>();
-          final auth = context.read<AuthProvider>();
-          if (admin.isAuthenticated) admin.logout();
-          if (auth.isAuthenticated) auth.logout();
-        }
+        Future<void> encerrarSessao() => encerrarSessaoConfirmada(context);
 
         String nomeExibicao() {
           if (adminAuth.isAuthenticated) {

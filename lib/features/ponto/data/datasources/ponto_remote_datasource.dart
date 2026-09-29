@@ -3,6 +3,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../models/registro_ponto_model.dart';
 import '../models/espelho_relatorio_model.dart';
+import '../models/fila_ajuste_model.dart';
 
 /// Servidor respondeu (HTTP de erro ou 200 com id em `idsFalha`), mas recusou
 /// gravar o registro. Diferente de falha de rede — a batida NÃO é "offline":
@@ -232,6 +233,28 @@ class PontoRemoteDataSource {
       throw Exception(msg ?? 'Erro ao buscar ajustes pendentes na API');
     } catch (e) {
       throw Exception('Erro ao carregar ajustes pendentes: ${e.toString()}');
+    }
+  }
+
+  /// RH lista a fila consolidada de ajustes pendentes (colaborador + dia)
+  Future<List<FilaAjusteModel>> listarFilaAjustes() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.pontosAjustesResumoEndpoint,
+      );
+
+      if (response.statusCode == 200 && response.data is List) {
+        final List<dynamic> lista = response.data;
+        return lista
+            .map((item) => FilaAjusteModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw Exception(msg ?? 'Erro ao buscar fila de ajustes na API');
+    } catch (e) {
+      throw Exception('Erro ao carregar fila de ajustes: ${e.toString()}');
     }
   }
 

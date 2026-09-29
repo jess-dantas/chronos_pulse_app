@@ -63,6 +63,7 @@ class ApiConstants {
   static const String pontosAjustarEndpoint = '/pontos/ajustar';
   static const String pontosAjustarSolicitarEndpoint = '/pontos/ajustar/solicitar';
   static const String pontosAjustesPendentesEndpoint = '/pontos/ajustes/pendentes';
+  static const String pontosAjustesResumoEndpoint = '/pontos/ajustes/resumo';
   static String pontosAjustesAprovarEndpoint(String id) => '/pontos/ajustes/$id/aprovar';
   static String pontosAjustesRejeitarEndpoint(String id) => '/pontos/ajustes/$id/rejeitar';
 

@@ -126,6 +126,9 @@ class LandingScreen extends StatelessWidget {
             // Call to Action (CTA)
             _buildCtaSection(context),
 
+            // Desenvolvido por LJ CODE
+            _buildEmpresaSection(context),
+
             // Footer
             _buildFooter(context),
           ],
@@ -846,6 +849,60 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
+  /// Bloco institucional: apresenta a LJ CODE (empresa desenvolvedora do
+  /// software) sem tirar o foco do produto (Chronos Pulse).
+  Widget _buildEmpresaSection(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            children: [
+              Text(
+                'LJ CODE',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Empresa desenvolvedora de software',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodyMedium?.color
+                      ?.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'O Chronos Pulse é um produto da LJ CODE — suíte de gestão pública '
+                'e corporativa construída com foco em conformidade, transparência '
+                'e experiência do usuário.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodyMedium?.color
+                      ?.withValues(alpha: 0.6),
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFooter(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -860,7 +917,7 @@ class LandingScreen extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          '© 2026 Chronos Pulse · Gestão Pública Integrada. Todos os direitos reservados.',
+          '© 2026 Chronos Pulse · Desenvolvido por LJ CODE. Todos os direitos reservados.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),

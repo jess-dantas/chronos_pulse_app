@@ -226,6 +226,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                           child: const Text('Esqueci minha senha'),
                         ),
+                        TextButton(
+                          key: const Key('login_cadastro_empresa_button'),
+                          onPressed: () {
+                            context.go('/cadastro');
+                          },
+                          child: const Text('Não tem acesso? Cadastre sua empresa'),
+                        ),
                       ],
                     ),
                   ),

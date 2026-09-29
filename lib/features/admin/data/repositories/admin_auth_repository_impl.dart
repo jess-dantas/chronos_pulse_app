@@ -37,6 +37,11 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
   }
 
   @override
+  Future<void> twoFactorDisable(String codigo) {
+    return _remoteDataSource.twoFactorDisable(codigo);
+  }
+
+  @override
   Future<void> alterarSenha(String senhaAtual, String novaSenha) {
     return _remoteDataSource.alterarSenha(senhaAtual, novaSenha);
   }

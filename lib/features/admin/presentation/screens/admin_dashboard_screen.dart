@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:chronos_pulse_app/core/theme/app_theme.dart';
@@ -21,42 +20,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminProvider>().carregarDashboard();
     });
-  }
-
-  Future<void> _selecionarFoto() async {
-    final arquivo = await FilePicker.pickFile(type: FileType.image);
-    if (arquivo == null) return;
-
-    final bytes = await arquivo.readAsBytes();
-    if (bytes.isEmpty) return;
-
-    if (bytes.length > 512 * 1024) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('A imagem deve ter no máximo 512KB.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    final authProvider = context.read<AuthProvider>();
-    final sucesso = await authProvider.enviarFoto(bytes, arquivo.name);
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          sucesso
-              ? 'Foto de perfil atualizada.'
-              : authProvider.errorMessage ?? 'Erro ao atualizar a foto.',
-        ),
-        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
-      ),
-    );
   }
 
   @override
@@ -82,47 +45,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.all(24),
                   child: Row(
                     children: [
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                            foregroundImage: usuario?.temFoto == true
-                                ? MemoryImage(usuario!.fotoBytes)
-                                : null,
-                            child: usuario?.temFoto == true
-                                ? null
-                                : Icon(
-                                    Icons.admin_panel_settings,
-                                    size: 32,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                          ),
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: InkWell(
-                              onTap: _selecionarFoto,
-                              customBorder: const CircleBorder(),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.surface,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.photo_camera,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
+                      // Troca de foto vive no Perfil (/perfil), acima de "Sair".
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primaryContainer,
+                        foregroundImage: usuario?.temFoto == true
+                            ? MemoryImage(usuario!.fotoBytes)
+                            : null,
+                        child: usuario?.temFoto == true
+                            ? null
+                            : Icon(
+                                Icons.admin_panel_settings,
+                                size: 32,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                            ),
-                          ),
-                        ],
                       ),
                       const SizedBox(width: 16),
                       Expanded(

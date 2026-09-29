@@ -26,12 +26,14 @@ bool get temModuloTransparencia => isGestorPlataforma || _temModulo('TRANSPARENC
 
 Centralizado em `lib/core/router/app_router.dart`:
 
-- `AppRouter.painelOrdem` — ordem fixa dos 11 destinos (`ponto`, `aprovacao-ajustes`, `colaboradores`, `estoque`, `compras`, `licitacoes`, `patrimonio`, `frota`, `protocolo`, `transparencia`, `privacidade`).
+- `AppRouter.painelOrdem` — ordem fixa dos 12 destinos (`home`, `ponto`, `aprovacao-ajustes`, `colaboradores`, `estoque`, `compras`, `licitacoes`, `patrimonio`, `frota`, `protocolo`, `transparencia`, `privacidade`).
 - `AppRouter.podeModuloPainel(usuario, slug)` — gating por rota.
-- `MainShell` (`lib/features/navigation/presentation/screens/main_shell.dart`) monta a lista escondendo/removendo itens não liberados; o índice selecionado é ajustado com `posicaoAtual`/`safeIndex` para nunca apontar para item removido. Ícones do rail em tamanho **20** e labels **11px** (mais compactos). O **bloco de perfil + logout** ficam no **rodapé** do `NavigationRail` (desktop) ou na barra de conta abaixo da `NavigationBar` (narrow); tocar no perfil navega para **`/perfil`** (`context.push('/perfil')`), no mobile → `Navigator.push` para a mesma tela. Mesma disposição no `AdminShell`.
+- `MainShell` (`lib/features/navigation/presentation/screens/main_shell.dart`) monta a lista escondendo/removendo itens não liberados; o índice selecionado é ajustado com `posicaoAtual`/`safeIndex` para nunca apontar para item removido. Ícones do rail em tamanho **20** e labels **11px** (mais compactos). No desktop o **bloco de perfil + logout** fica no **rodapé** do `NavigationRail`; tocar no perfil navega para **`/perfil`** (`context.push('/perfil')`).
+- **Nav mobile (≤800px)** — dock inferior com **4 itens fixos**: **Home**, **Ponto**, **Espelho** (deep link `/painel/ponto?aba=espelho`, que abre a aba "Espelho de Ponto" via `HomePontoScreen.abaInicial`) e **Perfil** (`/perfil`). Ponto/Espelho só aparecem se o usuário tiver o módulo `PONTO`. O **restante dos módulos** fica no **drawer (hambúrguer)** do AppBar, que lista todos os destinos acessíveis + Perfil + Encerrar Sessão. Quando a rota atual não é do dock (ex.: `/painel/estoque`, alcançado pelo drawer), a dock é renderizada **sem item destacado**. O `AdminShell` (Admin Plataforma) mantém a `NavigationBar` com seus 7 destinos.
 
 | Ordem | Item (`slug`) | Condição (`podeModuloPainel`) |
 |---|---|---|
+| 0 | Home | sempre (`true`) — `HomeScreen` (saudação, status do dia, atalhos) |
 | 1 | Ponto | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PONTO` |
 | 2 | Aprovação Ajustes | `isAdminOrRh` ∧ módulo `PONTO` |
 | 3 | Colaboradores | `isAdminOrRh` ∧ módulo `RECURSOS_HUMANOS` |
@@ -46,7 +48,7 @@ Centralizado em `lib/core/router/app_router.dart`:
 
 > **Perfil / titularidade:** o bloco de perfil no rodapé do rail abre **`/perfil`** (rota própria, fora do `painelOrdem`); o redirect do `AppRouter` usa `location.startsWith('/perfil')` — autenticado → `null` (admin root ou usuário), `/perfil/titularidade` exige `isAdminEmpresa`. Não há tela própria de histórico — datas de admissão/desligamento já vêm no payload do colaborador (`data_admissao`/`data_desligamento`/`ativo`).
 
-> O gating é **role + módulo associado ao usuário** (`usuario_modulo`), alinhado ao backend/`rbac.md` — **não** há herança automática por papel no cliente: um colaborador com o módulo `ESTOQUE` ativo no tenant só vê Estoque/Compras/Licitações se tiver `acessoEstoque` (almoxarife); `SUPORTE_N1/N2` não recebe módulos do painel de negócio (apenas Privacidade); o **Admin Empresa recebe todos os módulos contratados associados no 1º consentimento LGPD** (backend). Rotas de módulos não liberados redirecionam para a **primeira rota acessível** (`primeiraRotaPainel`).
+> O gating é **role + módulo associado ao usuário** (`usuario_modulo`), alinhado ao backend/`rbac.md` — **não** há herança automática por papel no cliente: um colaborador com o módulo `ESTOQUE` ativo no tenant só vê Estoque/Compras/Licitações se tiver `acessoEstoque` (almoxarife); `SUPORTE_N1/N2` não recebe módulos do painel de negócio (apenas Privacidade); o **Admin Empresa recebe todos os módulos contratados associados no 1º consentimento LGPD** (backend). Rotas de módulos não liberados redirecionam para a **primeira rota acessível** (`primeiraRotaPainel`), que hoje é sempre **`/painel/home`**.
 
 > **Admin Plataforma:** `AppRouter.adminOrdem` (`dashboard`, `leads`, `empresas`, `contratos`, `modulos`, `senha`, `seguranca`) **não** inclui `privacidade` — o Administrator não vê aba de Privacidade no `AdminShell` (escopo LGPD dele é sem CPF/tenant; o `ConsentimentoGate` também fica de fora).
 

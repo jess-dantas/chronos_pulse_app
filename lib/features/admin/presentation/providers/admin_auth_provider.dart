@@ -312,6 +312,29 @@ class AdminAuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Desativa o 2FA exibindo um código TOTP válido do dispositivo atual.
+  /// Retorna `true` quando a desativação é confirmada pelo backend.
+  Future<bool> desabilitarTwoFactor(String codigo) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.twoFactorDisable(codigo);
+      _twoFactorEnabled = false;
+      _twoFactorSecret = null;
+      _twoFactorOtpauthUrl = null;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   void _extrairRecoveryCodes(Map<String, dynamic> resultado) {
     final codes = resultado['recoveryCodes'];
     if (codes is List) {

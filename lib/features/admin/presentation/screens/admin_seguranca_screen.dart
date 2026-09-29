@@ -44,6 +44,32 @@ class _AdminSegurancaScreenState extends State<AdminSegurancaScreen> {
     await adminAuth.carregarStatusTwoFactor();
   }
 
+  /// Confirma a desativação do 2FA com um código TOTP do dispositivo atual.
+  Future<void> _abrirDialogoDesativar() async {
+    final adminAuth = context.read<AdminAuthProvider>();
+
+    final codigo = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => const _DialogDesativarDoisFatores(),
+    );
+
+    if (codigo == null || !mounted) return;
+
+    final sucesso = await adminAuth.desabilitarTwoFactor(codigo);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          sucesso
+              ? 'Verificação em duas etapas desativada.'
+              : (adminAuth.errorMessage ?? 'Código inválido.'),
+        ),
+        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final adminAuth = context.watch<AdminAuthProvider>();
@@ -128,10 +154,33 @@ class _AdminSegurancaScreenState extends State<AdminSegurancaScreen> {
                                     ),
                           ),
                           if (enabled == true) ...[
+                            const SizedBox(height: 20),
+                            OutlinedButton.icon(
+                              onPressed:
+                                  isCarregando ? null : _abrirDialogoDesativar,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.redAccent,
+                                side: const BorderSide(color: Colors.redAccent),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.power_settings_new,
+                                  size: 20),
+                              label: const Text(
+                                'Desativar 2FA',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             Text(
-                              'A desativação não está disponível para o '
-                              'Administrator da plataforma.',
+                              'Perdeu ou trocou o celular? Desative com um '
+                              'código do aplicativo autenticador e ative '
+                              'novamente no novo aparelho.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context)
                                   .textTheme
@@ -172,6 +221,78 @@ class _AdminSegurancaScreenState extends State<AdminSegurancaScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Diálogo de confirmação da desativação do 2FA: pede um código TOTP de 6
+/// dígitos e devolve via `Navigator.pop`. O [TextEditingController] vive no
+/// State do diálogo (nunca é disposed enquanto o route anima).
+class _DialogDesativarDoisFatores extends StatefulWidget {
+  const _DialogDesativarDoisFatores();
+
+  @override
+  State<_DialogDesativarDoisFatores> createState() =>
+      _DialogDesativarDoisFatoresState();
+}
+
+class _DialogDesativarDoisFatoresState extends State<_DialogDesativarDoisFatores> {
+  final _controlador = TextEditingController();
+
+  @override
+  void dispose() {
+    _controlador.dispose();
+    super.dispose();
+  }
+
+  void _confirmar() {
+    final codigo = _controlador.text.trim();
+    if (codigo.length == 6) Navigator.of(context).pop(codigo);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Desativar 2FA'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informe um código de 6 dígitos do seu aplicativo '
+            'autenticador para confirmar a desativação.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controlador,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            autofocus: true,
+            autofillHints: const [AutofillHints.oneTimeCode],
+            onSubmitted: (_) => _confirmar(),
+            decoration: InputDecoration(
+              labelText: 'Código (6 dígitos)',
+              counterText: '',
+              prefixIcon: const Icon(Icons.pin_outlined),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _confirmar,
+          style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+          child: const Text('Desativar'),
+        ),
+      ],
     );
   }
 }

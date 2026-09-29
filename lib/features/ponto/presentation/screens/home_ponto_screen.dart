@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/hardware/hardware_service.dart';
+import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../providers/ponto_provider.dart';
@@ -14,7 +15,10 @@ import 'camera_screen.dart';
 import 'espelho_ponto_tab.dart';
 
 class HomePontoScreen extends StatefulWidget {
-  const HomePontoScreen({super.key});
+  /// 0 = Bater Ponto, 1 = Espelho de Ponto (deep link `?aba=espelho`).
+  final int abaInicial;
+
+  const HomePontoScreen({super.key, this.abaInicial = 0});
 
   @override
   State<HomePontoScreen> createState() => _HomePontoScreenState();
@@ -194,7 +198,12 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     // 4. Montagem do modelo de ponto
     final novoRegistro = RegistroPontoModel(
       idLocal: const Uuid().v4(),
-      colaboradorId: authProvider.usuario?.colaboradorId,
+      // Mesmo fallback do build(): após restaurar sessão (ou refresh do token)
+      // o UsuarioModel pode vir sem colaboradorId (só cpcId). Salvar null aqui
+      // torna o registro invisível aos filtros locais (colaboradorId = ?) —
+      // a fila offline e o histórico local deixam de encontrar o registro.
+      colaboradorId: authProvider.usuario?.colaboradorId ??
+          authProvider.usuario?.cpcId,
       dataHoraDispositivo: DateTime.now().toUtc(),
       tipoRegistro: proximoTipo,
       latitude: latitude,
@@ -248,6 +257,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.abaInicial.clamp(0, 1),
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -386,15 +396,13 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 26,
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primaryContainer,
-                          child: Icon(
-                            Icons.person,
-                            size: 28,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                        UserAvatar(
+                          nome: usuario.nome.isNotEmpty
+                              ? usuario.nome
+                              : usuario.role,
+                          raio: 26,
+                          fotoBytes:
+                              usuario.temFoto ? usuario.fotoBytes : null,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -568,13 +576,14 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
               // Seção de Histórico de Batidas de Hoje
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Batidas de Hoje',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Batidas de Hoje',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(

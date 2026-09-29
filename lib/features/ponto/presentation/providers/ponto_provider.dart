@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../data/models/espelho_relatorio_model.dart';
+import '../../data/models/fila_ajuste_model.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../data/repositories/ponto_repository.dart';
 
@@ -182,6 +183,11 @@ class PontoProvider extends ChangeNotifier {
     return await _repository.listarAjustesPendentes();
   }
 
+  /// RH fila consolidada de ajustes pendentes (nome + marcações do dia)
+  Future<List<FilaAjusteModel>> listarFilaAjustes() async {
+    return await _repository.listarFilaAjustes();
+  }
+
   /// RH aprova ajuste
   Future<RegistroPontoModel?> aprovarAjuste(String registroId) async {
     final resultado = await _repository.aprovarAjuste(registroId);
@@ -204,28 +210,37 @@ class PontoProvider extends ChangeNotifier {
     if (_isVerificando || _isDisposed) return _isOnline;
     _isVerificando = true;
 
+    var mudouStatus = false;
     try {
       final online = await _repository.verificarConexao();
-      final mudouStatus = (_isOnline != online);
+      mudouStatus = (_isOnline != online);
       _isOnline = online;
 
       if ((mudouStatus || _isOnline) && !_isDisposed) {
         notifyListeners();
       }
-
-      // Auto-sincronização quando o servidor fica online e há pendências
-      if (_isOnline && _pendentesCount > 0 && autoSync && !_isSincronizando) {
-        await sincronizar();
-      }
-
-      return _isOnline;
     } catch (_) {
       _isOnline = false;
+      mudouStatus = false;
       if (!_isDisposed) notifyListeners();
-      return false;
     } finally {
+      // Libera o guard antes das ações pesadas: quem chamar checarConexao
+      // durante um recarregamento não pode receber um estado defasado.
       _isVerificando = false;
     }
+
+    // Auto-sincronização quando o servidor fica online e há pendências
+    if (_isOnline && _pendentesCount > 0 && autoSync && !_isSincronizando) {
+      await sincronizar();
+    } else if (mudouStatus && _isOnline && !_isDisposed) {
+      // Transição offline → online sem pendências locais: recarrega o
+      // histórico/espelho do servidor. Sem isso a tela fica com a leitura
+      // local feita antes do ping responder (o chamador costuma definir o
+      // colaborador logo após o construtor, ainda com _isOnline = false).
+      await carregarDados();
+    }
+
+    return _isOnline;
   }
 
   Future<int> sincronizar() async {

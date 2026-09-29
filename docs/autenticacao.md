@@ -71,7 +71,7 @@ Sessão **separada** da do usuário de tenant (`AdminAuthProvider` + rota `/admi
 - `GET /admin/auth/2fa/status` → `{ enabled }`
 - `POST /admin/auth/2fa/setup` → `{ secret, otpauthUri }` (copiar segredo/link no app autenticador)
 - `POST /admin/auth/2fa/confirm` `{ codigo }` → ativa e (no fluxo de bootstrap) entrega os tokens + recovery codes
-- `POST /admin/auth/2fa/disable` `{ codigo }` → exige código válido para desativar; **403** quando `chronos.admin.two-factor-required=true` (produção)
+- `POST /admin/auth/2fa/disable` `{ codigo }` → exige código TOTP válido para desativar (sempre permitido; com `chronos.admin.two-factor-required=true` o login seguinte volta a exigir setup)
 - `POST /admin/auth/alterar-senha` `{ senhaAtual, novaSenha }`
 - `POST /admin/auth/2fa/recover` `{ username, senha, recoveryCode }` — público, sem sessão
 

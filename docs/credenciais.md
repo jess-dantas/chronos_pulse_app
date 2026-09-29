@@ -27,4 +27,4 @@
 - **Desenvolvimento:** seed `db/seed/R__seed_admin_dev.sql` cria `Administrator` / senha `admin123`, 2FA desabilitado (`two-factor-required: false` no dev) — login direto, sem wizard.
 - Escopo LGPD: **sem CPF, sem tenant, sem acesso a dados de tenant** — apenas catálogo/ativação de módulos, gestão de empresas e telemetria. **Não há aba de Privacidade** no painel do Administrator (`/admin/privacidade` não existe).
 
-Para saber como subir o app, ver [`README.md`](../README.md). Checklist de smoke do backend: `chronos-pulse/docs/smoke.md`.
+Para saber como subir o app, ver [`infra.md`](infra.md). Checklist de smoke do backend: `chronos-pulse/docs/smoke.md`.

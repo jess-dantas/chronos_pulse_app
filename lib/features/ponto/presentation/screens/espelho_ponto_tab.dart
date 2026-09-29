@@ -102,7 +102,9 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
     final pontoProvider = context.watch<PontoProvider>();
     final authProvider = context.watch<AuthProvider>();
     final usuario = authProvider.usuario;
-    final podeAjustar = usuario != null && !usuario.isColaborador;
+    // Qualquer usuário logado pode solicitar/ajustar; o diálogo decide entre
+    // solicitação (colaborador, vai para fila do RH) e ajuste direto (gestor).
+    final podeAjustar = usuario != null;
     final mes = pontoProvider.mesSelecionado;
     final ano = pontoProvider.anoSelecionado;
 
@@ -111,9 +113,12 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
     // Agrupa batidas por dia
     final Map<int, List<RegistroPontoModel>> batidasPorDia = {};
     for (var r in registros) {
-      if (r.dataHoraDispositivo.month == mes &&
-          r.dataHoraDispositivo.year == ano) {
-        final dia = r.dataHoraDispositivo.day;
+      // A API devolve instante UTC; agrupar por dia/mês precisa do fuso local,
+      // senão batidas das 21h–23h59 caem no dia seguinte (e no mês seguinte na
+      // virada), sumindo do período selecionado.
+      final dataLocal = r.dataHoraDispositivo.toLocal();
+      if (dataLocal.month == mes && dataLocal.year == ano) {
+        final dia = dataLocal.day;
         batidasPorDia.putIfAbsent(dia, () => []).add(r);
       }
     }
@@ -122,6 +127,13 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
       lista.sort(
           (a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
     });
+
+    // Dias cujo ajuste já foi aprovado: o backend bloqueia novas solicitações
+    // para esses dias, então a UI também desabilita o atalho do dia.
+    final diasComAjusteAprovado = batidasPorDia.entries
+        .where((e) => e.value.any((r) => r.ajusteStatus == 'APROVADO'))
+        .map((e) => e.key)
+        .toSet();
 
     final diasNoMes = DateTime(ano, mes + 1, 0).day;
     int totalMinutosMes = 0;
@@ -236,15 +248,18 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                       ),
 
                       // Botões: Ajustar Ponto & Exportar PDF
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      // Wrap: em telas estreitas os botões quebram de linha
+                      // em vez de estourar o layout.
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
                         children: [
                           Tooltip(
-                            message: podeAjustar
-                                ? (usuario.isColaborador)
+                            message: usuario == null
+                                ? 'Faça login para ajustar o ponto.'
+                                : (usuario.isColaborador)
                                     ? 'Solicitar ajuste de ponto (aguardará aprovação do RH)'
-                                    : 'Incluir ou corrigir marcação de ponto'
-                                : 'Ajustes disponíveis apenas para gestores.',
+                                    : 'Incluir ou corrigir marcação de ponto',
                             child: OutlinedButton.icon(
                               onPressed: podeAjustar
                                   ? () => _abrirDialogAjuste()
@@ -265,7 +280,6 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                                   usuario?.isColaborador ?? false ? 'Solicitar Ajuste' : 'Ajustar Ponto'),
                             ),
                           ),
-                          const SizedBox(width: 12),
                           ElevatedButton.icon(
                             onPressed: pontoProvider.carregandoEspelho
                                 ? null
@@ -387,22 +401,27 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Demonstrativo de Marcações do Mês',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          Expanded(
+                            child: Text(
+                              'Demonstrativo de Marcações do Mês',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
                           ),
                           if (pontoProvider.carregandoEspelho)
-                            const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
                             ),
                         ],
                       ),
@@ -553,17 +572,21 @@ class _EspelhoPontoTabState extends State<EspelhoPontoTab> {
 
                                 // Botão rápido para adicionar ajuste nesta data
                                 Tooltip(
-                                  message: podeAjustar
-                                      ? (usuario.isColaborador)
-                                          ? 'Solicitar ajuste neste dia (aguardará aprovação do RH)'
-                                          : 'Inserir ajuste neste dia'
-                                      : 'Ajustes disponíveis apenas para gestores.',
+                                  message: usuario == null
+                                      ? 'Faça login para ajustar o ponto.'
+                                      : diasComAjusteAprovado.contains(dia)
+                                          ? 'Dia com ajuste aprovado — novas solicitações de ajuste estão bloqueadas.'
+                                          : (usuario.isColaborador)
+                                              ? 'Solicitar ajuste neste dia (aguardará aprovação do RH)'
+                                              : 'Inserir ajuste neste dia',
                                   child: IconButton(
                                     icon: const Icon(Icons.add_circle_outline,
                                         size: 20),
                                     color:
                                         Theme.of(context).colorScheme.primary,
-                                    onPressed: podeAjustar
+                                    onPressed: podeAjustar &&
+                                            !diasComAjusteAprovado
+                                                .contains(dia)
                                         ? () => _abrirDialogAjuste(data)
                                         : null,
                                   ),

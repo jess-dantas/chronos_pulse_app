@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../datasources/ponto_local_datasource.dart';
 import '../datasources/ponto_remote_datasource.dart';
 import '../models/espelho_relatorio_model.dart';
+import '../models/fila_ajuste_model.dart';
 import '../models/registro_ponto_model.dart';
 
 class PontoRepository {
@@ -158,8 +160,9 @@ class PontoRepository {
           })
           .map((r) => r.copyWith(sincronizadoOffline: true))
           .toList();
-    } catch (_) {
+    } catch (e) {
       // offline: segue somente com o histórico local
+      debugPrint('[PontoRepository] falha ao buscar histórico remoto: $e');
     }
 
     if (remotos.isEmpty) return locais;
@@ -185,8 +188,9 @@ class PontoRepository {
             ano: ano,
           )
           .timeout(const Duration(seconds: 4));
-    } catch (_) {
+    } catch (e) {
       // Se a API estiver offline, usa somente o histórico local
+      debugPrint('[PontoRepository] falha ao buscar espelho remoto: $e');
     }
 
     final locais = await _obterExtrasLocais(
@@ -246,7 +250,8 @@ class PontoRepository {
             ano: ano,
           )
           .timeout(const Duration(seconds: 5));
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoRepository] falha ao buscar relatório do espelho: $e');
       return null;
     }
   }
@@ -338,6 +343,12 @@ class PontoRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  /// RH lista a fila consolidada de ajustes pendentes (nome + marcações do dia).
+  /// Propaga erro para a tela mostrar o estado de falha.
+  Future<List<FilaAjusteModel>> listarFilaAjustes() {
+    return remoteDataSource.listarFilaAjustes();
   }
 
   /// RH aprova ajuste

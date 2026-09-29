@@ -52,14 +52,17 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK (flavor cliente, API de produção)
+        run: >-
+          flutter build apk --release --flavor cliente
+          --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL || 'https://chronos-pulse.onrender.com/api/v1' }}
+          --dart-define=APP_MODE=cliente
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: release-apk-cliente
+          path: build/app/outputs/flutter-apk/app-cliente-release.apk
 
   build-web:
     runs-on: ubuntu-latest
@@ -87,6 +90,26 @@ jobs:
         with:
           name: flutter-web-build
           path: build/web
+
+  build-ios:
+    runs-on: macos-latest
+    needs: analyze-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.5'
+          cache: true
+
+      - run: flutter pub get
+
+      # Compila sem assinatura para validar o projeto iOS (Podfile, Info.plist,
+      # permissões de câmera/foto) a cada PR.
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
 
   security-push:
     if: github.event_name == 'push'

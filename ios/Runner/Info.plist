@@ -18,6 +18,12 @@
 	<!-- Câmera -->
 	<key>NSCameraUsageDescription</key>
 	<string>O Chronos Pulse pode usar a câmera para registrar foto no momento da batida de ponto.</string>
+
+	<!-- Galeria (troca de foto de perfil em /perfil) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O Chronos Pulse acessa sua galeria apenas para você escolher uma nova foto de perfil.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O Chronos Pulse salva comprovantes de ponto na sua galeria quando você exporta.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

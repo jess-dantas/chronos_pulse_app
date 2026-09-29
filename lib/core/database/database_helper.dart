@@ -7,6 +7,11 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
+  /// Fecha o cache do banco. Uso restrito a testes (migrações/creates).
+  static void resetCache() {
+    _database = null;
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     // Limite de tempo: se a abertura do SQLite (ex.: WASM/IndexedDB na Web)
@@ -25,7 +30,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -42,6 +47,13 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE pontos ADD COLUMN nsr INTEGER');
       await db.execute('ALTER TABLE pontos ADD COLUMN hashLocal TEXT');
       await db.execute('ALTER TABLE pontos ADD COLUMN dataHoraServidor TEXT');
+    }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE pontos ADD COLUMN nsrLogico INTEGER');
+      await db.execute('ALTER TABLE pontos ADD COLUMN ajusteStatus TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN ajusteMotivoRejeicao TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN aprovadoPor TEXT');
+      await db.execute('ALTER TABLE pontos ADD COLUMN aprovadoEm TEXT');
     }
   }
 
@@ -63,7 +75,12 @@ class DatabaseHelper {
         ajusteManual INTEGER DEFAULT 0,
         justificativa TEXT,
         observacao TEXT,
-        nsr INTEGER
+        nsr INTEGER,
+        nsrLogico INTEGER,
+        ajusteStatus TEXT,
+        ajusteMotivoRejeicao TEXT,
+        aprovadoPor TEXT,
+        aprovadoEm TEXT
       )
     ''');
   }

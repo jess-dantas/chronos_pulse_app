@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/app_modo.dart';
 import '../../features/admin/presentation/screens/admin_alterar_senha_screen.dart';
 import '../../features/admin/presentation/screens/admin_auth_screen.dart';
 import '../../features/admin/presentation/screens/admin_bootstrap_screen.dart';
@@ -23,6 +24,7 @@ import '../../features/colaborador/presentation/screens/colaboradores_screen.dar
 import '../../features/compras/presentation/screens/compras_home_screen.dart';
 import '../../features/estoque/presentation/screens/estoque_home_screen.dart';
 import '../../features/frota/presentation/screens/frota_home_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/landing/presentation/screens/landing_screen.dart';
 import '../../features/leads/presentation/screens/admin_leads_screen.dart';
 import '../../features/licitacoes/presentation/screens/licitacoes_home_screen.dart';
@@ -42,10 +44,19 @@ class AppRouter {
 
   static const String rotaInicial = '/';
 
+  /// Rota inicial conforme o modo do build:
+  /// - [AppModo.cliente] (app mobile): abre direto no `/login` — a landing
+  ///   continua acessível pelo botão voltar do login;
+  /// - [AppModo.completo] (web) e [AppModo.admin]: comportamento atual
+  ///   (web mantém a landing como home; admin cai no /admin/auth/login via redirect).
+  static String rotaInicialPara(String modo) =>
+      modo == AppModo.cliente ? '/login' : rotaInicial;
+
   /// Ordem fixa dos módulos do painel. Cada posição corresponde ao índice
   /// do branch no [StatefulShellRoute] do `/painel` (e também à ordem da
   /// `NavigationRail` no [MainShell]).
   static const List<String> painelOrdem = [
+    'home',
     'ponto',
     'aprovacao-ajustes',
     'colaboradores',
@@ -71,7 +82,7 @@ class AppRouter {
   ];
 
   static bool podeModuloPainel(UsuarioModel usuario, String modulo) {
-    if (modulo == 'privacidade') return true;
+    if (modulo == 'home' || modulo == 'privacidade') return true;
 
     // Associação estrita: o módulo precisa estar na lista do usuário.
     // (Admin Empresa recebe a lista completa dos módulos contratados no login/refresh/me.)
@@ -116,13 +127,16 @@ class AppRouter {
 
   static GoRouter build(
     AuthProvider authProvider,
-    AdminAuthProvider adminAuthProvider,
-  ) {
+    AdminAuthProvider adminAuthProvider, {
+    // Modo do build (APP_MODE via --dart-define). O default mantém o
+    // comportamento atual do app (web de produção não envia o define).
+    String modo = AppModo.atual,
+  }) {
     return GoRouter(
-      initialLocation: rotaInicial,
+      initialLocation: rotaInicialPara(modo),
       refreshListenable: Listenable.merge([authProvider, adminAuthProvider]),
       redirect: (context, state) =>
-          _redirect(authProvider, adminAuthProvider, state),
+          _redirect(authProvider, adminAuthProvider, state, modo),
       routes: [
         GoRoute(
           path: '/',
@@ -183,7 +197,8 @@ class AppRouter {
                 routes: [
                   GoRoute(
                     path: '/painel/$modulo',
-                    builder: (context, state) => _painelScreen(modulo),
+                    builder: (context, state) =>
+                        _painelScreen(modulo, state.uri.queryParameters),
                   ),
                 ],
               ),
@@ -213,20 +228,51 @@ class AppRouter {
     AuthProvider auth,
     AdminAuthProvider adminAuth,
     GoRouterState state,
+    String modo,
   ) {
     final location = state.matchedLocation;
+    final ehModoAdmin = modo == AppModo.admin;
+    final bloqueiaAdmin = modo == AppModo.cliente;
 
     // Login/ logout/ bootstrap/ setup/ recover do AdminPlataforma:
     // rotas separadas, sempre públicas (podem usar tempToken ou nenhum token).
-    if (location.startsWith('/admin/auth/')) {
+    // No app-cliente elas ficam bloqueadas: a área admin vive no app Admin.
+    if (location.startsWith('/admin/auth/') && !bloqueiaAdmin) {
       return null;
+    }
+
+    // App Admin (dono da plataforma): só existe /admin (+ /perfil).
+    // Landing, login de cliente e painel de tenant são redirecionados.
+    if (ehModoAdmin) {
+      final areaAdminModo =
+          location == '/admin' || location.startsWith('/admin/');
+      final areaPerfil =
+          location == '/perfil' || location.startsWith('/perfil/');
+      if (!areaAdminModo && !areaPerfil) {
+        return adminAuth.isAuthenticated
+            ? '/admin/dashboard'
+            : '/admin/auth/login';
+      }
+      if (areaAdminModo &&
+          !location.startsWith('/admin/auth/') &&
+          !adminAuth.isAuthenticated) {
+        return '/admin/auth/login';
+      }
+    }
+
+    // App cliente: nenhuma rota /admin é acessível (nem deep link).
+    if (bloqueiaAdmin &&
+        (location == '/admin' || location.startsWith('/admin/'))) {
+      return rotaInicialPara(modo);
     }
 
     // Profile (inclui /perfil/titularidade): acessível a qualquer sessão
     // ativa (admin root ou usuário). A sub-rota de transferência é
     // exclusiva de ADMIN_EMPRESA.
     if (location.startsWith('/perfil')) {
-      if (!(auth.isAuthenticated || adminAuth.isAuthenticated)) return '/';
+      if (!(auth.isAuthenticated || adminAuth.isAuthenticated)) {
+        return rotaInicialPara(modo);
+      }
       if (location == '/perfil/titularidade') {
         final usuario = auth.usuario;
         if (usuario == null || !usuario.isAdminEmpresa) return '/perfil';
@@ -250,7 +296,7 @@ class AppRouter {
 
     if (!autenticado) {
       if (publicas.contains(location)) return null;
-      return '/';
+      return rotaInicialPara(modo);
     }
 
     if (usuario == null) return null;
@@ -277,10 +323,18 @@ class AppRouter {
     return primeiraRotaPainel(usuario);
   }
 
-  static Widget _painelScreen(String modulo) {
+  static Widget _painelScreen(String modulo, Map<String, String> query) {
     switch (modulo) {
+      case 'home':
+        return const HomeScreen();
       case 'ponto':
-        return const HomePontoScreen();
+        // Deep link do dock mobile: /painel/ponto?aba=espelho abre a aba do
+        // espelho. A key garante remontagem do estado ao trocar de aba.
+        final espelho = query['aba'] == 'espelho';
+        return HomePontoScreen(
+          key: ValueKey('ponto-${espelho ? 'espelho' : 'bater'}'),
+          abaInicial: espelho ? 1 : 0,
+        );
       case 'aprovacao-ajustes':
         return const AprovacaoAjustesScreen();
       case 'colaboradores':
