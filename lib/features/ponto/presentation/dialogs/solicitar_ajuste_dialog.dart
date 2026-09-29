@@ -30,13 +30,25 @@ class _SolicitarAjusteDialogState extends State<SolicitarAjusteDialog> {
   final TextEditingController _observacaoController = TextEditingController();
   bool _isEnviando = false;
 
+  /// Dias (data local) cujo ajuste já foi aprovado — bloqueados no backend.
+  late final Set<DateTime> _diasBloqueados;
+
   @override
   void initState() {
     super.initState();
+    _diasBloqueados = widget.todosRegistros
+        .where((r) => r.ajusteStatus == 'APROVADO')
+        .map((r) {
+      final d = r.dataHoraDispositivo.toLocal();
+      return DateTime(d.year, d.month, d.day);
+    }).toSet();
     _dataSelecionada = widget.dataInicial ?? DateTime.now();
     _horaSelecionada = TimeOfDay.now();
     _tipoRegistro = _determinarProximoTipoParaData(_dataSelecionada);
   }
+
+  bool _diaBloqueado(DateTime data) =>
+      _diasBloqueados.contains(DateTime(data.year, data.month, data.day));
 
   String _determinarProximoTipoParaData(DateTime data) {
     // Sequência ignora ajustes: só batidas de botão avançam Entrada →
@@ -60,6 +72,7 @@ class _SolicitarAjusteDialogState extends State<SolicitarAjusteDialog> {
       initialDate: _dataSelecionada,
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 30)),
+      selectableDayPredicate: (dia) => !_diaBloqueado(dia),
     );
     if (picked != null) {
       setState(() {
@@ -80,7 +93,19 @@ class _SolicitarAjusteDialogState extends State<SolicitarAjusteDialog> {
   }
 
   Future<void> _salvarSolicitacao() async {
+    if (_diaBloqueado(_dataSelecionada)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Este dia já possui ajuste aprovado — novas solicitações estão bloqueadas.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
+
     if (_justificativaSelecionada == null || _justificativaSelecionada!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -231,6 +256,9 @@ class _SolicitarAjusteDialogState extends State<SolicitarAjusteDialog> {
                   // Tipo de Marcação
                   DropdownButtonFormField<String>(
                     initialValue: _tipoRegistro,
+                    // isExpanded: o texto selecionado é limitado ao campo
+                    // (evita estourar a linha em diálogos estreitos).
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Tipo de Marcação *',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

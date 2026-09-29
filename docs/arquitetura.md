@@ -42,7 +42,7 @@ Os providers são registrados em `main.dart` no `MultiProvider` e injetados via 
 
 ## Navegação
 
-- `navigation/` decide entre **NavigationRail** (web/desktop, largura > 800px) e **NavigationBar** (mobile).
+- `navigation/` decide entre **NavigationRail** (web/desktop, largura > 800px) e **NavigationBar** (mobile). No mobile o dock é fixo em 4 itens (Home, Ponto, Espelho, Perfil) e o restante dos módulos abre pelo **drawer (hambúrguer)** do AppBar.
 - Os itens são construídos **condicionalmente** pelos getters `temModulo*` do usuário (ver [`modulos.md`](modulos.md)).
 - O índice atual é ajustado para `0` caso o item selecionado não exista mais (`safeIndex`).
 

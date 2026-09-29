@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../data/models/espelho_relatorio_model.dart';
+import '../../data/models/fila_ajuste_model.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../data/repositories/ponto_repository.dart';
 
@@ -180,6 +181,11 @@ class PontoProvider extends ChangeNotifier {
   /// RH lista ajustes pendentes
   Future<List<RegistroPontoModel>> listarAjustesPendentes() async {
     return await _repository.listarAjustesPendentes();
+  }
+
+  /// RH fila consolidada de ajustes pendentes (nome + marcações do dia)
+  Future<List<FilaAjusteModel>> listarFilaAjustes() async {
+    return await _repository.listarFilaAjustes();
   }
 
   /// RH aprova ajuste

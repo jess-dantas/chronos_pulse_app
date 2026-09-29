@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'core/config/app_modo.dart';
 import 'core/network/dio_client.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
@@ -288,7 +289,10 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
     _router = AppRouter.build(widget.authProvider, widget.adminAuthProvider);
     WidgetsBinding.instance.addObserver(this);
     HardwareKeyboard.instance.addHandler(_onKeyEvent);
-    widget.authProvider.tryRestoreSession();
+    // No app Admin a sessão de tenant (CPF) não se aplica — não restaura.
+    if (!AppModo.ehAdmin) {
+      widget.authProvider.tryRestoreSession();
+    }
   }
 
   @override

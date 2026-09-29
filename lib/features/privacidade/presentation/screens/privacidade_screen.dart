@@ -131,7 +131,13 @@ class _PrivacidadeScreenState extends State<PrivacidadeScreen> {
           children: [
             Icon(Icons.privacy_tip_outlined, color: Colors.deepPurple),
             SizedBox(width: 8),
-            Text('Privacidade & LGPD'),
+            Expanded(
+              child: Text(
+                'Privacidade & LGPD',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         centerTitle: true,
@@ -344,10 +350,12 @@ class _CardSection extends StatelessWidget {
               children: [
                 Icon(icon, color: iconColor, size: 22),
                 const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 15),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
               ],
             ),

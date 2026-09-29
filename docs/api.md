@@ -26,7 +26,7 @@ Constant base: `lib/core/constants/api_constants.dart`. Todas as rotas são sob 
 | `GET` | `/admin/auth/2fa/status` | `AdminSegurancaScreen` — `{ enabled }` | `ADMIN_PLATAFORMA` |
 | `POST` | `/admin/auth/2fa/setup` | Gera segredo → `{ secret, otpauthUri }` | `ADMIN_PLATAFORMA` |
 | `POST` | `/admin/auth/2fa/confirm` | `{ codigo }` — ativa o 2FA (no bootstrap também entrega tokens + `recoveryCodes`) | `ADMIN_PLATAFORMA` |
-| `POST` | `/admin/auth/2fa/disable` | `{ codigo }` — desativa o 2FA (**403** quando obrigatório) | `ADMIN_PLATAFORMA` |
+| `POST` | `/admin/auth/2fa/disable` | `{ codigo }` — desativa o 2FA (sempre permitido com TOTP válido) | `ADMIN_PLATAFORMA` |
 | `POST` | `/admin/auth/alterar-senha` | `{ senhaAtual, novaSenha }` (8–100) | `ADMIN_PLATAFORMA` |
 
 Datasource: `AdminAuthRemoteDataSource` (monta a URL base removendo o sufixo `/api/v1`). Widgets: `RecoveryCodesDialog` (8 códigos `XXXXX-XXXXX`, exibição única), `TwoFactorSetupCard` (fluxo de setup).
@@ -79,7 +79,8 @@ Feature `features/titularidade/` — wizard `/perfil/titularidade` (`TransferirT
 | `GET` | `/pontos/espelho` |
 | `POST` | `/pontos/ajustar` |
 | `POST` | `/pontos/ajustar/solicitar` — colaborador solicita ajuste |
-| `GET` | `/pontos/ajustes/pendentes` — RH lista pendentes (`AprovacaoAjustesScreen`, rota painel `aprovacao-ajustes`) |
+| `GET` | `/pontos/ajustes/pendentes` — RH lista pendentes (contagem/atalhos) |
+| `GET` | `/pontos/ajustes/resumo` — fila **consolidada** (pendentes + nome do colaborador + marcações do dia) — `AprovacaoAjustesScreen`, rota painel `aprovacao-ajustes` |
 | `PUT` | `/pontos/ajustes/{id}/aprovar` |
 | `PUT` | `/pontos/ajustes/{id}/rejeitar` |
 | `GET` | `/fiscal/aej/download` |

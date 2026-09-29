@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../../core/widgets/dialogs/consentimento_gate.dart';
+import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/data/models/usuario_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -31,7 +31,8 @@ class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.navigationShell});
 
   static const Map<String, ({String label, IconData icon, IconData selected})>
-      _metadados = {
+      metadados = {
+    'home': (label: 'Home', icon: Icons.home_outlined, selected: Icons.home),
     'ponto': (label: 'Ponto', icon: Icons.fingerprint, selected: Icons.fingerprint),
     'aprovacao-ajustes': (
       label: 'Aprovação Ajustes',
@@ -90,7 +91,7 @@ class MainShell extends StatelessWidget {
     final destinos = <_ShellDestino>[];
     for (var i = 0; i < AppRouter.painelOrdem.length; i++) {
       final slug = AppRouter.painelOrdem[i];
-      final meta = _metadados[slug]!;
+      final meta = metadados[slug]!;
       if (AppRouter.podeModuloPainel(usuario, slug)) {
         destinos.add(
           _ShellDestino(
@@ -103,6 +104,21 @@ class MainShell extends StatelessWidget {
       }
     }
     return destinos;
+  }
+
+  /// Localização atual do GoRouter (path + query) para o dock mobile saber
+  /// em que aba está (ex.: `/painel/ponto?aba=espelho`).
+  ({String path, Map<String, String> query}) _localizacaoAtual(
+      BuildContext context) {
+    try {
+      final uri = GoRouter.of(context)
+          .routerDelegate
+          .currentConfiguration
+          .uri;
+      return (path: uri.path, query: uri.queryParameters);
+    } catch (_) {
+      return (path: '', query: const <String, String>{});
+    }
   }
 
   @override
@@ -125,7 +141,7 @@ class MainShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 800;
-        final appBar = _construirAppBar(context, authProvider, usuario);
+        final appBar = _construirAppBar(context, authProvider, usuario, comMenu: !isWide);
 
         if (isWide) {
           return Scaffold(
@@ -166,59 +182,102 @@ class MainShell extends StatelessWidget {
           );
         }
 
+        final local = _localizacaoAtual(context);
+
         return Scaffold(
           appBar: appBar,
+          drawer: _MenuLateral(
+            destinos: destinos,
+            branchAtual: currentIndex,
+            usuario: usuario,
+            onNavegar: (destino) => context
+                .go('/painel/${AppRouter.painelOrdem[destino.branchIndex]}'),
+            onPerfil: () => context.push('/perfil'),
+            onSair: () => encerrarSessaoConfirmada(context),
+          ),
           body: ConsentimentoGate(child: navigationShell),
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (destinos.length > 1)
-                NavigationBar(
-                  selectedIndex: selecionado,
-                  onDestinationSelected: aba.onSelecionado,
-                  destinations: aba.destinationsBar,
-                ),
-              if (usuario != null)
-                Material(
-                  elevation: 6,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      child: Row(
-                        children: [
-                          UserAvatar(
-                            nome: usuario.nome.isNotEmpty
-                                ? usuario.nome
-                                : usuario.role,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              '${usuario.nome.isNotEmpty ? usuario.nome : usuario.role} (${usuario.role})',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.logout),
-                            tooltip: 'Encerrar Sessão',
-                            onPressed: () =>
-                                _encerrarSessao(context, authProvider),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          bottomNavigationBar: _dockMobile(
+            context,
+            usuario,
+            pathAtual: local.path,
+            queryAtual: local.query,
           ),
         );
       },
+    );
+  }
+
+  /// Dock inferior mobile: 4 itens fixos (Home, Ponto, Espelho, Perfil).
+  /// O restante dos módulos fica no drawer (hambúrguer).
+  Widget _dockMobile(
+    BuildContext context,
+    UsuarioModel? usuario, {
+    required String pathAtual,
+    required Map<String, String> queryAtual,
+  }) {
+    if (usuario == null) return const SizedBox.shrink();
+
+    final temPonto = AppRouter.podeModuloPainel(usuario, 'ponto');
+    final espelhoAtivo =
+        pathAtual == '/painel/ponto' && queryAtual['aba'] == 'espelho';
+
+    final itens = <_DockItem>[
+      _DockItem(
+        label: 'Home',
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
+        onTap: () => context.go('/painel/home'),
+      ),
+      if (temPonto) ...[
+        _DockItem(
+          label: 'Ponto',
+          icon: Icons.fingerprint,
+          selectedIcon: Icons.fingerprint,
+          onTap: () => context.go('/painel/ponto'),
+        ),
+        _DockItem(
+          label: 'Espelho',
+          icon: Icons.receipt_long_outlined,
+          selectedIcon: Icons.receipt_long,
+          onTap: () => context.go('/painel/ponto?aba=espelho'),
+        ),
+      ],
+      _DockItem(
+        label: 'Perfil',
+        icon: Icons.person_outline,
+        selectedIcon: Icons.person,
+        onTap: () => context.push('/perfil'),
+      ),
+    ];
+
+    // Nenhum destaque quando a rota atual é outro módulo (chegou pelo drawer)
+    // ou o perfil, que fica fora do shell.
+    int selecionado = -1;
+    if (pathAtual == '/painel/home') {
+      selecionado = 0;
+    } else if (espelhoAtivo) {
+      selecionado = temPonto ? 2 : -1;
+    } else if (pathAtual == '/painel/ponto' && temPonto) {
+      selecionado = 1;
+    }
+
+    if (selecionado < 0 || selecionado >= itens.length) {
+      // NavigationBar não aceita -1: renderiza a dock sem destaque.
+      return _DockSemDestaque(itens: itens);
+    }
+
+    return NavigationBar(
+      selectedIndex: selecionado,
+      onDestinationSelected: (i) => itens[i].onTap(),
+      destinations: itens
+          .map(
+            (d) => NavigationDestination(
+              icon: Icon(d.icon),
+              selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
+              label: d.label,
+            ),
+          )
+          .toList(),
     );
   }
 
@@ -276,7 +335,7 @@ class MainShell extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Encerrar Sessão',
-            onPressed: () => _encerrarSessao(context, authProvider),
+            onPressed: () => encerrarSessaoConfirmada(context),
           ),
         ],
       ),
@@ -286,10 +345,21 @@ class MainShell extends StatelessWidget {
   PreferredSizeWidget _construirAppBar(
     BuildContext context,
     AuthProvider authProvider,
-    UsuarioModel? usuario,
-  ) {
+    UsuarioModel? usuario, {
+    required bool comMenu,
+  }) {
     return AppBar(
       elevation: 1,
+      // Hambúrguer mobile: abre o drawer com todos os módulos acessíveis.
+      leading: comMenu
+          ? Builder(
+              builder: (menuContext) => IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: 'Menu de módulos',
+                onPressed: () => Scaffold.of(menuContext).openDrawer(),
+              ),
+            )
+          : null,
       title: Row(
         children: [
           ClipRRect(
@@ -334,13 +404,6 @@ class MainShell extends StatelessWidget {
       ],
     );
   }
-
-  Future<void> _encerrarSessao(BuildContext context, AuthProvider authProvider) async {
-    final confirmado = await ConfirmLogoutDialog.show(context);
-    if (confirmado == true && context.mounted) {
-      authProvider.logout();
-    }
-  }
 }
 
 class _AbaShell {
@@ -364,14 +427,148 @@ class _AbaShell {
         ),
       )
       .toList();
+}
 
-  List<NavigationDestination> get destinationsBar => destinos
-      .map(
-        (d) => NavigationDestination(
-          icon: Icon(d.icon),
-          selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
-          label: d.label,
+class _DockItem {
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final VoidCallback onTap;
+
+  const _DockItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.onTap,
+  });
+}
+
+/// Dock sem item destacado (usuário está em módulo que não é do dock).
+/// Mesmo visual da NavigationBar, só que sem indicador de seleção.
+class _DockSemDestaque extends StatelessWidget {
+  final List<_DockItem> itens;
+
+  const _DockSemDestaque({required this.itens});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 6,
+      color: scheme.surfaceContainerLow,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              for (final item in itens)
+                Expanded(
+                  child: InkWell(
+                    onTap: item.onTap,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(item.icon, color: scheme.onSurfaceVariant),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-      )
-      .toList();
+      ),
+    );
+  }
+}
+
+/// Drawer (hambúrguer) mobile com todos os módulos acessíveis do usuário,
+/// atalho de perfil e sair.
+class _MenuLateral extends StatelessWidget {
+  final List<_ShellDestino> destinos;
+  final int branchAtual;
+  final UsuarioModel? usuario;
+  final void Function(_ShellDestino destino) onNavegar;
+  final VoidCallback onPerfil;
+  final VoidCallback onSair;
+
+  const _MenuLateral({
+    required this.destinos,
+    required this.branchAtual,
+    required this.usuario,
+    required this.onNavegar,
+    required this.onPerfil,
+    required this.onSair,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final nome = usuario == null
+        ? ''
+        : (usuario!.nome.isNotEmpty ? usuario!.nome : usuario!.role);
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            if (usuario != null)
+              ListTile(
+                leading: UserAvatar(nome: nome),
+                title: Text(
+                  nome,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(usuario!.role, style: const TextStyle(fontSize: 12)),
+              ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final destino in destinos)
+                    ListTile(
+                      leading: Icon(destino.icon),
+                      title: Text(destino.label),
+                      selected: destino.branchIndex == branchAtual,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onNavegar(destino);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Perfil'),
+              onTap: () {
+                Navigator.pop(context);
+                onPerfil();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Encerrar Sessão'),
+              onTap: () {
+                Navigator.pop(context);
+                onSair();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

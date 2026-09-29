@@ -1,15 +1,61 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Tela de profile (`/perfil`), acessível pelo toque no profile fixo
-/// do rail (MainShell/AdminShell).
-class PerfilScreen extends StatelessWidget {
+/// do rail (MainShell/AdminShell) e pela dock mobile.
+///
+/// Concentra os dados do usuário, a troca de foto e a saída da sessão.
+class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
+
+  @override
+  State<PerfilScreen> createState() => _PerfilScreenState();
+}
+
+class _PerfilScreenState extends State<PerfilScreen> {
+  /// Troca a foto de perfil (máx. 512KB) via `POST /auth/me/foto`.
+  Future<void> _selecionarFoto() async {
+    final arquivo = await FilePicker.pickFile(type: FileType.image);
+    if (arquivo == null) return;
+
+    final bytes = await arquivo.readAsBytes();
+    if (bytes.isEmpty) return;
+
+    if (bytes.length > 512 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('A imagem deve ter no máximo 512KB.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final authProvider = context.read<AuthProvider>();
+    final sucesso = await authProvider.enviarFoto(bytes, arquivo.name);
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          sucesso
+              ? 'Foto de perfil atualizada.'
+              : authProvider.errorMessage ?? 'Erro ao atualizar a foto.',
+        ),
+        backgroundColor: sucesso ? Colors.green : Colors.redAccent,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +78,9 @@ class PerfilScreen extends StatelessWidget {
         : (usuario?.role ?? '—');
     final cpf = ehAdminRoot ? null : usuario?.cpf;
     final empresa = ehAdminRoot ? null : usuario?.tenantSlug;
+    // A foto só existe para sessão de tenant (`POST /auth/me/foto`).
+    final podeTrocarFoto = usuario != null;
+    final fotoBytes = usuario?.temFoto == true ? usuario!.fotoBytes : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
@@ -41,13 +90,55 @@ class PerfilScreen extends StatelessWidget {
           Center(
             child: Column(
               children: [
-                UserAvatar(
-                  nome: nome,
-                  raio: 40,
-                  icone:
-                      ehAdminRoot ? Icons.admin_panel_settings : null,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    UserAvatar(
+                      nome: nome,
+                      raio: 40,
+                      fotoBytes: fotoBytes,
+                      icone:
+                          ehAdminRoot ? Icons.admin_panel_settings : null,
+                    ),
+                    if (podeTrocarFoto)
+                      Positioned(
+                        right: -4,
+                        bottom: -4,
+                        child: Tooltip(
+                          message: 'Alterar foto de perfil',
+                          child: InkWell(
+                            onTap: _selecionarFoto,
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.photo_camera,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                if (podeTrocarFoto) ...[
+                  const SizedBox(height: 6),
+                  TextButton.icon(
+                    onPressed: _selecionarFoto,
+                    icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                    label: const Text('Alterar foto'),
+                  ),
+                ],
+                const SizedBox(height: 4),
                 Text(
                   nome,
                   style: Theme.of(context).textTheme.titleLarge,
@@ -123,6 +214,21 @@ class PerfilScreen extends StatelessWidget {
                 onTap: () => context.go('/admin/seguranca'),
               ),
             ),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text(
+                'Sair',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: const Text('Encerrar a sessão neste dispositivo'),
+              onTap: () => encerrarSessaoConfirmada(context),
+            ),
+          ),
         ],
       ),
     );

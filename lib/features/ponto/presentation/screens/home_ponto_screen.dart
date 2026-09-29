@@ -14,7 +14,10 @@ import 'camera_screen.dart';
 import 'espelho_ponto_tab.dart';
 
 class HomePontoScreen extends StatefulWidget {
-  const HomePontoScreen({super.key});
+  /// 0 = Bater Ponto, 1 = Espelho de Ponto (deep link `?aba=espelho`).
+  final int abaInicial;
+
+  const HomePontoScreen({super.key, this.abaInicial = 0});
 
   @override
   State<HomePontoScreen> createState() => _HomePontoScreenState();
@@ -248,6 +251,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.abaInicial.clamp(0, 1),
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
@@ -568,13 +572,14 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
               // Seção de Histórico de Batidas de Hoje
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Batidas de Hoje',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Batidas de Hoje',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(

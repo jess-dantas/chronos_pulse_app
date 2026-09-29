@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
+import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
@@ -155,14 +155,7 @@ class AdminShell extends StatelessWidget {
           ],
         );
 
-        Future<void> encerrarSessao() async {
-          final confirmado = await ConfirmLogoutDialog.show(context);
-          if (confirmado != true || !context.mounted) return;
-          final admin = context.read<AdminAuthProvider>();
-          final auth = context.read<AuthProvider>();
-          if (admin.isAuthenticated) admin.logout();
-          if (auth.isAuthenticated) auth.logout();
-        }
+        Future<void> encerrarSessao() => encerrarSessaoConfirmada(context);
 
         String nomeExibicao() {
           if (adminAuth.isAuthenticated) {

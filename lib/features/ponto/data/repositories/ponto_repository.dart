@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../datasources/ponto_local_datasource.dart';
 import '../datasources/ponto_remote_datasource.dart';
 import '../models/espelho_relatorio_model.dart';
+import '../models/fila_ajuste_model.dart';
 import '../models/registro_ponto_model.dart';
 
 class PontoRepository {
@@ -338,6 +339,12 @@ class PontoRepository {
     } catch (_) {
       return [];
     }
+  }
+
+  /// RH lista a fila consolidada de ajustes pendentes (nome + marcações do dia).
+  /// Propaga erro para a tela mostrar o estado de falha.
+  Future<List<FilaAjusteModel>> listarFilaAjustes() {
+    return remoteDataSource.listarFilaAjustes();
   }
 
   /// RH aprova ajuste

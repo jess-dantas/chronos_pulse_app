@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:chronos_pulse_app/core/config/app_modo.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/router/app_router.dart';
 import 'package:chronos_pulse_app/core/theme/theme_provider.dart';
@@ -35,14 +36,16 @@ UsuarioModel _usuario({
 
 void main() {
   group('AppRouter — permissões de módulos do painel', () {
-    test('primeiraRotaPainel prioriza o primeiro módulo ativo na ordem fixa', () {
+    test('primeiraRotaPainel sempre cai em Home (primeira da ordem fixa)', () {
       final usuario = _usuario(modulos: ['COMPRAS', 'PONTO']);
-      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/ponto');
+      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/home');
     });
 
-    test('primeiraRotaPainel cai em Privacidade quando não há módulos', () {
+    test('primeiraRotaPainel cai em Home mesmo sem módulos contratados', () {
       final usuario = _usuario();
-      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/privacidade');
+      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/home');
+      expect(AppRouter.podeModuloPainel(usuario, 'home'), isTrue);
+      expect(AppRouter.podeModuloPainel(usuario, 'ponto'), isFalse);
     });
 
     test('empreende a ordem fixa: Estoque antes de Compras', () {
@@ -51,7 +54,12 @@ void main() {
         modulos: ['ESTOQUE', 'COMPRAS'],
         acessoEstoque: true,
       );
-      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/estoque');
+      expect(
+        AppRouter.painelOrdem.indexOf('estoque') <
+            AppRouter.painelOrdem.indexOf('compras'),
+        isTrue,
+      );
+      expect(AppRouter.podeModuloPainel(usuario, 'estoque'), isTrue);
     });
 
     test('colaborador sem módulo RH não acessa /painel/colaboradores', () {
@@ -67,7 +75,7 @@ void main() {
     test('administrador de empresa herda acesso a módulos contratados', () {
       final usuario = _usuario(role: 'ADMIN_EMPRESA', modulos: ['ESTOQUE']);
       expect(AppRouter.podeModuloPainel(usuario, 'estoque'), isTrue);
-      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/estoque');
+      expect(AppRouter.primeiraRotaPainel(usuario), '/painel/home');
     });
   });
 
@@ -137,6 +145,103 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.text('Logar'), findsOneWidget);
+    });
+  });
+
+  group('AppRouter — modos de build (APP_MODE)', () {
+    late AuthProvider authProvider;
+    late AdminAuthProvider adminAuthProvider;
+
+    setUp(() {
+      final dioClient = DioClient();
+      final repository = AuthRepository(
+        remoteDataSource: AuthRemoteDataSource(dioClient),
+        dioClient: dioClient,
+      );
+      authProvider = AuthProvider(repository);
+      adminAuthProvider = AdminAuthProvider(
+        AdminAuthRepositoryImpl(AdminAuthRemoteDataSource(dioClient)),
+        dioClient,
+      );
+    });
+
+    Future<void> pumpComModo(
+      WidgetTester tester,
+      String modo, {
+      GoRouter? router,
+    }) async {
+      final r = router ??
+          AppRouter.build(authProvider, adminAuthProvider, modo: modo);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: authProvider),
+            ChangeNotifierProvider.value(value: adminAuthProvider),
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+          ],
+          child: MaterialApp.router(routerConfig: r),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('modo completo (padrão): /admin/auth/login segue público',
+        (tester) async {
+      final router = AppRouter.build(authProvider, adminAuthProvider,
+          modo: AppModo.completo);
+      await pumpComModo(tester, AppModo.completo, router: router);
+      router.go('/admin/auth/login');
+      await tester.pumpAndSettle();
+      expect(find.text('Login Administrator'), findsOneWidget);
+    });
+
+    testWidgets('modo cliente: deep link /admin/auth/login cai na landing',
+        (tester) async {
+      final router =
+          AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.cliente);
+      await pumpComModo(tester, AppModo.cliente, router: router);
+      router.go('/admin/auth/login');
+      await tester.pumpAndSettle();
+      expect(find.text('Pronto para acessar o Chronos Pulse?'), findsOneWidget);
+      expect(find.text('Login Administrator'), findsNothing);
+    });
+
+    testWidgets('modo cliente: /admin/dashboard também é bloqueado',
+        (tester) async {
+      final router =
+          AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.cliente);
+      await pumpComModo(tester, AppModo.cliente, router: router);
+      router.go('/admin/dashboard');
+      await tester.pumpAndSettle();
+      expect(find.text('Pronto para acessar o Chronos Pulse?'), findsOneWidget);
+    });
+
+    testWidgets('modo admin: inicia direto no login da plataforma',
+        (tester) async {
+      await pumpComModo(tester, AppModo.admin);
+      expect(find.text('Login Administrator'), findsOneWidget);
+      expect(find.text('Pronto para acessar o Chronos Pulse?'), findsNothing);
+    });
+
+    testWidgets('modo admin: /login de cliente é redirecionado pro admin',
+        (tester) async {
+      final router =
+          AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.admin);
+      await pumpComModo(tester, AppModo.admin, router: router);
+      router.go('/login');
+      await tester.pumpAndSettle();
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.text('Login Administrator'), findsOneWidget);
+    });
+
+    testWidgets('modo admin: /painel/home é redirecionado pro admin',
+        (tester) async {
+      final router =
+          AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.admin);
+      await pumpComModo(tester, AppModo.admin, router: router);
+      router.go('/painel/home');
+      await tester.pumpAndSettle();
+      expect(find.text('Login Administrator'), findsOneWidget);
     });
   });
 }

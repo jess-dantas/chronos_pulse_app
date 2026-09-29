@@ -30,11 +30,45 @@ android {
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
+        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-apk-versions)
         // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Defaults do manifest (sobrescritos por flavor). O app cliente/prod
+        // mantem cleartext BLOQUEADO; os flavors *Local permitem http na LAN.
+        manifestPlaceholders["appName"] = "Chronos Pulse"
+        manifestPlaceholders["cleartextTraffic"] = "false"
+    }
+
+    flavorDimensions += "app"
+
+    productFlavors {
+        // Producao (Render) — cliente final.
+        create("cliente") {
+            dimension = "app"
+        }
+        // Apontando para o backend local do notebook (http://<ip>:3030).
+        create("clienteLocal") {
+            dimension = "app"
+            applicationIdSuffix = ".local"
+            manifestPlaceholders["appName"] = "Chronos Pulse (local)"
+            manifestPlaceholders["cleartextTraffic"] = "true"
+        }
+        // Producao (Render) — app exclusivo do dono da plataforma (login /admin).
+        create("admin") {
+            dimension = "app"
+            applicationIdSuffix = ".admin"
+            manifestPlaceholders["appName"] = "Chronos Pulse Admin"
+        }
+        // App Admin apontando para o backend local do notebook.
+        create("adminLocal") {
+            dimension = "app"
+            applicationIdSuffix = ".admin.local"
+            manifestPlaceholders["appName"] = "Chronos Pulse Admin (local)"
+            manifestPlaceholders["cleartextTraffic"] = "true"
+        }
     }
 
     signingConfigs {

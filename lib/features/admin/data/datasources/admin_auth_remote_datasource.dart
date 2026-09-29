@@ -178,6 +178,20 @@ class AdminAuthRemoteDataSource {
     }
   }
 
+  /// POST /admin/auth/2fa/disable { codigo } — desativa o 2FA exibindo um
+  /// código TOTP válido do dispositivo atual (sempre permitido; perda do
+  /// celular é coberta pelos recovery codes no próximo login).
+  Future<void> twoFactorDisable(String codigo) async {
+    try {
+      await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/2fa/disable',
+        data: {'codigo': codigo},
+      );
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao desativar o 2FA'));
+    }
+  }
+
   /// POST /admin/auth/alterar-senha { senhaAtual, novaSenha }
   Future<void> alterarSenha(String senhaAtual, String novaSenha) async {
     try {

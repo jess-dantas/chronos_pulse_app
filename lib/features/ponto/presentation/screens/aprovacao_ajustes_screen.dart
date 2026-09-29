@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../data/models/registro_ponto_model.dart';
+import '../../data/models/fila_ajuste_model.dart';
 import '../providers/ponto_provider.dart';
 
+/// Fila consolidada do gestor RH: pendentes do tenant com nome do colaborador
+/// e as marcações do próprio dia (contexto do espelho) para aprovar/recusar
+/// sem sair da tela.
 class AprovacaoAjustesScreen extends StatefulWidget {
   const AprovacaoAjustesScreen({super.key});
 
@@ -14,14 +17,15 @@ class AprovacaoAjustesScreen extends StatefulWidget {
 class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
   bool _carregando = true;
   String? _erro;
+  List<FilaAjusteModel> _fila = const [];
 
   @override
   void initState() {
     super.initState();
-    _carregarAjustesPendentes();
+    _carregarFila();
   }
 
-  Future<void> _carregarAjustesPendentes() async {
+  Future<void> _carregarFila() async {
     setState(() {
       _carregando = true;
       _erro = null;
@@ -29,30 +33,29 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
 
     try {
       final provider = context.read<PontoProvider>();
-      await provider.listarAjustesPendentes();
-      if (mounted) setState(() => _carregando = false);
+      final fila = await provider.listarFilaAjustes();
+      if (mounted) {
+        setState(() {
+          _fila = fila;
+          _carregando = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
           _carregando = false;
-          _erro = 'Erro ao carregar ajustes pendentes: $e';
+          _erro = 'Erro ao carregar fila de ajustes: $e';
         });
       }
     }
   }
 
-  Future<void> _aprovarAjuste(RegistroPontoModel ajuste) async {
+  Future<void> _aprovarAjuste(FilaAjusteModel ajuste) async {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar Aprovação'),
-        content: Text(
-          'Deseja aprovar este ajuste de ponto?\n\n'
-          'Colaborador: ${ajuste.colaboradorId}\n'
-          'Data/Hora: ${DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal())}\n'
-          'Tipo: ${ajuste.tipoRegistro}\n'
-          'Justificativa: ${ajuste.justificativa}',
-        ),
+        content: Text(_detalhesAjuste(ajuste)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -71,7 +74,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
 
     try {
       final provider = context.read<PontoProvider>();
-      final resultado = await provider.aprovarAjuste(ajuste.idLocal);
+      final resultado = await provider.aprovarAjuste(ajuste.registroId);
 
       if (!mounted) return;
 
@@ -82,7 +85,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _carregarAjustesPendentes();
+        _carregarFila();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -103,7 +106,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
     }
   }
 
-  Future<void> _rejeitarAjuste(RegistroPontoModel ajuste) async {
+  Future<void> _rejeitarAjuste(FilaAjusteModel ajuste) async {
     final motivoController = TextEditingController();
 
     final motivo = await showDialog<String>(
@@ -114,13 +117,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Deseja rejeitar este ajuste de ponto?\n\n'
-              'Colaborador: ${ajuste.colaboradorId}\n'
-              'Data/Hora: ${DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal())}\n'
-              'Tipo: ${ajuste.tipoRegistro}\n'
-              'Justificativa: ${ajuste.justificativa}',
-            ),
+            Text(_detalhesAjuste(ajuste)),
             const SizedBox(height: 16),
             const Text('Motivo da rejeição (obrigatório):'),
             TextField(
@@ -156,7 +153,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
 
     try {
       final provider = context.read<PontoProvider>();
-      final resultado = await provider.rejeitarAjuste(ajuste.idLocal, motivo.trim());
+      final resultado = await provider.rejeitarAjuste(ajuste.registroId, motivo.trim());
 
       if (!mounted) return;
 
@@ -167,7 +164,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
             backgroundColor: Colors.orange,
           ),
         );
-        _carregarAjustesPendentes();
+        _carregarFila();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -188,39 +185,43 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
     }
   }
 
+  String _detalhesAjuste(FilaAjusteModel ajuste) {
+    return 'Deseja continuar com esta ação?\n\n'
+        'Colaborador: ${ajuste.nomeExibicao}\n'
+        'Data/Hora: ${DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal())}\n'
+        'Tipo: ${ajuste.tipoRegistro}\n'
+        'Justificativa: ${ajuste.justificativa ?? '—'}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pontoProvider = context.watch<PontoProvider>();
-    final ajustesPendentes = pontoProvider.espelho
-        .where((r) => r.ajusteManual && r.ajusteStatus == 'PENDENTE')
-        .toList();
+    final appBar = AppBar(
+      title: const Row(
+        children: [
+          Icon(Icons.approval, color: Colors.deepPurple),
+          SizedBox(width: 8),
+          Text('Aprovação de Ajustes de Ponto'),
+        ],
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Atualizar',
+          onPressed: _carregarFila,
+        ),
+      ],
+    );
 
     if (_carregando) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Row(
-            children: [
-              Icon(Icons.approval, color: Colors.deepPurple),
-              SizedBox(width: 8),
-              Text('Aprovação de Ajustes'),
-            ],
-          ),
-        ),
+        appBar: appBar,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_erro != null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Row(
-            children: [
-              Icon(Icons.approval, color: Colors.deepPurple),
-              SizedBox(width: 8),
-              Text('Aprovação de Ajustes'),
-            ],
-          ),
-        ),
+        appBar: appBar,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -232,7 +233,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
                 Text(_erro!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: _carregarAjustesPendentes,
+                  onPressed: _carregarFila,
                   child: const Text('Tentar novamente'),
                 ),
               ],
@@ -243,23 +244,8 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.approval, color: Colors.deepPurple),
-            SizedBox(width: 8),
-            Text('Aprovação de Ajustes de Ponto'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: _carregarAjustesPendentes,
-          ),
-        ],
-      ),
-      body: ajustesPendentes.isEmpty
+      appBar: appBar,
+      body: _fila.isEmpty
           ? Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -275,13 +261,13 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _carregarAjustesPendentes,
+              onRefresh: _carregarFila,
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
-                itemCount: ajustesPendentes.length,
+                itemCount: _fila.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final ajuste = ajustesPendentes[index];
+                  final ajuste = _fila[index];
                   return _AjusteCard(
                     ajuste: ajuste,
                     onAprovar: () => _aprovarAjuste(ajuste),
@@ -295,7 +281,7 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
 }
 
 class _AjusteCard extends StatelessWidget {
-  final RegistroPontoModel ajuste;
+  final FilaAjusteModel ajuste;
   final VoidCallback onAprovar;
   final VoidCallback onRejeitar;
 
@@ -307,7 +293,8 @@ class _AjusteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataFormatada = DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal());
+    final dataFormatada =
+        DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal());
 
     return Card(
       elevation: 2,
@@ -344,11 +331,13 @@ class _AjusteCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 18, color: Colors.grey),
+                const Icon(Icons.person, size: 18, color: Colors.deepPurple),
                 const SizedBox(width: 8),
-                Text(
-                  'Colaborador: ${ajuste.colaboradorId?.substring(0, 8) ?? '—'}',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+                Expanded(
+                  child: Text(
+                    ajuste.nomeExibicao,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                 ),
               ],
             ),
@@ -357,7 +346,7 @@ class _AjusteCard extends StatelessWidget {
               children: [
                 const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
                 const SizedBox(width: 8),
-                Text('Data/Hora: $dataFormatada'),
+                Text('Data/Hora do ajuste: $dataFormatada'),
               ],
             ),
             const SizedBox(height: 8),
@@ -368,6 +357,39 @@ class _AjusteCard extends StatelessWidget {
                 Text('Tipo: ${ajuste.tipoRegistro}'),
               ],
             ),
+            if (ajuste.marcacoesDoDia.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Row(
+                children: [
+                  Icon(Icons.schedule, size: 18, color: Colors.grey),
+                  SizedBox(width: 8),
+                  Text('Marcações do dia:', style: TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: ajuste.marcacoesDoDia.map((m) {
+                  final hora = DateFormat('HH:mm').format(m.dataHora.toLocal());
+                  return Chip(
+                    avatar: Icon(
+                      m.ajuste ? Icons.edit_calendar : Icons.punch_clock,
+                      size: 16,
+                      color: m.ajuste ? Colors.orange : Colors.deepPurple,
+                    ),
+                    label: Text(
+                      '$hora ${m.tipoRegistro}${m.ajuste ? ' (ajuste)' : ''}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    backgroundColor: m.ajuste
+                        ? Colors.orange.withValues(alpha: 0.12)
+                        : Colors.deepPurple.withValues(alpha: 0.08),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+            ],
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
