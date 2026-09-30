@@ -297,7 +297,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             tooltip: 'Sair do modo dispositivo',
-            onPressed: () => context.go('/login'),
+            onPressed: () => context.go('/'),
           ),
         ),
         body: corpoBaterPonto,
