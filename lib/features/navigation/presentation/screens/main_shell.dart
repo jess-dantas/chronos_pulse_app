@@ -152,20 +152,30 @@ class MainShell extends StatelessWidget {
                   width: 120,
                   child: Column(
                     children: [
+                      // Com 12+ destinos (admin/gestor) o rail estourava a
+                      // altura e cobria o perfil. `scrollable: true` rola só
+                      // os destinos dentro do rail (altura fina preservada);
+                      // ScrollConfiguration esconde a barra de rolagem.
+                      // Perfil e logout permanecem fixos no rodapé.
                       Expanded(
-                        child: NavigationRail(
-                          selectedIndex: selecionado,
-                          onDestinationSelected: aba.onSelecionado,
-                          labelType: NavigationRailLabelType.all,
-                          leading: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8.0),
-                            child: Icon(
-                              Icons.menu_open,
-                              size: 20,
-                              color: Colors.deepPurple,
+                        child: ScrollConfiguration(
+                          behavior:
+                              const ScrollBehavior().copyWith(scrollbars: false),
+                          child: NavigationRail(
+                            scrollable: true,
+                            selectedIndex: selecionado,
+                            onDestinationSelected: aba.onSelecionado,
+                            labelType: NavigationRailLabelType.all,
+                            leading: const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8.0),
+                              child: Icon(
+                                Icons.menu_open,
+                                size: 20,
+                                color: Colors.deepPurple,
+                              ),
                             ),
+                            destinations: aba.destinationsRail,
                           ),
-                          destinations: aba.destinationsRail,
                         ),
                       ),
                       if (usuario != null)
