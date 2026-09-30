@@ -92,7 +92,11 @@ void main() {
     auth.definirSessao(_usuario());
     await pumpTela(tester);
 
+    // O card de vínculo de dispositivo cresceu a lista: "Sair" pode ficar
+    // fora da viewport inicial (o ListView só monta o que é visível).
     final sair = find.text('Sair');
+    await tester.scrollUntilVisible(sair, 400);
+    await tester.pumpAndSettle();
     expect(sair, findsOneWidget);
 
     // A foto vem antes de "Sair" (mesmo card/rolagem).
@@ -106,6 +110,8 @@ void main() {
     await pumpTela(tester);
 
     final sair = find.text('Sair');
+    await tester.scrollUntilVisible(sair, 400);
+    await tester.pumpAndSettle();
     await tester.ensureVisible(sair);
     await tester.pumpAndSettle();
     await tester.tap(sair);

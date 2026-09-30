@@ -15,6 +15,7 @@ import '../../features/admin/presentation/screens/admin_modulos_screen.dart';
 import '../../features/admin/presentation/screens/admin_seguranca_screen.dart';
 import '../../features/admin/presentation/providers/admin_auth_provider.dart';
 import '../../features/ponto/presentation/screens/aprovacao_ajustes_screen.dart';
+import '../../features/ponto/presentation/screens/modo_ponto_screen.dart';
 import '../../features/auth/data/models/usuario_model.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/cadastrar_empresa_screen.dart';
@@ -154,6 +155,13 @@ class AppRouter {
           path: '/recuperar-senha',
           builder: (context, state) => const RecuperarSenhaScreen(),
         ),
+        // Modo "bater ponto sem login" (vínculo de dispositivo + biometria).
+        // Rota PÚBLICA por definição: é o único caminho autenticado sem
+        // sessão (guard próprio de vínculo + biometria dentro da tela).
+        GoRoute(
+          path: '/ponto/dispositivo',
+          builder: (context, state) => const ModoPontoScreen(),
+        ),
         // Profile (acessível pelo toque no profile do rail; não é item de menu)
         GoRoute(
           path: '/perfil',
@@ -264,6 +272,13 @@ class AppRouter {
     if (bloqueiaAdmin &&
         (location == '/admin' || location.startsWith('/admin/'))) {
       return rotaInicialPara(modo);
+    }
+
+    // Modo dispositivo (bater ponto sem login): público nos dois sentidos —
+    // não exige sessão e uma sessão ativa não é redirecionada para o painel
+    // quando o usuário escolhe este caminho (o guard da tela decide).
+    if (location == '/ponto/dispositivo') {
+      return null;
     }
 
     // Profile (inclui /perfil/titularidade): acessível a qualquer sessão

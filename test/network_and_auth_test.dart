@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chronos_pulse_app/core/constants/api_constants.dart';
+import 'package:chronos_pulse_app/core/errors/mensagens_erro.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/features/auth/data/datasources/auth_remote_datasource.dart';
 
@@ -90,6 +91,47 @@ void main() {
           (e) => e.toString(),
           'toString',
           contains('Revise os dados informados.'),
+        )),
+      );
+    });
+
+    // D1: identidade offline — falha de rede no refresh NÃO pode ser tratada
+    // como rejeição de credenciais (senão a sessão local se perderia offline).
+    test('refreshToken lança FalhaDeRedeException quando a rede falha (D1)', () async {
+      final dioClient = DioClient();
+      dioClient.dio.httpClientAdapter = _MockConnectionErrorAdapter();
+      final authDataSource = AuthRemoteDataSource(dioClient);
+
+      expect(
+        () => authDataSource.refreshToken('refresh-x'),
+        throwsA(isA<FalhaDeRedeException>()),
+      );
+    });
+
+    test('refreshToken com timeout também sinaliza falha de rede (D1)', () async {
+      final dioClient = DioClient();
+      dioClient.dio.httpClientAdapter = _MockTimeoutAdapter();
+      final authDataSource = AuthRemoteDataSource(dioClient);
+
+      expect(
+        () => authDataSource.refreshToken('refresh-x'),
+        throwsA(isA<FalhaDeRedeException>()),
+      );
+    });
+
+    test('refreshToken rejeitado pelo servidor (401) NÃO é falha de rede (D1)', () async {
+      final dioClient = DioClient();
+      dioClient.dio.httpClientAdapter = _Mock401Adapter();
+      final authDataSource = AuthRemoteDataSource(dioClient);
+
+      // O chamador (AuthProvider) usa essa distinção para encerrar a sessão
+      // apenas quando o servidor rejeita — nunca por problema de conexão.
+      expect(
+        () => authDataSource.refreshToken('refresh-x'),
+        throwsA(isA<Exception>().having(
+          (e) => e is FalhaDeRedeException,
+          'naoEhFalhaDeRede',
+          isFalse,
         )),
       );
     });

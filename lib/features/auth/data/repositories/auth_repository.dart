@@ -1,6 +1,8 @@
 import '../datasources/auth_remote_datasource.dart';
+import '../models/device_token_model.dart';
 import '../models/usuario_model.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/security/device_token_store.dart';
 
 class AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
@@ -93,6 +95,29 @@ class AuthRepository {
 
   Future<String> enviarFoto(List<int> bytes, String nomeArquivo) {
     return _remoteDataSource.enviarFoto(bytes, nomeArquivo);
+  }
+
+  /// Ativa o vínculo do dispositivo (7 dias) e o persiste localmente para o
+  /// modo "bater ponto sem login". [cpcId]/[nome] vêm da sessão ativa.
+  Future<DeviceTokenModel> vincularDevice({
+    required String cpcId,
+    required String nome,
+    String? deviceName,
+  }) async {
+    final vinculo = await _remoteDataSource.vincularDevice(deviceName: deviceName);
+    await DeviceTokenStore.instancia.salvar(
+      token: vinculo.deviceToken,
+      cpcId: cpcId,
+      nome: nome,
+      expiraEm: vinculo.expiraEm,
+    );
+    return vinculo;
+  }
+
+  /// Desativa o vínculo no servidor e limpa o resíduo local.
+  Future<void> revogarDevice() async {
+    await _remoteDataSource.revogarDevice();
+    await DeviceTokenStore.instancia.limpar();
   }
 
   void logout() {

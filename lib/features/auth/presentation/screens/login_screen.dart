@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/security/device_token_store.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
@@ -18,6 +20,20 @@ class _LoginScreenState extends State<LoginScreen> {
   final _cpfController = TextEditingController();
   final _senhaController = TextEditingController();
   bool _obscurePassword = true;
+
+  /// Modo "bater ponto sem login" (mobile only): só aparece quando o
+  /// aparelho tem vínculo de dispositivo ativo (7 dias).
+  bool _vinculoAtivo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      DeviceTokenStore.instancia.vinculoAtivo().then((ativo) {
+        if (mounted) setState(() => _vinculoAtivo = ativo);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -220,6 +236,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        if (_vinculoAtivo) ...[
+                          OutlinedButton.icon(
+                            key: const Key('login_modo_dispositivo_button'),
+                            icon: const Icon(Icons.fingerprint, size: 20),
+                            label: const Text(
+                              'Bater ponto sem login',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => context.push('/ponto/dispositivo'),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         TextButton(
                           onPressed: () {
                             context.go('/recuperar-senha');

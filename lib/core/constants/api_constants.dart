@@ -53,6 +53,10 @@ class ApiConstants {
   static String leadsStatusEndpoint(String id) => '/leads/$id/status';
   static const String refreshTokenEndpoint = '/auth/refresh';
   static const String meEndpoint = '/auth/me';
+
+  // Vínculo de dispositivo (bater ponto sem login por 7 dias, mobile only)
+  static const String deviceVincularEndpoint = '/auth/device/vincular';
+  static const String deviceRevogarEndpoint = '/auth/device/revogar';
   static const String meFotoEndpoint = '/auth/me/foto';
   static const String alterarSenhaEndpoint = '/auth/alterar-senha';
   static const String esqueciSenhaEndpoint = '/auth/esqueci-senha';
