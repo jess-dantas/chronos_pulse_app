@@ -15,6 +15,7 @@ import 'package:chronos_pulse_app/features/auth/data/models/usuario_model.dart';
 import 'package:chronos_pulse_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:chronos_pulse_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronos_pulse_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_screen.dart';
 
 UsuarioModel _usuario({
   String role = 'COLABORADOR',
@@ -240,6 +241,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.text('Pronto para acessar o Chronos Pulse?'), findsNothing);
+    });
+
+    testWidgets(
+        'modo cliente: /ponto/dispositivo é pública (bater ponto sem login)',
+        (tester) async {
+      final router =
+          AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.cliente);
+      await pumpComModo(tester, AppModo.cliente, router: router);
+      router.go('/ponto/dispositivo');
+      // Sem pumpAndSettle: em ambiente de teste o Keystore fica pendurado e
+      // a tela repousa no carregamento — o que basta para provar o redirect
+      // (o guard próprio de vínculo/biometria é coberto em
+      // modo_dispositivo_test.dart).
+      await tester.pump();
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.byType(ModoPontoScreen), findsOneWidget);
     });
 
     testWidgets('modo admin: inicia direto no login da plataforma',

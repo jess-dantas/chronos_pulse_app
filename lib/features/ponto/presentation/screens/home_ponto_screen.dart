@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/hardware/hardware_service.dart';
+import '../../../../core/security/device_token_store.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
@@ -18,7 +20,17 @@ class HomePontoScreen extends StatefulWidget {
   /// 0 = Bater Ponto, 1 = Espelho de Ponto (deep link `?aba=espelho`).
   final int abaInicial;
 
-  const HomePontoScreen({super.key, this.abaInicial = 0});
+  /// Modo "bater ponto sem login" (mobile): identidade do vínculo de
+  /// dispositivo. Quando presente, substitui a sessão em tudo que depende
+  /// do colaborador (fila local, payload e card de identificação) e o
+  /// espelho de ponto fica oculto (exige sessão; o modo só registra).
+  final VinculoDispositivo? modoDispositivo;
+
+  const HomePontoScreen({
+    super.key,
+    this.abaInicial = 0,
+    this.modoDispositivo,
+  });
 
   @override
   State<HomePontoScreen> createState() => _HomePontoScreenState();
@@ -202,7 +214,9 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
       // o UsuarioModel pode vir sem colaboradorId (só cpcId). Salvar null aqui
       // torna o registro invisível aos filtros locais (colaboradorId = ?) —
       // a fila offline e o histórico local deixam de encontrar o registro.
-      colaboradorId: authProvider.usuario?.colaboradorId ??
+      // No modo dispositivo o dono é o vínculo (cpcId) — a sessão é null.
+      colaboradorId: widget.modoDispositivo?.cpcId ??
+          authProvider.usuario?.colaboradorId ??
           authProvider.usuario?.cpcId,
       dataHoraDispositivo: DateTime.now().toUtc(),
       tipoRegistro: proximoTipo,
@@ -241,8 +255,12 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     final authProvider = context.watch<AuthProvider>();
     final pontoProvider = context.watch<PontoProvider>();
     final usuario = authProvider.usuario;
+    final modo = widget.modoDispositivo;
+    final ehModoDispositivo = modo != null;
 
-    final colabId = usuario?.colaboradorId ?? usuario?.cpcId;
+    // No modo dispositivo o dono da fila vem do vínculo; sem sessão, a
+    // identificação precisa continuar fixada para o histórico local filtrar.
+    final colabId = modo?.cpcId ?? usuario?.colaboradorId ?? usuario?.cpcId;
     if (pontoProvider.colaboradorId != colabId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         pontoProvider.definirColaborador(colabId);
@@ -254,6 +272,37 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
         DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(_horarioAtual);
     final proximoTipo = SequenciaPonto.proximo(pontoProvider.historico);
     final corBotao = _obterCorTipo(proximoTipo);
+
+    // Sem sessão não há espelho (exige Bearer): o modo dispositivo só
+    // registra batidas — a aba do espelho some por completo.
+    final corpoBaterPonto = _buildBaterPontoTab(
+      context,
+      authProvider,
+      pontoProvider,
+      horaFormatada,
+      dataFormatada,
+      proximoTipo,
+      corBotao,
+    );
+
+    if (ehModoDispositivo) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Bater Ponto · Sem Login',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          elevation: 1,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Sair do modo dispositivo',
+            onPressed: () => context.go('/login'),
+          ),
+        ),
+        body: corpoBaterPonto,
+      );
+    }
 
     return DefaultTabController(
       length: 2,
@@ -281,15 +330,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
         ),
         body: TabBarView(
           children: [
-            _buildBaterPontoTab(
-              context,
-              authProvider,
-              pontoProvider,
-              horaFormatada,
-              dataFormatada,
-              proximoTipo,
-              corBotao,
-            ),
+            corpoBaterPonto,
             const EspelhoPontoTab(),
           ],
         ),
@@ -307,6 +348,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     Color corBotao,
   ) {
     final usuario = authProvider.usuario;
+    final modo = widget.modoDispositivo;
 
     return Center(
       child: SingleChildScrollView(
@@ -385,8 +427,9 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Card de Informações do Colaborador
-              if (usuario != null)
+              // Card de Informações do Colaborador (sessão ativa) ou do
+              // vínculo de dispositivo (modo sem login).
+              if (usuario != null || modo != null)
                 Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(
@@ -397,12 +440,15 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                     child: Row(
                       children: [
                         UserAvatar(
-                          nome: usuario.nome.isNotEmpty
-                              ? usuario.nome
-                              : usuario.role,
+                          nome: (usuario?.nome.isNotEmpty ?? false)
+                              ? usuario!.nome
+                              : (modo?.nome.isNotEmpty ?? false)
+                                  ? modo!.nome
+                                  : 'Colaborador',
                           raio: 26,
-                          fotoBytes:
-                              usuario.temFoto ? usuario.fotoBytes : null,
+                          fotoBytes: usuario?.temFoto == true
+                              ? usuario!.fotoBytes
+                              : null,
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -410,9 +456,11 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                usuario.nome.isNotEmpty
-                                    ? usuario.nome
-                                    : 'Colaborador',
+                                (usuario?.nome.isNotEmpty ?? false)
+                                    ? usuario!.nome
+                                    : (modo?.nome.isNotEmpty ?? false)
+                                        ? modo!.nome
+                                        : 'Colaborador',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -420,9 +468,11 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                usuario.email.isNotEmpty
-                                    ? usuario.email
-                                    : usuario.role,
+                                usuario != null
+                                    ? (usuario.email.isNotEmpty
+                                        ? usuario.email
+                                        : usuario.role)
+                                    : 'Válido até ${DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(modo!.expiraEm.toLocal())}',
                                 style: TextStyle(
                                   color: Colors.grey[700],
                                   fontSize: 13,
@@ -437,14 +487,24 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: modo != null
+                                ? Colors.green[50]
+                                : Colors.blue[50],
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
+                            border: Border.all(
+                              color: modo != null
+                                  ? Colors.green.shade200
+                                  : Colors.blue.shade200,
+                            ),
                           ),
                           child: Text(
-                            usuario.role.replaceAll('ROLE_', ''),
+                            modo != null
+                                ? 'SEM LOGIN'
+                                : usuario!.role.replaceAll('ROLE_', ''),
                             style: TextStyle(
-                              color: Colors.blue[800],
+                              color: modo != null
+                                  ? Colors.green[800]
+                                  : Colors.blue[800],
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),

@@ -1,8 +1,11 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/security/device_token_store.dart';
 import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
@@ -20,6 +23,95 @@ class PerfilScreen extends StatefulWidget {
 }
 
 class _PerfilScreenState extends State<PerfilScreen> {
+  /// Vínculo de dispositivo (modo ponto sem login) — só mobile.
+  VinculoDispositivo? _vinculo;
+  bool _processandoVinculo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarVinculo();
+  }
+
+  Future<void> _carregarVinculo() async {
+    if (kIsWeb) return;
+    final vinculo = await DeviceTokenStore.instancia.lerAtivo();
+    if (mounted) setState(() => _vinculo = vinculo);
+  }
+
+  Future<void> _ativarVinculo() async {
+    final auth = context.read<AuthProvider>();
+    final nome = auth.usuario?.nome.isNotEmpty == true
+        ? auth.usuario!.nome
+        : 'Dispositivo móvel';
+    setState(() => _processandoVinculo = true);
+    final expiraEm = await auth.ativarVinculoDispositivo(deviceName: nome);
+    if (!mounted) return;
+    setState(() => _processandoVinculo = false);
+    if (expiraEm != null) {
+      await _carregarVinculo();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Dispositivo vinculado! Agora você pode bater ponto sem login '
+              'por 7 dias, com biometria.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.errorMessage ?? 'Erro ao ativar o dispositivo.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<void> _desativarVinculo() async {
+    final auth = context.read<AuthProvider>();
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desativar bater ponto sem login?'),
+        content: const Text(
+          'Os vínculos de dispositivo desta conta serão revogados no servidor. '
+          'Para voltar a bater ponto sem login será preciso ativar novamente '
+          'com sua sessão aberta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Desativar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+
+    setState(() => _processandoVinculo = true);
+    final ok = await auth.desativarVinculoDispositivo();
+    if (!mounted) return;
+    setState(() {
+      _processandoVinculo = false;
+      _vinculo = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok
+            ? 'Bater ponto sem login desativado.'
+            : (auth.errorMessage ?? 'Erro ao desativar o dispositivo.')),
+        backgroundColor: ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+    if (ok) await _carregarVinculo();
+  }
+
   /// Troca a foto de perfil (máx. 512KB) via `POST /auth/me/foto`.
   Future<void> _selecionarFoto() async {
     final arquivo = await FilePicker.pickFile(type: FileType.image);
@@ -201,6 +293,49 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _abrirDialogoSenha(context, auth),
               ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          // Modo "bater ponto sem login" (vínculo de dispositivo, 7 dias).
+          // Só faz sentido no app mobile: a Web mantém o login obrigatório.
+          if (!kIsWeb && !ehAdminRoot && usuario != null) ...[
+            Card(
+              child: _processandoVinculo
+                  ? const ListTile(
+                      leading: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      ),
+                      title: Text('Processando vínculo...'),
+                    )
+                  : _vinculo != null
+                      ? ListTile(
+                          leading: const Icon(Icons.smartphone,
+                              color: Colors.green),
+                          title: const Text('Bater ponto sem login'),
+                          subtitle: Text(
+                            'Ativo até ${DateFormat('dd/MM/yyyy \'às\' HH:mm', 'pt_BR').format(_vinculo!.expiraEm.toLocal())}'
+                            '${_vinculo!.nome.isNotEmpty ? ' · ${_vinculo!.nome}' : ''}',
+                          ),
+                          trailing: TextButton(
+                            onPressed: _desativarVinculo,
+                            child: const Text(
+                              'Desativar',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                          ),
+                        )
+                      : ListTile(
+                          leading: const Icon(Icons.smartphone_outlined),
+                          title: const Text('Bater ponto sem login'),
+                          subtitle: const Text(
+                            'Vincule este aparelho por 7 dias para registrar '
+                            'ponto com biometria, mesmo sem sessão aberta.',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _ativarVinculo,
+                        ),
             ),
             const SizedBox(height: 16),
           ],

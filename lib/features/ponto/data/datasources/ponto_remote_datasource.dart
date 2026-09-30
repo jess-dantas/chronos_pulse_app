@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/constants/api_constants.dart';
+import '../../../../core/security/device_token_store.dart';
 import '../models/registro_ponto_model.dart';
 import '../models/espelho_relatorio_model.dart';
 import '../models/fila_ajuste_model.dart';
@@ -18,8 +19,10 @@ class RejeicaoServidorException implements Exception {
 
 class PontoRemoteDataSource {
   final DioClient _dioClient;
+  final DeviceTokenStore _deviceStore;
 
-  PontoRemoteDataSource(this._dioClient);
+  PontoRemoteDataSource(this._dioClient, {DeviceTokenStore? deviceStore})
+      : _deviceStore = deviceStore ?? DeviceTokenStore.instancia;
 
   /// Verifica se o backend está respondendo (Heartbeat / Ping)
   Future<bool> verificarConexao() async {
@@ -41,13 +44,33 @@ class PontoRemoteDataSource {
     if (registros.isEmpty) return [];
 
     try {
+      // Modo dispositivo (mobile, sem sessão): autentica o lote com o vínculo
+      // de 7 dias (header X-Device-Token) e declara o dono no payload para a
+      // defesa de posse do backend. Com sessão ativa nada muda (Bearer + o
+      // dono passa a ser o usuário autenticado, sem colaboradorId no lote).
+      String? deviceToken;
+      String? colaboradorId;
+      final temSessao =
+          _dioClient.token != null && _dioClient.token!.isNotEmpty;
+      if (!temSessao) {
+        final vinculo = await _deviceStore.lerAtivo();
+        if (vinculo != null) {
+          deviceToken = vinculo.token;
+          colaboradorId = vinculo.cpcId;
+        }
+      }
+
       final payload = {
+        if (colaboradorId != null) 'colaboradorId': colaboradorId,
         'registros': registros.map((r) => r.toApiJson()).toList(),
       };
 
       final response = await _dioClient.dio.post(
         ApiConstants.pontosEndpoint,
         data: payload,
+        options: deviceToken != null
+            ? Options(headers: {'X-Device-Token': deviceToken})
+            : null,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {

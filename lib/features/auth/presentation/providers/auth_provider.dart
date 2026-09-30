@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/security/session_storage.dart';
 import '../../../../core/telemetry/telemetry_service.dart';
 import '../../../ponto/data/datasources/ponto_local_datasource.dart';
@@ -155,7 +156,12 @@ class AuthProvider extends ChangeNotifier {
         );
         _authRepository.updateToken(refreshed.token);
         await _saveSession(_usuario!);
+      } on FalhaDeRedeException {
+        // Offline: mantém a sessão local restaurada (linhas acima). A
+        // identidade não pode se perder por falha de conexão — o refresh
+        // será refeito pelo interceptor assim que a rede voltar.
       } catch (_) {
+        // Servidor rejeitou/erro real: exige login novamente.
         await _clearSession();
       }
       notifyListeners();
@@ -359,6 +365,43 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Ativa o vínculo de dispositivo do app (modo "bater ponto sem login" por
+  /// 7 dias, mobile only). Devolve a data de expiração, ou `null` em erro
+  /// (mensagem em [errorMessage]).
+  Future<DateTime?> ativarVinculoDispositivo({String? deviceName}) async {
+    final usuario = _usuario;
+    if (usuario == null) return null;
+    try {
+      final cpcId = usuario.colaboradorId ?? usuario.cpcId;
+      if (cpcId == null || cpcId.isEmpty) {
+        throw Exception('Sessão sem identificação de colaborador.');
+      }
+      final vinculo = await _authRepository.vincularDevice(
+        cpcId: cpcId,
+        nome: usuario.nome,
+        deviceName: deviceName,
+      );
+      return vinculo.expiraEm;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Desativa os vínculos de dispositivo da conta no servidor e limpa o
+  /// armazenamento local. `false` = erro (mensagem em [errorMessage]).
+  Future<bool> desativarVinculoDispositivo() async {
+    try {
+      await _authRepository.revogarDevice();
+      return true;
+    } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;

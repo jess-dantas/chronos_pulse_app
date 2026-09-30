@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/network/dio_client.dart';
+import '../models/device_token_model.dart';
 import '../models/usuario_model.dart';
 
 class AuthRemoteDataSource {
@@ -121,6 +122,13 @@ class AuthRemoteDataSource {
         throw Exception('Refresh token inválido.');
       }
     } on DioException catch (e) {
+      // Rede fora: sinaliza separadamente para o chamador manter a sessão
+      // local (identidade offline não pode se perder por falha de conexão).
+      if (ehFalhaDeRede(e)) {
+        throw const FalhaDeRedeException(
+          'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.',
+        );
+      }
       throw Exception(
         mensagemErroAmigavel(e, fallback: 'Erro ao renovar sessão.'),
       );
@@ -204,6 +212,41 @@ class AuthRemoteDataSource {
     } on DioException catch (e) {
       throw Exception(
         mensagemErroAmigavel(e, fallback: 'Erro ao enviar foto.'),
+      );
+    }
+  }
+
+  /// Emite um device token opaco de 7 dias para "bater ponto sem login".
+  /// Exige sessão ativa (Bearer) e aceite vigente do termo de privacidade
+  /// — o backend recusa com 403 se o consentimento não estiver ativo.
+  Future<DeviceTokenModel> vincularDevice({String? deviceName}) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.deviceVincularEndpoint,
+        data: {if (deviceName != null) 'deviceName': deviceName},
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        return DeviceTokenModel.fromJson(response.data);
+      }
+      throw Exception('Resposta inesperada ao vincular o dispositivo.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) {
+        throw Exception(
+            'Aceite o termo de ciência de privacidade antes de ativar.');
+      }
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao vincular o dispositivo.'),
+      );
+    }
+  }
+
+  /// Revoga TODOS os vínculos de dispositivo da conta (remota).
+  Future<void> revogarDevice() async {
+    try {
+      await _dioClient.dio.post(ApiConstants.deviceRevogarEndpoint);
+    } on DioException catch (e) {
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao desativar o dispositivo.'),
       );
     }
   }
