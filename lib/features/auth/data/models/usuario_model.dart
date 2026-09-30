@@ -67,12 +67,20 @@ class UsuarioModel {
 
   bool get temFoto => foto != null && foto!.isNotEmpty;
 
+  // Cache da foto decodificada: [foto] é final, então o bytes é válido para
+  // sempre nesta instância. Sem memoizar, cada acesso redecodificava o base64
+  // e produzia um Uint8List novo — MemoryImage virava chave de cache diferente
+  // a cada rebuild (relógio da home pisava a foto do colaborador a cada 1s).
+  Uint8List? _fotoBytesCache;
+
   Uint8List get fotoBytes {
     if (!temFoto) return Uint8List(0);
+    final cache = _fotoBytesCache;
+    if (cache != null) return cache;
     final partes = foto!.split(',');
     final base64 = partes.length > 1 ? partes[1] : partes[0];
     try {
-      return base64Decode(base64);
+      return _fotoBytesCache = base64Decode(base64);
     } catch (_) {
       return Uint8List(0);
     }
