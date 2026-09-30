@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -17,6 +19,13 @@ class PontoRepository {
   /// falha de rede NÃO preenche este campo — ela é "offline", não rejeição).
   String? get ultimaFalhaServidor => _ultimaFalhaServidor;
 
+  String? _ultimaFalhaLocal;
+
+  /// Motivo da última falha de ESCRITA/LEITURA no banco local (null = ok).
+  /// A UI precisa distinguir "salvo no dispositivo" de "não foi possível
+  /// salvar no dispositivo" — sem isso o snackbar mente sobre a fila offline.
+  String? get ultimaFalhaLocal => _ultimaFalhaLocal;
+
   PontoRepository({
     required this.localDataSource,
     required this.remoteDataSource,
@@ -31,6 +40,7 @@ class PontoRepository {
     required RegistroPontoModel registro,
   }) async {
     _ultimaFalhaServidor = null;
+    _ultimaFalhaLocal = null;
 
     // 1. Salva no banco local primeiro (com limite de tempo: nunca bloqueia a UI)
     final localOk = await _salvarLocalComTimeout(registro);
@@ -71,7 +81,15 @@ class PontoRepository {
           .salvarPontoLocal(registro)
           .timeout(const Duration(seconds: 3));
       return true;
-    } catch (_) {
+    } on TimeoutException {
+      _ultimaFalhaLocal = 'Banco local não respondeu em 3s ao salvar a batida.';
+      debugPrint('[PontoRepository] $_ultimaFalhaLocal '
+          '(idLocal=${registro.idLocal}, colab=${registro.colaboradorId})');
+      return false;
+    } catch (e) {
+      _ultimaFalhaLocal = 'Falha ao gravar a batida no dispositivo: $e';
+      debugPrint('[PontoRepository] $_ultimaFalhaLocal '
+          '(idLocal=${registro.idLocal}, colab=${registro.colaboradorId})');
       return false;
     }
   }
@@ -94,8 +112,12 @@ class PontoRepository {
       return idsSucesso.length;
     } on RejeicaoServidorException catch (e) {
       _ultimaFalhaServidor = e.mensagem;
+      debugPrint('[PontoRepository] servidor recusou o lote: ${e.mensagem} '
+          '(${pendentes.length} pendente(s))');
       return 0;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoRepository] sincronização de ${pendentes.length} '
+          'pendente(s) falhou: $e');
       return 0;
     }
   }
@@ -106,7 +128,8 @@ class PontoRepository {
           .obterPontosNaoSincronizados(colaboradorId: colaboradorId)
           .timeout(const Duration(seconds: 3));
       return pendentes.length;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoRepository] falha ao contar pendentes locais: $e');
       return 0;
     }
   }
@@ -124,8 +147,10 @@ class PontoRepository {
           .obterHistoricoHoje(colaboradorId: colaboradorId)
           .timeout(const Duration(seconds: 3));
       return lista.where((r) => !r.ajusteManual).toList();
-    } catch (_) {
+    } catch (e) {
       // banco local indisponível: segue sem registros locais (usará o servidor)
+      debugPrint('[PontoRepository] falha ao ler histórico local '
+          '(colab=$colaboradorId): $e');
       return [];
     }
   }

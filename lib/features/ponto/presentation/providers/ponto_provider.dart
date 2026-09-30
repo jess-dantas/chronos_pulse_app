@@ -40,6 +40,11 @@ class PontoProvider extends ChangeNotifier {
   /// Motivo da última recusa explícita do servidor (null = sem rejeição).
   String? get ultimaFalhaServidor => _repository.ultimaFalhaServidor;
 
+  /// Motivo da última falha de escrita no banco local (null = ok). Quando
+  /// preenchido, a batida NÃO está na fila offline e a UI não pode dizer
+  /// "salva localmente".
+  String? get ultimaFalhaLocal => _repository.ultimaFalhaLocal;
+
   PontoProvider(this._repository, {TelemetryService? telemetria})
       : _telemetria = telemetria {
     carregarDados();
@@ -73,13 +78,15 @@ class PontoProvider extends ChangeNotifier {
     try {
       _historico =
           await _repository.obterHistoricoLocal(colaboradorId: _colaboradorId);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoProvider] histórico local falhou (colab=$_colaboradorId): $e');
       _historico = [];
     }
     try {
       _pendentesCount =
           await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoProvider] pendentes locais falharam (colab=$_colaboradorId): $e');
       _pendentesCount = 0;
     }
     if (!_isDisposed) notifyListeners();
@@ -261,7 +268,8 @@ class PontoProvider extends ChangeNotifier {
         _isOnline = true;
       }
       return qtdSincronizada;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[PontoProvider] sincronizar() falhou (colab=$_colaboradorId): $e');
       return 0;
     } finally {
       _isSincronizando = false;

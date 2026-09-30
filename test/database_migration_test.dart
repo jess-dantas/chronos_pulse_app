@@ -117,4 +117,74 @@ void main() {
       ]),
     );
   });
+
+  test('coluna duplicada em upgrade não derruba a abertura do banco',
+      () async {
+    // BD "defasado": gravado como versão 2 mas já com colunas v3/v4
+    // (builds intermediários). Sem guarda, o ALTER com "duplicate column
+    // name" lançava, o openDatabase inteiro falhava e TODO o acesso local
+    // passava a falhar em silêncio (histórico vazio + fila sem pendentes).
+    await databaseFactory.deleteDatabase(dbPath);
+    final legacy = await databaseFactory.openDatabase(
+      dbPath,
+      options: OpenDatabaseOptions(
+        version: 2,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE pontos (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              idLocal TEXT,
+              colaboradorId TEXT NOT NULL,
+              dataHoraDispositivo TEXT NOT NULL,
+              dataHoraServidor TEXT,
+              tipoRegistro TEXT NOT NULL,
+              latitude REAL NOT NULL,
+              longitude REAL NOT NULL,
+              precisaoGps REAL NOT NULL,
+              fotoUrl TEXT,
+              hashLocal TEXT,
+              sincronizadoOffline INTEGER NOT NULL,
+              ajusteManual INTEGER DEFAULT 0,
+              justificativa TEXT,
+              observacao TEXT,
+              nsr INTEGER,
+              nsrLogico INTEGER,
+              ajusteStatus TEXT,
+              ajusteMotivoRejeicao TEXT,
+              aprovadoPor TEXT,
+              aprovadoEm TEXT
+            )
+          ''');
+        },
+      ),
+    );
+    await legacy.close();
+    DatabaseHelper.resetCache();
+
+    // Não pode lançar (duplicate column) — e o banco precisa continuar usável.
+    final ds = PontoLocalDataSource();
+    await ds.salvarPontoLocal(registroCompleto());
+    final lidos = await ds.obterPontosNaoSincronizados();
+    expect(lidos, hasLength(1));
+    expect(lidos.single.ajusteStatus, 'PENDENTE');
+  });
+
+  test('BD órfão (v4) sem a tabela pontos é reparado na abertura', () async {
+    await databaseFactory.deleteDatabase(dbPath);
+    final orphan = await databaseFactory.openDatabase(
+      dbPath,
+      options: OpenDatabaseOptions(
+        version: 4,
+        onCreate: (db, version) async {}, // nada criado: arquivo parcial
+      ),
+    );
+    await orphan.close();
+    DatabaseHelper.resetCache();
+
+    // version == version não dispara onCreate/onUpgrade: só onOpen repara.
+    final ds = PontoLocalDataSource();
+    await ds.salvarPontoLocal(registroCompleto());
+    final lidos = await ds.obterPontosNaoSincronizados();
+    expect(lidos, hasLength(1));
+  });
 }

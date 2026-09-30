@@ -36,7 +36,8 @@ class HomePontoScreen extends StatefulWidget {
   State<HomePontoScreen> createState() => _HomePontoScreenState();
 }
 
-class _HomePontoScreenState extends State<HomePontoScreen> {
+class _HomePontoScreenState extends State<HomePontoScreen>
+    with WidgetsBindingObserver {
   final HardwareService _hardwareService = HardwareService();
   late Timer _timer;
 
@@ -53,6 +54,7 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() => _horarioAtual = DateTime.now());
     });
@@ -60,8 +62,18 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer.cancel();
     super.dispose();
+  }
+
+  /// Offline-first: ao voltar para o app (ex.: saiu do modo avião), não espera
+  /// o heartbeat de 30s para equalizar a fila local com o servidor.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<PontoProvider>().checarConexao(autoSync: true);
+    }
   }
 
   String _obterLabelBotao(String tipo, int totalRegistros) {
@@ -231,21 +243,30 @@ class _HomePontoScreenState extends State<HomePontoScreen> {
     // 5. Salva offline e tenta sincronizar online via PontoProvider
     final foiSincronizado = await pontoProvider.registrarPonto(novoRegistro);
     final falhaServidor = pontoProvider.ultimaFalhaServidor;
+    final falhaLocal = pontoProvider.ultimaFalhaLocal;
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            foiSincronizado
-                ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
-                : (falhaServidor != null
-                    ? '${_nomesTipos[proximoTipo]} salva localmente. O servidor recusou a sincronização: $falhaServidor'
-                    : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.'),
-          ),
-          backgroundColor: foiSincronizado
+      // Precedência: falha local é a mais grave — sem linha local não existe
+      // fila offline nem histórico (sequência do botão volta ao início).
+      final texto = falhaLocal != null
+          ? (foiSincronizado
+              ? 'Registrada no servidor, mas o histórico local ficou '
+                  'incompleto: $falhaLocal'
+              : 'Não foi possível salvar no dispositivo: $falhaLocal')
+          : (foiSincronizado
+              ? '${_nomesTipos[proximoTipo]} registrada e sincronizada com sucesso!'
+              : (falhaServidor != null
+                  ? '${_nomesTipos[proximoTipo]} salva localmente. O servidor recusou a sincronização: $falhaServidor'
+                  : '${_nomesTipos[proximoTipo]} salva localmente! Sincronização pendente com o servidor.'));
+      final cor = (falhaLocal != null && !foiSincronizado)
+          ? Colors.red
+          : foiSincronizado
               ? Colors.green
-              : (falhaServidor != null ? Colors.red : Colors.orange),
-        ),
+              : (falhaServidor != null || falhaLocal != null
+                  ? Colors.red
+                  : Colors.orange);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(texto), backgroundColor: cor),
       );
     }
   }
