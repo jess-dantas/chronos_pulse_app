@@ -1,6 +1,17 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
+/// Normaliza a razão do preview da câmera.
+///
+/// Sensores são paisagem (ex.: 16/9 = 1,777), mas a tela de captura é
+/// retrato — sem inverter, o `AspectRatio` estica a imagem verticalmente
+/// (captura facial deformada, ex.: Galaxy A32). Razões já retrato passam
+/// direto; valores inválidos caem no 3:4 clássico de selfie.
+double normalizarRazaoPreview(double razao) {
+  if (razao <= 0 || razao.isNaN || razao.isInfinite) return 3 / 4;
+  return razao > 1 ? 1 / razao : razao;
+}
+
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key, this.caminhoSemFoto});
 
@@ -97,7 +108,13 @@ class _CameraScreenState extends State<CameraScreen> {
             _controller != null) {
           return Stack(
             children: [
-              Positioned.fill(child: CameraPreview(_controller!)),
+              Center(
+                child: AspectRatio(
+                  aspectRatio:
+                      normalizarRazaoPreview(_controller!.value.aspectRatio),
+                  child: CameraPreview(_controller!),
+                ),
+              ),
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(

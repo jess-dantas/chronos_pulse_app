@@ -41,6 +41,12 @@ class AuthProvider extends ChangeNotifier {
   String? _motivoEncerramento;
   int _ultimaAtividade = 0;
 
+  /// Gate biométrico de abertura (login por biometria): sessão RESTORIDA ao
+  /// abrir o app exige confirmação biométrica antes de liberar o conteúdo;
+  /// login explícito por senha já nasce desbloqueado. Só vive em memória —
+  /// cada nova abertura do app cobra a biometria de novo.
+  bool _sessaoDesbloqueada = true;
+
   AuthProvider(this._authRepository,
       {TelemetryService? telemetria,
       PontoLocalDataSource? pontoLocalDataSource})
@@ -51,6 +57,15 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _usuario != null && _usuario!.token.isNotEmpty;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get sessaoDesbloqueada => _sessaoDesbloqueada;
+
+  /// Confirmação biométrica bem-sucedida (ou liberação do gate): libera o
+  /// conteúdo da sessão e reavalia o roteador.
+  void confirmarBiometria() {
+    if (_sessaoDesbloqueada) return;
+    _sessaoDesbloqueada = true;
+    notifyListeners();
+  }
 
   /// Registra atividade do usuário e rearma o timer de inatividade.
   void registrarAtividade() {
@@ -109,6 +124,9 @@ class AuthProvider extends ChangeNotifier {
         token.isNotEmpty &&
         refreshToken != null &&
         refreshToken.isNotEmpty) {
+      // Sessão restaurada ao abrir o app: exige biometria antes de liberar
+      // o conteúdo (login por biometria — só em memória, nesta abertura).
+      _sessaoDesbloqueada = false;
       final nome = await _lerPerfil(_keyNome) ?? '';
       final email = await _lerPerfil(_keyEmail) ?? '';
       final cpf = await _lerPerfil(_keyCpf);
@@ -211,6 +229,8 @@ class AuthProvider extends ChangeNotifier {
       }
       await _saveSession(_usuario!);
       await _marcarInicioSessao();
+      // Autenticação explícita por senha: não cobra biometria de novo.
+      _sessaoDesbloqueada = true;
       _isLoading = false;
       notifyListeners();
       registrarAtividade();
@@ -268,6 +288,8 @@ class AuthProvider extends ChangeNotifier {
       }
       await _saveSession(_usuario!);
       await _marcarInicioSessao();
+      // Cadastro concluído = autenticação explícita: não cobra biometria.
+      _sessaoDesbloqueada = true;
       _isLoading = false;
       notifyListeners();
       registrarAtividade();
