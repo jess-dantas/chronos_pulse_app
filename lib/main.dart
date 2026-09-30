@@ -79,6 +79,13 @@ import 'features/titularidade/presentation/providers/titularidade_provider.dart'
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // App desenhado apenas em vertical (home de ponto, forms, dock, kiosk):
+  // travar a rotação evita layouts não projetados em landscape. Web mantém
+  // a orientação do navegador (setPreferredOrientations é no-op lá).
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.portraitUp]);
+  }
   configureUrlStrategy();
   await initializeDateFormatting('pt_BR', null);
 
