@@ -55,6 +55,15 @@ class _HomePontoScreenState extends State<HomePontoScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Recarrega pós-construção: a leitura disparada no construtor do provider
+    // roda enquanto o SQLite ainda está abrindo (ou com id nulo); offline, sem
+    // este retry a home ficaria com o histórico vazio e o botão voltando para
+    // "Bater Entrada" mesmo com batidas do dia.
+    Future.microtask(() {
+      if (mounted) {
+        context.read<PontoProvider>().carregarDados();
+      }
+    });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() => _horarioAtual = DateTime.now());
     });

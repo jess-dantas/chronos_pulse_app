@@ -61,7 +61,7 @@ class PontoRepository {
             // marcação local falhou: irrelevante para o resultado online
           }
         }
-        return true; // Sincronizado online com sucesso
+      return true; // Sincronizado online com sucesso
       }
       return false; // Salvo offline
     } on RejeicaoServidorException catch (e) {
@@ -160,12 +160,16 @@ class PontoRepository {
   /// Quando o banco local está indisponível (ex.: SQLite Web), o histórico
   /// segue refletindo as batidas já registradas no servidor — o botão avança
   /// para a próxima batida sequencial e a lista de "Batidas de Hoje" aparece.
+  ///
+  /// Com o servidor respondendo, o dia local é RECONCILIADO com o espelho
+  /// (servidor vence): a sequência local passa a igual a do servidor e linhas
+  /// removidas no servidor (limpeza de teste) somem também do aparelho.
   Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
     final agora = DateTime.now();
     final inicioDia = DateTime(agora.year, agora.month, agora.day);
     final fimDia = DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
 
-    final locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
+    var locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
 
     List<RegistroPontoModel> remotos = [];
     try {
@@ -185,6 +189,19 @@ class PontoRepository {
           })
           .map((r) => r.copyWith(sincronizadoOffline: true))
           .toList();
+
+      try {
+        await localDataSource.reconciliarDia(
+          colaboradorId: colaboradorId,
+          inicioDia: inicioDia,
+          fimDia: fimDia,
+          remotos: remotos,
+        );
+        // Relê o dia já reconciliado para a mesclagem refletir o estado real.
+        locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
+      } catch (e) {
+        debugPrint('[PontoRepository] reconciliação do dia falhou: $e');
+      }
     } catch (e) {
       // offline: segue somente com o histórico local
       debugPrint('[PontoRepository] falha ao buscar histórico remoto: $e');
@@ -198,8 +215,7 @@ class PontoRepository {
       ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
-  Future<List<RegistroPontoModel>> obterEspelhoPonto({
-    String? colaboradorId,
+  Future<List<RegistroPontoModel>> obterEspelhoPonto({    String? colaboradorId,
     int? mes,
     int? ano,
   }) async {
@@ -252,10 +268,18 @@ class PontoRepository {
     }
   }
 
+  /// Chave de identidade da batida para a mesclagem local×servidor.
+  ///
+  /// Por instante exato: a MESMA batida tem o mesmo dataHoraDispositivo dos
+  /// dois lados (o servidor devolve o valor recebido), enquanto o tipo pode
+  /// divergir — o servidor re-deriva a sequência e o cliente não. A chave por
+  /// tipo|minuto fazia a mesma batida sobreviver DUAS vezes na lista
+  /// ("Saída" do servidor + "Entrada" do local no mesmo instante).
+  /// Batidas distintas no mesmo minuto têm instantes diferentes, então não
+  /// colapsam.
   String _chaveRegistro(RegistroPontoModel r) {
-    final local = r.dataHoraDispositivo.toLocal();
-    final minuto = DateTime(local.year, local.month, local.day, local.hour, local.minute);
-    return '${r.tipoRegistro}|${minuto.toIso8601String()}';
+    return '${r.colaboradorId ?? ''}|'
+        '${r.dataHoraDispositivo.millisecondsSinceEpoch}';
   }
 
   /// Consulta o relatório do espelho de ponto (art. 84 da Portaria MTP 671/2021)

@@ -63,6 +63,49 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
       );
     }
   }
+
+  /// Espelha a implementação real (SQLite/Web): upsert por instante com o
+  /// servidor vencendo, remove órfãos sincronizados e preserva pendentes.
+  @override
+  Future<void> reconciliarDia({
+    required String? colaboradorId,
+    required DateTime inicioDia,
+    required DateTime fimDia,
+    required List<RegistroPontoModel> remotos,
+  }) async {
+    final porInstante = <int, RegistroPontoModel>{
+      for (final r in remotos) r.dataHoraDispositivo.millisecondsSinceEpoch: r,
+    };
+    final mantidos = <RegistroPontoModel>[];
+    final gravados = <int>{};
+
+    for (final local in _banco) {
+      final noColaborador =
+          colaboradorId == null || local.colaboradorId == colaboradorId;
+      final data = local.dataHoraDispositivo.toLocal();
+      final noDia = !data.isBefore(inicioDia) && !data.isAfter(fimDia);
+      if (!noColaborador || !noDia) {
+        mantidos.add(local);
+        continue;
+      }
+      final instante = local.dataHoraDispositivo.millisecondsSinceEpoch;
+      final remoto = porInstante[instante];
+      if (remoto != null) {
+        mantidos.add(remoto);
+        gravados.add(instante);
+      } else if (!(local.sincronizadoOffline && !local.ajusteManual)) {
+        mantidos.add(local);
+      }
+    }
+    for (final r in remotos) {
+      if (gravados.add(r.dataHoraDispositivo.millisecondsSinceEpoch)) {
+        mantidos.add(r);
+      }
+    }
+    _banco
+      ..clear()
+      ..addAll(mantidos);
+  }
 }
 
 /// Local que falha na 1ª escrita (simula SQLite indisponível/corrompido) e
@@ -78,6 +121,20 @@ class _LocalFalhaNaPrimeiraEscrita extends MockPontoLocalDataSource {
       throw Exception('disk I/O error');
     }
     await super.salvarPontoLocal(registro);
+  }
+}
+
+/// Local lenta (SQLite frio no primeiro acesso) — expõe a janela de corrida
+/// entre a leitura do construtor do provider e a recarga com o colaborador.
+class _LocalLenta extends MockPontoLocalDataSource {
+  int leituras = 0;
+
+  @override
+  Future<List<RegistroPontoModel>> obterHistoricoHoje(
+      {String? colaboradorId}) async {
+    leituras++;
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    return super.obterHistoricoHoje(colaboradorId: colaboradorId);
   }
 }
 
@@ -104,6 +161,9 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
       throw Exception('Servidor indisponível');
     }
     ultimosSincronizados = List.from(registros);
+    // Como no servidor real: aceite grava a batida e ela passa a constar
+    // no espelho consultado em seguida (alimenta a reconciliação local).
+    espelhoRemoto = [...espelhoRemoto, ...registros];
     return registros.map((r) => r.idLocal).toList();
   }
 
@@ -235,6 +295,16 @@ class LocalDataSourceIndisponivel extends PontoLocalDataSource {
     int? ano,
   }) async {
     return [];
+  }
+
+  @override
+  Future<void> reconciliarDia({
+    required String? colaboradorId,
+    required DateTime inicioDia,
+    required DateTime fimDia,
+    required List<RegistroPontoModel> remotos,
+  }) async {
+    throw StateError('banco local indisponível');
   }
 }
 
@@ -537,6 +607,177 @@ void main() {
       expect(historico.length, equals(1));
     });
 
+    test('Reconciliação: tipo do servidor vence e a mesma batida não duplica', () async {
+      final agora = DateTime.now().toUtc();
+
+      // O aparelho gravou ENTRADA offline; o servidor, com a sequência dele,
+      // armazenou SAÍDA para o MESMO instante (bug real de produção).
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'local-entrada',
+        dataHoraDispositivo: agora,
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: true,
+      ));
+      remoteDataSource.espelhoRemoto = [
+        RegistroPontoModel(
+          idLocal: 'srv-saida',
+          dataHoraDispositivo: agora,
+          tipoRegistro: 'SAIDA',
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h2',
+          sincronizadoOffline: true,
+          nsr: 7,
+          nsrLogico: 7,
+        ),
+      ];
+
+      final historico = await repository.obterHistorico();
+
+      expect(historico.length, equals(1),
+          reason: 'a mesma batida não pode aparecer duas vezes na lista');
+      expect(historico.first.tipoRegistro, equals('SAIDA'),
+          reason: 'o tipo atribuído pelo servidor vence');
+
+      // E o banco local passou a espelhar o servidor — leitura offline futura
+      // já sai com a sequência certa.
+      final localApos = await localDataSource.obterHistoricoHoje();
+      expect(localApos.length, equals(1));
+      expect(localApos.first.tipoRegistro, equals('SAIDA'));
+      expect(localApos.first.nsr, equals(7));
+    });
+
+    test('Reconciliação desenfileira pendente já aceito pelo servidor', () async {
+      final agora = DateTime.now().toUtc();
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'p-off',
+        dataHoraDispositivo: agora,
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: false,
+      ));
+      remoteDataSource.espelhoRemoto = [
+        RegistroPontoModel(
+          idLocal: 'srv-x',
+          dataHoraDispositivo: agora,
+          tipoRegistro: 'ENTRADA',
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h2',
+          sincronizadoOffline: true,
+        ),
+      ];
+
+      final historico = await repository.obterHistorico();
+
+      expect(historico.length, equals(1));
+      expect(await repository.obterQuantidadePendentes(), equals(0),
+          reason: 'batida aceita pelo servidor sai da fila de reenvio');
+    });
+
+    test('Reconciliação remove órfão sincronizado e preserva pendente', () async {
+      final hoje = DateTime.now();
+      final inicio = DateTime(hoje.year, hoje.month, hoje.day);
+
+      // Órfão: sincronizado localmente, mas não existe mais no servidor
+      // (ex.: histórico de teste limpo no deploy).
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'orfao',
+        dataHoraDispositivo: inicio.add(const Duration(hours: 8)).toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: true,
+      ));
+      // Pendente: nunca é tocado pela reconciliação.
+      await localDataSource.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'pendente',
+        dataHoraDispositivo: inicio.add(const Duration(hours: 9)).toUtc(),
+        tipoRegistro: 'INTERVALO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h2',
+        sincronizadoOffline: false,
+      ));
+      remoteDataSource.espelhoRemoto = []; // servidor limpo
+
+      final historico = await repository.obterHistorico();
+
+      expect(historico.map((r) => r.idLocal).toList(), equals(['pendente']));
+      final localApos = await localDataSource.obterHistoricoHoje();
+      expect(localApos.map((r) => r.idLocal).toList(), equals(['pendente']),
+          reason: 'o órfão sai também do banco local (offline já regra certo)');
+      expect(await repository.obterQuantidadePendentes(), equals(1));
+    });
+
+    test('carregarDados sobreposto enfileira e reexecuta com o colaborador vigente', () async {
+      final lento = _LocalLenta();
+      await lento.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'a1',
+        colaboradorId: 'colab-A',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: false,
+      ));
+      await lento.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'b1',
+        colaboradorId: 'colab-B',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h2',
+        sincronizadoOffline: false,
+      ));
+      final remotoOffline = MockPontoRemoteDataSource()..online = false;
+      final repo = PontoRepository(
+        localDataSource: lento,
+        remoteDataSource: remotoOffline,
+      );
+      final p = PontoProvider(repo); // leitura 1 dispara no construtor
+      addTearDown(p.dispose);
+
+      p.carregarDados(); // ainda rodando a do construtor → enfileira
+      p.definirColaborador('colab-A'); // enfileira de novo (coalesce)
+      expect(p.colaboradorId, equals('colab-A'));
+
+      for (var i = 0; i < 50 && lento.leituras < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+
+      expect(lento.leituras, equals(2),
+          reason: 'construtor + UMA reexecução coalescida (fila), não corrida');
+      expect(p.historico.length, equals(1),
+          reason: 'resultado antigo (id nulo, 2 batidas) não pode vencer');
+      expect(p.historico.first.colaboradorId, equals('colab-A'));
+    });
+
     test('Modo offline preserva a sequência de batidas (não volta à primeira batida)', () async {
       final agora = DateTime.now();
       await localDataSource.salvarPontoLocal(RegistroPontoModel(
@@ -548,7 +789,7 @@ void main() {
         precisaoGps: 5,
         fotoUrl: '',
         hashLocal: 'h1',
-        sincronizadoOffline: true,
+        sincronizadoOffline: false,
       ));
       await localDataSource.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'r2',
@@ -559,7 +800,7 @@ void main() {
         precisaoGps: 5,
         fotoUrl: '',
         hashLocal: 'h2',
-        sincronizadoOffline: true,
+        sincronizadoOffline: false,
       ));
       await localDataSource.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'r3',
@@ -570,7 +811,7 @@ void main() {
         precisaoGps: 5,
         fotoUrl: '',
         hashLocal: 'h3',
-        sincronizadoOffline: true,
+        sincronizadoOffline: false,
       ));
 
       remoteDataSource.online = false;
@@ -979,6 +1220,81 @@ void main() {
       final lista = await store.obterHistoricoHoje();
       expect(lista.map((r) => r.tipoRegistro).toList(),
           equals(['ENTRADA', 'INTERVALO', 'RETORNO']));
+    });
+
+    test('reconciliarDia: servidor vence, órfão sai e pendente fica', () async {
+      final store = PontoLocalDataSourceWeb();
+      final base = DateTime.now();
+
+      // Local pendente que já está no servidor com OUTRO tipo.
+      await store.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'w-m',
+        dataHoraDispositivo: base.toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: false,
+      ));
+      // Órfão sincronizado (servidor limpo no deploy).
+      await store.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'w-o',
+        dataHoraDispositivo: base.add(const Duration(hours: 1)).toUtc(),
+        tipoRegistro: 'INTERVALO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h2',
+        sincronizadoOffline: true,
+      ));
+      // Pendente sem contraparte no servidor: preservado.
+      await store.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'w-p',
+        dataHoraDispositivo: base.add(const Duration(hours: 2)).toUtc(),
+        tipoRegistro: 'RETORNO',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h3',
+        sincronizadoOffline: false,
+      ));
+
+      await store.reconciliarDia(
+        colaboradorId: null,
+        inicioDia: DateTime(base.year, base.month, base.day),
+        fimDia: DateTime(base.year, base.month, base.day, 23, 59, 59, 999),
+        remotos: [
+          RegistroPontoModel(
+            idLocal: 'srv-w-m',
+            dataHoraDispositivo: base.toUtc(),
+            tipoRegistro: 'SAIDA',
+            latitude: 0,
+            longitude: 0,
+            precisaoGps: 5,
+            fotoUrl: '',
+            hashLocal: 'h4',
+            sincronizadoOffline: true,
+            nsr: 11,
+          ),
+        ],
+      );
+
+      final depois = await store.obterHistoricoHoje();
+      final porId = {for (final r in depois) r.idLocal: r};
+      expect(porId.keys, containsAll(['srv-w-m', 'w-p']));
+      expect(porId.keys, isNot(contains('w-m')),
+          reason: 'local no mesmo instante é substituído pelo do servidor');
+      expect(porId.keys, isNot(contains('w-o')),
+          reason: 'órfão sincronizado ausente do servidor é removido');
+      expect(porId['srv-w-m']!.tipoRegistro, equals('SAIDA'),
+          reason: 'o registro do servidor substitui o local no mesmo instante');
+      expect(porId['srv-w-m']!.sincronizadoOffline, isTrue);
+      expect(await store.obterPontosNaoSincronizados(), hasLength(1),
+          reason: 'pendente sem contraparte segue na fila');
     });
   });
 }

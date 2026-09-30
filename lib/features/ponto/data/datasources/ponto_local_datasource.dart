@@ -89,6 +89,68 @@ class PontoLocalDataSource {
     );
   }
 
+  /// Reconcilia o dia local com o espelho do servidor (offline-first).
+  ///
+  /// Upsert por instante exato: o registro do servidor vence (tipo/nsr/hash
+  /// do servidor passam a valer localmente — resolve a divergência de tipo
+  /// que fazia a mesma batida aparecer duas vezes na mesclagem). Locais já
+  /// sincronizados do dia ausentes no servidor são removidos (o servidor é a
+  /// fonte da verdade para dado sincronizado); pendentes nunca são tocados.
+  /// O chamador só deve invocar quando o espelho do dia foi obtido com
+  /// sucesso — falha aqui não apaga nada.
+  Future<void> reconciliarDia({
+    required String? colaboradorId,
+    required DateTime inicioDia,
+    required DateTime fimDia,
+    required List<RegistroPontoModel> remotos,
+  }) async {
+    final db = await DatabaseHelper.instance.database;
+    await db.transaction((txn) async {
+      final whereClause = colaboradorId != null ? 'colaboradorId = ?' : null;
+      final whereArgs = colaboradorId != null
+          ? <dynamic>[colaboradorId]
+          : <dynamic>[];
+      final result = await txn.query(
+        'pontos',
+        where: whereClause,
+        whereArgs: whereArgs,
+      );
+
+      final remotosPorInstante = <int, RegistroPontoModel>{
+        for (final r in remotos) r.dataHoraDispositivo.millisecondsSinceEpoch: r,
+      };
+      final instantesGravados = <int>{};
+
+      for (final linha in result) {
+        final local = RegistroPontoModel.fromJson(linha);
+        final data = local.dataHoraDispositivo.toLocal();
+        if (data.isBefore(inicioDia) || data.isAfter(fimDia)) continue;
+
+        final instante = local.dataHoraDispositivo.millisecondsSinceEpoch;
+        if (remotosPorInstante.containsKey(instante)) {
+          // Mesma batida no servidor: servidor vence — e desenfileira
+          // pendentes já aceitos lá (evita reenvio duplicado).
+          await txn.delete('pontos', where: 'id = ?', whereArgs: [linha['id']]);
+          if (instantesGravados.add(instante)) {
+            await txn.insert('pontos', remotosPorInstante[instante]!.toJson());
+          }
+        } else if (local.sincronizadoOffline && !local.ajusteManual) {
+          // Órfão: sincronizado localmente mas não existe mais no servidor
+          // do dia (ex.: histórico de teste limpo no deploy).
+          await txn.delete('pontos', where: 'id = ?', whereArgs: [linha['id']]);
+        }
+      }
+
+      // Registros do servidor ainda não copiados localmente entram agora.
+      for (final r in remotos) {
+        final instante = r.dataHoraDispositivo.millisecondsSinceEpoch;
+        if (instantesGravados.add(instante)) {
+          await txn.insert('pontos', r.toJson());
+        }
+      }
+    });
+  }
+
   /// Limpa todos os registros locais de ponto (fila offline).
   Future<void> limparPontosLocais() async {
     final db = await DatabaseHelper.instance.database;
@@ -143,6 +205,52 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
       lista[idx] = lista[idx].copyWith(sincronizadoOffline: true);
       await _persistir(lista);
     }
+  }
+
+  @override
+  Future<void> reconciliarDia({
+    required String? colaboradorId,
+    required DateTime inicioDia,
+    required DateTime fimDia,
+    required List<RegistroPontoModel> remotos,
+  }) async {
+    final todos = await _lerTodos();
+    final remotosPorInstante = <int, RegistroPontoModel>{
+      for (final r in remotos) r.dataHoraDispositivo.millisecondsSinceEpoch: r,
+    };
+    final mantidos = <RegistroPontoModel>[];
+    final instantesGravados = <int>{};
+
+    for (final local in todos) {
+      final noColaborador =
+          colaboradorId == null || local.colaboradorId == colaboradorId;
+      final data = local.dataHoraDispositivo.toLocal();
+      final noDia = !data.isBefore(inicioDia) && !data.isAfter(fimDia);
+      if (!noColaborador || !noDia) {
+        mantidos.add(local);
+        continue;
+      }
+
+      final instante = local.dataHoraDispositivo.millisecondsSinceEpoch;
+      final remoto = remotosPorInstante[instante];
+      if (remoto != null) {
+        mantidos.add(remoto);
+        instantesGravados.add(instante);
+      } else if (!(local.sincronizadoOffline && !local.ajusteManual)) {
+        // Pendente (ou ajuste local): preservado.
+        mantidos.add(local);
+      }
+      // Órfão sincronizado ausente do servidor do dia: removido.
+    }
+
+    for (final r in remotos) {
+      final instante = r.dataHoraDispositivo.millisecondsSinceEpoch;
+      if (instantesGravados.add(instante)) {
+        mantidos.add(r);
+      }
+    }
+
+    await _persistir(mantidos);
   }
 
   @override

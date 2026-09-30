@@ -71,7 +71,39 @@ class PontoProvider extends ChangeNotifier {
     _heartbeatTimer = Timer.periodic(interval, (_) => checarConexao(autoSync: true));
   }
 
-  Future<void> carregarDados() async {
+  /// Evita leituras concorrentes do construtor×initState×definirColaborador:
+  /// chamadas durante uma execução ficam na fila (coalescidas) e o futuro
+  /// retornado só completa quando a fila drena — quem espera `await` sempre
+  /// recebe o estado final com o colaborador mais recente, nunca o de um
+  /// carregamento antigo (ex.: id nulo) sobrepondo o correto.
+  bool _carregando = false;
+  bool _recarregarAguardando = false;
+  Future<void>? _filaAtual;
+
+  Future<void> carregarDados() {
+    if (_carregando) {
+      _recarregarAguardando = true;
+      return _filaAtual!;
+    }
+    _carregando = true;
+    final fila = _drenarFila();
+    _filaAtual = fila;
+    return fila;
+  }
+
+  Future<void> _drenarFila() async {
+    try {
+      do {
+        _recarregarAguardando = false;
+        await _carregarDadosInterna();
+      } while (_recarregarAguardando && !_isDisposed);
+    } finally {
+      _carregando = false;
+      _filaAtual = null;
+    }
+  }
+
+  Future<void> _carregarDadosInterna() async {
     // 1) Leitura LOCAL primeiro (instantânea/limitada): o botão sequencial e a
     // lista de "Batidas de Hoje" reagem imediatamente — mesmo com o servidor
     // offline, a sequência NUNCA volta para a primeira batida.
