@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_modo.dart';
+import 'core/errors/mensagens_erro.dart';
 import 'core/network/dio_client.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
@@ -204,6 +205,10 @@ void main() async {
       }
       authProvider.restaurarSessaoAposRefresh(novo);
       return true;
+    } on FalhaDeRedeException {
+      // Rede fora durante o refresh: NÃO encerra a sessão (identidade
+      // local preservada); tenta renovar de novo na próxima chamada 401.
+      return false;
     } catch (_) {
       await authProvider.logout();
       return false;

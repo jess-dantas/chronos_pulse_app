@@ -1,5 +1,26 @@
 import 'package:dio/dio.dart';
 
+/// Falha de rede/timeout: o servidor não chegou a responder. NÃO é rejeição
+/// de credenciais — quem trata (refresh de sessão, sync offline) deve manter
+/// a identidade local e tentar novamente quando a conexão voltar.
+class FalhaDeRedeException implements Exception {
+  final String mensagem;
+  const FalhaDeRedeException(this.mensagem);
+
+  @override
+  String toString() => mensagem;
+}
+
+/// `true` quando o erro do Dio é de transporte (sem resposta HTTP), ou seja,
+/// conexão/recorte de rede — e não uma resposta do servidor.
+bool ehFalhaDeRede(DioException e) =>
+    e.response == null ||
+    e.type == DioExceptionType.connectionError ||
+    e.type == DioExceptionType.connectionTimeout ||
+    e.type == DioExceptionType.sendTimeout ||
+    e.type == DioExceptionType.receiveTimeout;
+
+
 /// Mensagem de erro amigável (pt-BR), sem vazar detalhes técnicos ao usuário.
 ///
 /// Prioriza a mensagem do servidor (`mensagem`/`message`) quando presente;
