@@ -59,6 +59,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   # Testes reais do esquema SQLite (migrações) no host, sem emulador.
   sqflite_common_ffi: ^2.3.4
+  # Platform de memória para os testes do gate biométrico (token restaurado).
+  flutter_secure_storage_platform_interface: ^2.0.3
 
 flutter:
   uses-material-design: true

@@ -26,19 +26,27 @@ class HomePontoScreen extends StatefulWidget {
   /// espelho de ponto fica oculto (exige sessão; o modo só registra).
   final VinculoDispositivo? modoDispositivo;
 
+  /// Injeção para testes; em produção usa o serviço real.
+  final HardwareService? hardwareService;
+
   const HomePontoScreen({
     super.key,
     this.abaInicial = 0,
     this.modoDispositivo,
+    this.hardwareService,
   });
 
   @override
   State<HomePontoScreen> createState() => _HomePontoScreenState();
 }
 
+/// Escolha do usuário no aviso de localização pré-batida.
+enum _EscolhaLocalizacao { ativar, semLocalizacao, cancelar }
+
 class _HomePontoScreenState extends State<HomePontoScreen>
     with WidgetsBindingObserver {
-  final HardwareService _hardwareService = HardwareService();
+  late final HardwareService _hardwareService =
+      widget.hardwareService ?? HardwareService();
   late Timer _timer;
 
   DateTime _horarioAtual = DateTime.now();
@@ -55,6 +63,15 @@ class _HomePontoScreenState extends State<HomePontoScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Recarrega pós-construção: a leitura disparada no construtor do provider
+    // roda enquanto o SQLite ainda está abrindo (ou com id nulo); offline, sem
+    // este retry a home ficaria com o histórico vazio e o botão voltando para
+    // "Bater Entrada" mesmo com batidas do dia.
+    Future.microtask(() {
+      if (mounted) {
+        context.read<PontoProvider>().carregarDados();
+      }
+    });
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() => _horarioAtual = DateTime.now());
     });
@@ -126,6 +143,10 @@ class _HomePontoScreenState extends State<HomePontoScreen>
   }
 
   Future<void> _baterPonto(PontoProvider pontoProvider) async {
+    // Aviso/ativação de localização ANTES da batida. Fica de propósito fora
+    // do timeout de 30s abaixo: o diálogo aguarda a decisão do usuário.
+    if (!await _garantirLocalizacao()) return;
+
     setState(() => _isLoading = true);
 
     try {
@@ -150,6 +171,60 @@ class _HomePontoScreenState extends State<HomePontoScreen>
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Oferece ativar a localização (ou registrar sem) ANTES da batida.
+  /// false = usuário cancelou o registro; qualquer erro de leitura libera
+  /// (fail-open) para nunca travar o ponto.
+  Future<bool> _garantirLocalizacao() async {
+    while (true) {
+      final status = await _hardwareService.statusLocalizacao();
+      if (status == LocalizacaoStatus.pronta) return true;
+      if (!mounted) return false;
+
+      final servicoDesligado = status == LocalizacaoStatus.servicoDesligado;
+      final escolha = await showDialog<_EscolhaLocalizacao>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: Text(
+              servicoDesligado ? 'Localização desativada' : 'Permissão de localização negada'),
+          content: Text(
+            servicoDesligado
+                ? 'O GPS do aparelho está desligado e o ponto seria '
+                    'registrado sem a sua localização real. Ative a '
+                    'localização para registrar com precisão.'
+                : 'O app está sem permissão para ler sua localização e o '
+                    'ponto seria registrado sem a sua posição real. Conceda '
+                    'a permissão para registrar com precisão.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_EscolhaLocalizacao.cancelar),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context)
+                  .pop(_EscolhaLocalizacao.semLocalizacao),
+              child: const Text('Registrar sem localização'),
+            ),
+            FilledButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pop(_EscolhaLocalizacao.ativar),
+              icon: const Icon(Icons.gps_fixed),
+              label: const Text('Ativar agora'),
+            ),
+          ],
+        ),
+      );
+
+      if (escolha == _EscolhaLocalizacao.ativar) {
+        await _hardwareService.abrirConfigLocalizacao(status);
+        continue; // reavalia o status ao voltar das configurações
+      }
+      return escolha == _EscolhaLocalizacao.semLocalizacao;
     }
   }
 

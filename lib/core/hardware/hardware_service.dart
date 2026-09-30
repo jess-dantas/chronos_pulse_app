@@ -2,6 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:local_auth/local_auth.dart';
 
+/// Estado da localização antes da batida — alimenta o aviso pré-registro.
+/// [pronta] inclui "não sei": qualquer erro de leitura libera a batida
+/// (fail-open) para nunca travar o registro.
+enum LocalizacaoStatus { pronta, servicoDesligado, permissaoNegada, permissaoBloqueada }
+
 class HardwareService {
   final LocalAuthentication _auth = LocalAuthentication();
 
@@ -35,6 +40,46 @@ class HardwareService {
         timeLimit: Duration(seconds: 10),
       ),
     );
+  }
+
+  /// Status usado pelo aviso de localização ANTES da batida.
+  /// Fail-open: leitura indisponível (web, plugin ausente) = [pronta].
+  Future<LocalizacaoStatus> statusLocalizacao() async {
+    if (kIsWeb) return LocalizacaoStatus.pronta;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return LocalizacaoStatus.servicoDesligado;
+      }
+      final permissao = await Geolocator.checkPermission();
+      if (permissao == LocationPermission.denied) {
+        return LocalizacaoStatus.permissaoNegada;
+      }
+      if (permissao == LocationPermission.deniedForever) {
+        return LocalizacaoStatus.permissaoBloqueada;
+      }
+      return LocalizacaoStatus.pronta;
+    } catch (_) {
+      return LocalizacaoStatus.pronta;
+    }
+  }
+
+  /// Leva o usuário à tela corrigir o [status] (para o aviso pré-batida):
+  /// serviço desligado → configurações de localização; permissão negada →
+  /// prompt do sistema; permissão bloqueada → configurações do app.
+  Future<void> abrirConfigLocalizacao(LocalizacaoStatus status) async {
+    try {
+      switch (status) {
+        case LocalizacaoStatus.servicoDesligado:
+          await Geolocator.openLocationSettings();
+        case LocalizacaoStatus.permissaoNegada:
+          await Geolocator.requestPermission();
+        case LocalizacaoStatus.permissaoBloqueada:
+        case LocalizacaoStatus.pronta:
+          await Geolocator.openAppSettings();
+      }
+    } catch (e) {
+      debugPrint('Aviso ao abrir configurações de localização: $e');
+    }
   }
 
   /// true quando o aparelho suporta biometria E já tem cadastro

@@ -18,6 +18,7 @@ import '../../features/ponto/presentation/screens/aprovacao_ajustes_screen.dart'
 import '../../features/ponto/presentation/screens/modo_ponto_screen.dart';
 import '../../features/auth/data/models/usuario_model.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/presentation/screens/biometric_gate_screen.dart';
 import '../../features/auth/presentation/screens/cadastrar_empresa_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/recuperar_senha_screen.dart';
@@ -45,6 +46,10 @@ class AppRouter {
   AppRouter._();
 
   static const String rotaInicial = '/';
+
+  /// Gate biométrico de abertura (login por biometria): toda sessão
+  /// RESTORIDA ao abrir o app passa por aqui antes de liberar o conteúdo.
+  static const String rotaBiometrico = '/biometria';
 
   /// Rota inicial (`/`) em qualquer modo — o que `/` *renderiza* é que muda:
   /// - [AppModo.cliente] (app mobile): home de ponto (botão "Bater ponto" +
@@ -174,6 +179,12 @@ class AppRouter {
           path: '/perfil/titularidade',
           builder: (context, state) => const TransferirTitularidadeScreen(),
         ),
+        // Gate biométrico de abertura (login por biometria) — sessão
+        // restaurada exige a biometria do aparelho antes do conteúdo.
+        GoRoute(
+          path: rotaBiometrico,
+          builder: (context, state) => const BiometricGateScreen(),
+        ),
         // Admin auth routes (públicas, não requerem autenticação)
         GoRoute(
           path: '/admin/auth/login',
@@ -282,6 +293,24 @@ class AppRouter {
     // quando o usuário escolhe este caminho (o guard da tela decide).
     if (location == '/ponto/dispositivo') {
       return null;
+    }
+
+    // Gate biométrico de abertura (login por biometria): sessão RESTORIDA
+    // exige confirmar a biometria do aparelho antes de qualquer conteúdo.
+    // Login explícito por senha nasce desbloqueado (AuthProvider.login);
+    // sem biometria disponível o próprio gate se libera. A área admin do
+    // AdminPlataforma (separada) segue fora deste gate.
+    final ehAreaAdmin = location == '/admin' || location.startsWith('/admin/');
+    if (!ehAreaAdmin && !adminAuth.isAuthenticated) {
+      final gateAtivo = auth.isAuthenticated && !auth.sessaoDesbloqueada;
+      if (location == rotaBiometrico) {
+        if (gateAtivo) return null;
+        if (auth.isAuthenticated && auth.usuario != null) {
+          return primeiraRotaPainel(auth.usuario!);
+        }
+        return rotaInicialPara(modo);
+      }
+      if (gateAtivo) return rotaBiometrico;
     }
 
     // Profile (inclui /perfil/titularidade): acessível a qualquer sessão

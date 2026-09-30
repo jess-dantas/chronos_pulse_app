@@ -16,6 +16,7 @@ import 'package:chronos_pulse_app/features/auth/presentation/providers/auth_prov
 import 'package:chronos_pulse_app/features/home/presentation/screens/home_screen.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_local_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_model.dart';
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/home_ponto_screen.dart';
@@ -83,6 +84,19 @@ UsuarioModel _usuario({
       modulos: modulos,
     );
 
+/// Conta leituras do histórico local — prova que montar a HomePontoScreen
+/// dispara o recarregamento do initState (retry da leitura inicial).
+class _ContaLeiturasLocais extends PontoLocalDataSource {
+  int leituras = 0;
+
+  @override
+  Future<List<RegistroPontoModel>> obterHistoricoHoje(
+      {String? colaboradorId}) async {
+    leituras++;
+    return super.obterHistoricoHoje(colaboradorId: colaboradorId);
+  }
+}
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('pt_BR');
@@ -91,6 +105,7 @@ void main() {
   late _FakeAuth auth;
   late AdminAuthProvider adminAuth;
   late PontoProvider ponto;
+  late _ContaLeiturasLocais leiturasLocais;
 
   setUp(() {
     auth = _FakeAuth();
@@ -99,9 +114,10 @@ void main() {
       DioClient(),
     );
     final dio = DioClient();
+    leiturasLocais = _ContaLeiturasLocais();
     ponto = PontoProvider(
       PontoRepository(
-        localDataSource: PontoLocalDataSource(),
+        localDataSource: leiturasLocais,
         remoteDataSource: PontoRemoteDataSource(dio),
       ),
     );
@@ -165,5 +181,26 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(HomePontoScreen), findsOneWidget);
+  });
+
+  testWidgets(
+      'HomePontoScreen recarrega o histórico ao montar (retry da leitura '
+      'do construtor — offline não fica com histórico vazio)', (tester) async {
+    expect(leiturasLocais.leituras, greaterThanOrEqualTo(1),
+        reason: 'o construtor do provider já lê uma vez');
+
+    await pumpTela(tester);
+    final leiturasAposConstruir = leiturasLocais.leituras;
+
+    final atalho = find.text('Bater Ponto');
+    await tester.ensureVisible(atalho);
+    await tester.pumpAndSettle();
+    await tester.tap(atalho);
+    await tester.pump(); // microtask do initState roda aqui
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(HomePontoScreen), findsOneWidget);
+    expect(leiturasLocais.leituras, greaterThan(leiturasAposConstruir),
+        reason: 'montar a home dispara nova leitura (recupera falha offline)');
   });
 }
