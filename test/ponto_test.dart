@@ -65,6 +65,22 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
   }
 }
 
+/// Local que falha na 1ª escrita (simula SQLite indisponível/corrompido) e
+/// volta a funcionar — usado para provar que a UI distingue "não salvou" de
+/// "offline".
+class _LocalFalhaNaPrimeiraEscrita extends MockPontoLocalDataSource {
+  bool _falhou = false;
+
+  @override
+  Future<void> salvarPontoLocal(RegistroPontoModel registro) async {
+    if (!_falhou) {
+      _falhou = true;
+      throw Exception('disk I/O error');
+    }
+    await super.salvarPontoLocal(registro);
+  }
+}
+
 class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   bool online = true;
   bool rejeitar = false;
@@ -649,6 +665,45 @@ void main() {
       expect(salvo, isFalse);
       expect(repository.ultimaFalhaServidor, isNull,
           reason: 'Sem rede = pendente/offline, sem motivo de rejeição');
+      expect(repository.ultimaFalhaLocal, isNull,
+          reason: 'Escrita local OK: a batida está na fila');
+    });
+
+    test('Falha de escrita local preenche ultimaFalhaLocal e a nova batida limpa',
+        () async {
+      final repo = PontoRepository(
+        localDataSource: _LocalFalhaNaPrimeiraEscrita(),
+        remoteDataSource: MockPontoRemoteDataSource()..online = false,
+      );
+
+      RegistroPontoModel batida(String id) => RegistroPontoModel(
+            idLocal: id,
+            dataHoraDispositivo: DateTime.now().toUtc(),
+            tipoRegistro: 'ENTRADA',
+            latitude: 0,
+            longitude: 0,
+            precisaoGps: 5,
+            fotoUrl: '',
+            hashLocal: 'hash-$id',
+            sincronizadoOffline: false,
+          );
+
+      // 1ª batida: banco local falha → a UI NÃO pode dizer "salva localmente".
+      final primeira = await repo.registrarPonto(registro: batida('b1'));
+      expect(primeira, isFalse);
+      expect(repo.ultimaFalhaLocal, isNotNull);
+      expect(repo.ultimaFalhaLocal, contains('Falha ao gravar'));
+      expect(repo.ultimaFalhaServidor, isNull,
+          reason: 'a falha foi do dispositivo, não recusa do servidor');
+      expect(await repo.obterQuantidadePendentes(), 0,
+          reason: 'sem linha local não existe fila offline');
+
+      // 2ª batida: local volta ao normal → falha local é zerada e a fila
+      // passa a refletir a verdade (1 pendente).
+      final segunda = await repo.registrarPonto(registro: batida('b2'));
+      expect(segunda, isFalse); // continua offline (servidor fora)
+      expect(repo.ultimaFalhaLocal, isNull);
+      expect(await repo.obterQuantidadePendentes(), 1);
     });
 
     test('Ajuste manual gera idLocal UUID v4 (timestamp derrubava o lote no backend)',

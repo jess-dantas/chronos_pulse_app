@@ -126,9 +126,25 @@ class PontoRemoteDataSource {
       if (mes != null) queryParams['mes'] = mes;
       if (ano != null) queryParams['ano'] = ano;
 
+      // Modo dispositivo (sem sessão): o backend aceita o vínculo de 7 dias
+      // no espelho do próprio dono — é o que permite equalizar o histórico
+      // offline com o servidor sem login (escopo X-Device-Token).
+      String? deviceToken;
+      final temSessao =
+          _dioClient.token != null && _dioClient.token!.isNotEmpty;
+      if (!temSessao) {
+        final vinculo = await _deviceStore.lerAtivo();
+        if (vinculo != null) {
+          deviceToken = vinculo.token;
+        }
+      }
+
       final response = await _dioClient.dio.get(
         ApiConstants.pontosEspelhoEndpoint,
         queryParameters: queryParams,
+        options: deviceToken != null
+            ? Options(headers: {'X-Device-Token': deviceToken})
+            : null,
       );
 
       if (response.statusCode == 200 && response.data is List) {

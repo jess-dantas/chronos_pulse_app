@@ -188,6 +188,49 @@ void main() {
       final payload = adapter.ultima!.data as Map<String, dynamic>;
       expect(payload.containsKey('colaboradorId'), isFalse);
     });
+
+    test('buscarEspelho sem sessão envia o vínculo (equaliza histórico)', () async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+
+      final dioClient = DioClient();
+      final adapter = _CapturaAdapter();
+      dioClient.dio.httpClientAdapter = adapter;
+      final datasource = PontoRemoteDataSource(dioClient,
+          deviceStore: _storeComVinculo());
+
+      await datasource.buscarEspelho(colaboradorId: 'cpc-dono', mes: 9, ano: 2026);
+
+      // Sem Bearer o backend só aceita o espelho do dono via vínculo.
+      expect(adapter.ultima!.headers['X-Device-Token'], 'dt-abc');
+      expect(adapter.ultima!.headers.containsKey('Authorization'), isFalse);
+      expect(adapter.ultima!.path, contains('/pontos/espelho'));
+    });
+
+    test('buscarEspelho com sessão usa Bearer e ignora o vínculo', () async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+
+      final dioClient = DioClient();
+      dioClient.updateToken('jwt-da-sessao');
+      final adapter = _CapturaAdapter();
+      dioClient.dio.httpClientAdapter = adapter;
+      final datasource = PontoRemoteDataSource(dioClient,
+          deviceStore: _storeComVinculo());
+
+      await datasource.buscarEspelho(colaboradorId: 'cpc-dono', mes: 9, ano: 2026);
+
+      expect(adapter.ultima!.headers.containsKey('X-Device-Token'), isFalse);
+      expect(adapter.ultima!.headers['Authorization'], 'Bearer jwt-da-sessao');
+    });
   });
 
   group('ModoPontoScreen — guard da rota pública', () {
