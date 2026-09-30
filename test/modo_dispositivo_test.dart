@@ -4,15 +4,27 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
 import 'package:chronos_pulse_app/core/hardware/hardware_service.dart';
+import 'package:chronos_pulse_app/core/network/conexao_service.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/security/device_token_store.dart';
+import 'package:chronos_pulse_app/core/theme/theme_provider.dart';
+import 'package:chronos_pulse_app/features/auth/data/datasources/auth_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/auth/data/repositories/auth_repository.dart';
+import 'package:chronos_pulse_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:chronos_pulse_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:chronos_pulse_app/features/home_deslogada/presentation/screens/home_deslogada_screen.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_model.dart';
 import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
+import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
+import 'package:chronos_pulse_app/features/ponto/presentation/screens/home_ponto_screen.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_screen.dart';
 
-import 'ponto_test.dart' show MockPontoLocalDataSource;
+import 'ponto_test.dart' show MockPontoLocalDataSource, MockPontoRemoteDataSource;
 
 /// Adapter que captura a requisição e responde 200 de sincronização.
 class _CapturaAdapter implements HttpClientAdapter {
@@ -105,6 +117,10 @@ RegistroPontoModel _registro() => RegistroPontoModel(
 
 void main() {
   setUp(() => _memoria.clear());
+
+  setUpAll(() async {
+    await initializeDateFormatting('pt_BR');
+  });
 
   group('PontoRemoteDataSource — modo dispositivo (X-Device-Token)', () {
     test('sem sessão e com vínculo: envia header + dono no payload', () async {
@@ -255,6 +271,76 @@ void main() {
       expect(payload['colaboradorId'], 'cpc-dono');
       expect(payload['registros'], hasLength(1));
       expect(await repo.obterQuantidadePendentes(colaboradorId: 'cpc-dono'), 0);
+    });
+  });
+
+  group('HomePontoScreen (modo dispositivo) — saída pela seta ←', () {
+    late AuthProvider auth;
+    late PontoProvider ponto;
+
+    setUp(() {
+      auth = AuthProvider(AuthRepository(
+        remoteDataSource: AuthRemoteDataSource(DioClient()),
+        dioClient: DioClient(),
+      ));
+      ponto = PontoProvider(PontoRepository(
+        localDataSource: MockPontoLocalDataSource(),
+        remoteDataSource: MockPontoRemoteDataSource(),
+      ));
+    });
+
+    tearDown(() {
+      ponto.dispose();
+      auth.dispose();
+    });
+
+    testWidgets('volta para a home de ponto, não para o login',
+        (tester) async {
+      final router = GoRouter(
+        initialLocation: '/ponto/dispositivo',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => HomeDeslogadaScreen(
+              conexao: ConexaoService(ping: () async => true),
+            ),
+          ),
+          GoRoute(
+            path: '/ponto/dispositivo',
+            builder: (context, state) => HomePontoScreen(
+              modoDispositivo: VinculoDispositivo(
+                token: 'dt-abc',
+                cpcId: 'cpc-dono',
+                nome: 'Aparelho',
+                expiraEm:
+                    DateTime.now().toUtc().add(const Duration(days: 7)),
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: auth),
+            ChangeNotifierProvider(create: (_) => ThemeProvider()),
+            ChangeNotifierProvider<PontoProvider>.value(value: ponto),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(HomePontoScreen), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Sair do modo dispositivo'));
+      // HomePontoScreen tem relógio com timer de 1s: evita pumpAndSettle.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(HomeDeslogadaScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
     });
   });
 }
