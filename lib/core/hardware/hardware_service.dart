@@ -37,6 +37,18 @@ class HardwareService {
     );
   }
 
+  /// true quando o aparelho suporta biometria E já tem cadastro
+  /// (digital/rosto) — usado pelo gate de contingência do 1º acesso.
+  Future<bool> biometriaDisponivel() async {
+    if (kIsWeb) return false;
+    try {
+      if (!await _auth.isDeviceSupported()) return false;
+      return (await _auth.getAvailableBiometrics()).isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Dispara a verificação biométrica (FaceID, Impressão Digital ou PIN)
   /// Lança [Exception] com mensagem legível em caso de erro.
   Future<bool> autenticarBiometria() async {

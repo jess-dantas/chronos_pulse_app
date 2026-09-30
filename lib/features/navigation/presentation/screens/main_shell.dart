@@ -6,6 +6,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/widgets/dialogs/consentimento_gate.dart';
+import '../../../../core/widgets/dialogs/contingencia_gate.dart';
 import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/data/models/usuario_model.dart';
@@ -185,7 +186,7 @@ class MainShell extends StatelessWidget {
                 ),
                 const VerticalDivider(thickness: 1, width: 1),
                 Expanded(
-                  child: ConsentimentoGate(child: navigationShell),
+                  child: ConsentimentoGate(child: ContingenciaGate(child: navigationShell)),
                 ),
               ],
             ),
@@ -205,7 +206,7 @@ class MainShell extends StatelessWidget {
             onPerfil: () => context.push('/perfil'),
             onSair: () => encerrarSessaoConfirmada(context),
           ),
-          body: ConsentimentoGate(child: navigationShell),
+          body: ConsentimentoGate(child: ContingenciaGate(child: navigationShell)),
           bottomNavigationBar: _dockMobile(
             context,
             usuario,

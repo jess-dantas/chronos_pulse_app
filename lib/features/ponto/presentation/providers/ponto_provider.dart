@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../../../core/telemetry/telemetry_service.dart';
 import '../../data/models/espelho_relatorio_model.dart';
 import '../../data/models/fila_ajuste_model.dart';
 import '../../data/models/registro_ponto_model.dart';
@@ -7,6 +8,7 @@ import '../../data/repositories/ponto_repository.dart';
 
 class PontoProvider extends ChangeNotifier {
   final PontoRepository _repository;
+  final TelemetryService? _telemetria;
 
   String? _colaboradorId;
   bool _isOnline = false;
@@ -38,7 +40,8 @@ class PontoProvider extends ChangeNotifier {
   /// Motivo da última recusa explícita do servidor (null = sem rejeição).
   String? get ultimaFalhaServidor => _repository.ultimaFalhaServidor;
 
-  PontoProvider(this._repository) {
+  PontoProvider(this._repository, {TelemetryService? telemetria})
+      : _telemetria = telemetria {
     carregarDados();
     iniciarMonitoramento();
   }
@@ -268,6 +271,15 @@ class PontoProvider extends ChangeNotifier {
 
   Future<bool> registrarPonto(RegistroPontoModel registro) async {
     final sincronizadoOnline = await _repository.registrarPonto(registro: registro);
+    if (!sincronizadoOnline && _repository.ultimaFalhaServidor == null) {
+      // Ficou na fila local (offline): registra para observar contingência.
+      _telemetria?.registrar(
+        tipo: TipoEventoTelemetria.conexaoOffline,
+        modulo: 'PONTO',
+        mensagem: 'Batida enfileirada offline',
+        detalhe: registro.tipoRegistro,
+      );
+    }
     _isOnline = sincronizadoOnline || _isOnline;
     // Atualiza histórico/espelho com os registros do servidor, sem nunca
     // prender a batida: tudo que toca no banco local já é limitado.

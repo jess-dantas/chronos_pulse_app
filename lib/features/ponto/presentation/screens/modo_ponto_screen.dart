@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/hardware/hardware_service.dart';
 import '../../../../core/security/device_token_store.dart';
+import '../../../../core/telemetry/telemetry_service.dart';
 import 'home_ponto_screen.dart';
 
 /// Entrada do modo "bater ponto sem login" (mobile only).
@@ -39,6 +40,14 @@ class _ModoPontoScreenState extends State<ModoPontoScreen> {
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb) {
+      // Observabilidade do fluxo de contingência: entrada na rota pública.
+      context.telemetria?.registrar(
+        tipo: TipoEventoTelemetria.modoDispositivo,
+        modulo: 'PONTO',
+        mensagem: 'Entrada no modo ponto (rota pública)',
+      );
+    }
     _embarcar();
   }
 
@@ -57,7 +66,8 @@ class _ModoPontoScreenState extends State<ModoPontoScreen> {
       setState(() {
         _carregando = false;
         _erro = 'O vínculo deste aparelho expirou ou foi desativado. '
-            'Entre com sua conta para ativar novamente.';
+            'Faça login e ative "Bater ponto sem login" no Perfil para '
+            'usar este modo (válido por 7 dias).';
       });
       return;
     }

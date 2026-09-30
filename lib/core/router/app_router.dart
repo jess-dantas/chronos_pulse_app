@@ -26,6 +26,7 @@ import '../../features/compras/presentation/screens/compras_home_screen.dart';
 import '../../features/estoque/presentation/screens/estoque_home_screen.dart';
 import '../../features/frota/presentation/screens/frota_home_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home_deslogada/presentation/screens/home_deslogada_screen.dart';
 import '../../features/landing/presentation/screens/landing_screen.dart';
 import '../../features/leads/presentation/screens/admin_leads_screen.dart';
 import '../../features/licitacoes/presentation/screens/licitacoes_home_screen.dart';
@@ -45,13 +46,12 @@ class AppRouter {
 
   static const String rotaInicial = '/';
 
-  /// Rota inicial conforme o modo do build:
-  /// - [AppModo.cliente] (app mobile): abre direto no `/login` — a landing
-  ///   continua acessível pelo botão voltar do login;
-  /// - [AppModo.completo] (web) e [AppModo.admin]: comportamento atual
-  ///   (web mantém a landing como home; admin cai no /admin/auth/login via redirect).
-  static String rotaInicialPara(String modo) =>
-      modo == AppModo.cliente ? '/login' : rotaInicial;
+  /// Rota inicial (`/`) em qualquer modo — o que `/` *renderiza* é que muda:
+  /// - [AppModo.cliente] (app mobile): home de ponto (botão "Bater ponto" +
+  ///   "Logar") — o login fica a um toque;
+  /// - [AppModo.completo] (web): landing; [AppModo.admin]: redirect cai no
+  ///   `/admin/auth/login` (regra de área logo abaixo).
+  static String rotaInicialPara(String modo) => rotaInicial;
 
   /// Ordem fixa dos módulos do painel. Cada posição corresponde ao índice
   /// do branch no [StatefulShellRoute] do `/painel` (e também à ordem da
@@ -141,7 +141,10 @@ class AppRouter {
       routes: [
         GoRoute(
           path: '/',
-          builder: (context, state) => const LandingScreen(),
+          // App cliente (mobile): home de ponto. Web/admin: landing.
+          builder: (context, state) => modo == AppModo.cliente
+              ? const HomeDeslogadaScreen()
+              : const LandingScreen(),
         ),
         GoRoute(
           path: '/login',
