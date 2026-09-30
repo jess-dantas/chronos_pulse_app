@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import '../constants/api_constants.dart';
 
 class DioClient {
@@ -29,6 +30,9 @@ class DioClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          // Correlação cliente↔servidor: o TelemetriaFilter do backend adota o
+          // header como traceId da requisição (MDC) e o persiste nos eventos.
+          options.headers['X-Trace-Id'] = const Uuid().v4();
           final token = _tokenPara(options.path);
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';

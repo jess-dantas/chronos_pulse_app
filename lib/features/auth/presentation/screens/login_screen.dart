@@ -2,14 +2,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/network/conexao_service.dart';
 import '../../../../core/security/device_token_store.dart';
+import '../../../../core/telemetry/telemetry_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  /// Injeções opcionais (testes): diagnóstico de conexão e store do vínculo.
+  final ConexaoService? conexao;
+  final DeviceTokenStore? store;
+
+  const LoginScreen({super.key, this.conexao, this.store});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,14 +31,34 @@ class _LoginScreenState extends State<LoginScreen> {
   /// aparelho tem vínculo de dispositivo ativo (7 dias).
   bool _vinculoAtivo = false;
 
+  late final ConexaoService _conexao = widget.conexao ?? ConexaoService();
+  late final DeviceTokenStore _store =
+      widget.store ?? DeviceTokenStore.instancia;
+
   @override
   void initState() {
     super.initState();
     if (!kIsWeb) {
-      DeviceTokenStore.instancia.vinculoAtivo().then((ativo) {
+      _store.vinculoAtivo().then((ativo) {
         if (mounted) setState(() => _vinculoAtivo = ativo);
       });
+      // Sem conexão: avisa com o toast "Sem conexão!" (o login não vai
+      // funcionar). O redirecionamento para a contingência acontece na
+      // home de ponto — aqui o usuário escolheu logar, não o contrário.
+      _verificarConexao();
     }
+  }
+
+  Future<void> _verificarConexao() async {
+    final diagnostico = await _conexao.diagnosticar(store: _store);
+    if (!mounted || diagnostico == DiagnosticoConexao.online) return;
+    ConexaoService.avisarSemConexao(context);
+    context.telemetria?.registrar(
+      tipo: TipoEventoTelemetria.conexaoOffline,
+      modulo: 'AUTH',
+      mensagem: 'Sem conexão na tela de login',
+      detalhe: diagnostico.name,
+    );
   }
 
   @override

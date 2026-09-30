@@ -16,6 +16,7 @@ import 'core/router/app_router.dart';
 import 'core/router/url_strategy.dart';
 import 'core/telemetry/telemetry_interceptor.dart';
 import 'core/telemetry/telemetry_service.dart';
+import 'core/security/device_token_store.dart';
 import 'core/security/session_storage.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
@@ -98,7 +99,12 @@ void main() async {
   final dioClient = DioClient();
 
   // Telemetria & Observabilidade (R27): fila em memória + envio em lote.
-  final telemetryService = TelemetryService(dioClient: dioClient);
+  // deviceStore permite enviar eventos também no modo contingência (sem login),
+  // autenticados pelo X-Device-Token.
+  final telemetryService = TelemetryService(
+    dioClient: dioClient,
+    deviceStore: DeviceTokenStore.instancia,
+  );
   dioClient.dio.interceptors.add(
     TelemetryInterceptor(telemetryService: telemetryService),
   );
@@ -234,7 +240,7 @@ void main() async {
               create: (_) => ComprasProvider(comprasRepository)),
           ChangeNotifierProvider(
               create: (_) => LicitacoesProvider(licitacoesRepository)),
-          ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository)),
+          ChangeNotifierProvider(create: (_) => PontoProvider(pontoRepository, telemetria: telemetryService)),
           ChangeNotifierProvider(create: (_) => AdminProvider(adminRepository)),
           ChangeNotifierProvider.value(value: adminAuthProvider),
           ChangeNotifierProvider.value(value: leadsProvider),
@@ -257,6 +263,7 @@ void main() async {
           ChangeNotifierProvider(
               create: (_) => TitularidadeProvider(titularidadeRepository)),
           Provider<LeadRepository>.value(value: leadRepository),
+          Provider<TelemetryService>.value(value: telemetryService),
         ],
         child: ChronosPulseApp(
           authProvider: authProvider,

@@ -15,6 +15,7 @@ import 'package:chronos_pulse_app/features/auth/data/models/usuario_model.dart';
 import 'package:chronos_pulse_app/features/auth/data/repositories/auth_repository.dart';
 import 'package:chronos_pulse_app/features/auth/presentation/providers/auth_provider.dart';
 import 'package:chronos_pulse_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:chronos_pulse_app/features/home_deslogada/presentation/screens/home_deslogada_screen.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_screen.dart';
 
 UsuarioModel _usuario({
@@ -196,14 +197,15 @@ void main() {
       expect(find.text('Login Administrator'), findsOneWidget);
     });
 
-    testWidgets('modo cliente: deep link /admin/auth/login cai no login',
+    testWidgets('modo cliente: deep link /admin/auth/login cai na home de ponto',
         (tester) async {
       final router =
           AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.cliente);
       await pumpComModo(tester, AppModo.cliente, router: router);
       router.go('/admin/auth/login');
       await tester.pumpAndSettle();
-      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(HomeDeslogadaScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
       expect(find.text('Login Administrator'), findsNothing);
     });
 
@@ -214,14 +216,16 @@ void main() {
       await pumpComModo(tester, AppModo.cliente, router: router);
       router.go('/admin/dashboard');
       await tester.pumpAndSettle();
-      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(HomeDeslogadaScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
       expect(find.text('Login Administrator'), findsNothing);
     });
 
-    testWidgets('modo cliente: inicia direto no /login (sem ver a landing)',
+    testWidgets('modo cliente: inicia na home de ponto (sem ver a landing)',
         (tester) async {
       await pumpComModo(tester, AppModo.cliente);
-      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(HomeDeslogadaScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
       expect(find.text('Pronto para acessar o Chronos Pulse?'), findsNothing);
     });
 
@@ -229,17 +233,19 @@ void main() {
         (tester) async {
       await pumpComModo(tester, AppModo.completo);
       expect(find.text('Pronto para acessar o Chronos Pulse?'), findsOneWidget);
+      expect(find.byType(HomeDeslogadaScreen), findsNothing);
       expect(find.byType(LoginScreen), findsNothing);
     });
 
-    testWidgets('modo cliente: rota protegida deslogado cai no login',
+    testWidgets('modo cliente: rota protegida deslogado cai na home de ponto',
         (tester) async {
       final router =
           AppRouter.build(authProvider, adminAuthProvider, modo: AppModo.cliente);
       await pumpComModo(tester, AppModo.cliente, router: router);
       router.go('/painel/estoque');
       await tester.pumpAndSettle();
-      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(HomeDeslogadaScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
       expect(find.text('Pronto para acessar o Chronos Pulse?'), findsNothing);
     });
 

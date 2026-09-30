@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -8,7 +9,10 @@ import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/security/device_token_store.dart';
 import 'package:chronos_pulse_app/features/ponto/data/datasources/ponto_remote_datasource.dart';
 import 'package:chronos_pulse_app/features/ponto/data/models/registro_ponto_model.dart';
+import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_repository.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_screen.dart';
+
+import 'ponto_test.dart' show MockPontoLocalDataSource;
 
 /// Adapter que captura a requisição e responde 200 de sincronização.
 class _CapturaAdapter implements HttpClientAdapter {
@@ -24,6 +28,43 @@ class _CapturaAdapter implements HttpClientAdapter {
     ultima = options;
     return ResponseBody.fromString(
       '{"idsSucesso":["ok"],"idsFalha":[]}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Adapter comutável: derruba e restabelece a rede, ecoando os ids recebidos.
+class _AdapterComRede implements HttpClientAdapter {
+  bool online = true;
+  RequestOptions? ultima;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    await requestStream?.drain<void>();
+    if (!online) {
+      throw DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+        message: 'sem rede',
+        error: Exception('sem rede'),
+      );
+    }
+    ultima = options;
+    final registros = ((options.data as Map)['registros'] as List)
+        .map((r) => r['idLocal'] as String)
+        .toList();
+    return ResponseBody.fromString(
+      '{"idsSucesso":${jsonEncode(registros)},"idsFalha":[]}',
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -164,6 +205,56 @@ void main() {
 
       expect(find.textContaining('cancelada'), findsOneWidget);
       expect(find.text('Ir para o login'), findsOneWidget);
+    });
+  });
+
+  group('Contingência offline — fila local → sync com X-Device-Token', () {
+    test('batida sem sessão e sem rede enfileira; ao voltar envia com o vínculo',
+        () async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+
+      final adapter = _AdapterComRede()..online = false;
+      final dioClient = DioClient();
+      dioClient.dio.httpClientAdapter = adapter;
+      final repo = PontoRepository(
+        localDataSource: MockPontoLocalDataSource(),
+        remoteDataSource: PontoRemoteDataSource(dioClient,
+            deviceStore: _storeComVinculo()),
+      );
+
+      final registro = RegistroPontoModel(
+        idLocal: 'id-offline-1',
+        colaboradorId: 'cpc-dono',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: -23.5,
+        longitude: -46.6,
+        precisaoGps: 5.0,
+        hashLocal: 'hash1',
+        sincronizadoOffline: false,
+      );
+
+      // 1) Rede caída: a batida NÃO falha — fica na fila local.
+      final primeiraTentativa = await repo.registrarPonto(registro: registro);
+      expect(primeiraTentativa, isFalse);
+      expect(repo.ultimaFalhaServidor, isNull); // offline ≠ rejeição do servidor
+      expect(await repo.obterQuantidadePendentes(colaboradorId: 'cpc-dono'), 1);
+
+      // 2) Rede volta: sincroniza a fila com o vínculo do dispositivo.
+      adapter.online = true;
+      final enviados = await repo.sincronizarPendentes(colaboradorId: 'cpc-dono');
+      expect(enviados, 1);
+      expect(adapter.ultima!.headers['X-Device-Token'], 'dt-abc');
+      expect(adapter.ultima!.headers.containsKey('Authorization'), isFalse);
+      final payload = adapter.ultima!.data as Map<String, dynamic>;
+      expect(payload['colaboradorId'], 'cpc-dono');
+      expect(payload['registros'], hasLength(1));
+      expect(await repo.obterQuantidadePendentes(colaboradorId: 'cpc-dono'), 0);
     });
   });
 }

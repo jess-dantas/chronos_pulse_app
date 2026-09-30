@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 import '../constants/api_constants.dart';
 import '../network/dio_client.dart';
+import '../security/device_token_store.dart';
 
 /// Tipos de evento aceitos pela API de telemetria (mesmos valores do backend).
 enum TipoEventoTelemetria {
@@ -13,7 +17,10 @@ enum TipoEventoTelemetria {
   apiRequest('API_REQUEST'),
   apiErro('API_ERRO'),
   uiErro('UI_ERRO'),
-  conexaoBd('CONEXAO_BD');
+  conexaoBd('CONEXAO_BD'),
+  conexaoOffline('CONEXAO_OFFLINE'),
+  contingencia('CONTINGENCIA'),
+  modoDispositivo('MODO_DISPOSITIVO');
 
   const TipoEventoTelemetria(this.valor);
 
@@ -57,16 +64,20 @@ class _EventoTelemetria {
 ///
 /// Nenhum método lança exceção nem bloqueia a UI: falhas de transmissão apenas
 /// re-enfileiram o lote (descartando excesso) para retomada no próximo flush.
-/// Sem sessão autenticada o backend rejeitaria a ingestão (401), então os
-/// eventos são descartados silenciosamente.
+/// Sem credencial utilizável (sessão nem vínculo de dispositivo) o backend
+/// rejeitaria a ingestão (401/403), então os eventos são descartados
+/// silenciosamente.
 class TelemetryService {
   TelemetryService({
     required DioClient dioClient,
     this.maxBatchSize = 20,
     this.flushInterval = const Duration(seconds: 15),
-  }) : _dioClient = dioClient;
+    DeviceTokenStore? deviceStore,
+  })  : _dioClient = dioClient,
+        _deviceStore = deviceStore;
 
   final DioClient _dioClient;
+  final DeviceTokenStore? _deviceStore;
 
   /// Quantidade máxima de eventos por lote enviado.
   final int maxBatchSize;
@@ -140,9 +151,17 @@ class TelemetryService {
     if (_fila.isEmpty) return;
 
     final token = _dioClient.token;
-    if (token == null || token.isEmpty) {
-      _fila.clear();
-      return;
+    final temSessao = token != null && token.isNotEmpty;
+    String? deviceToken;
+    if (!temSessao) {
+      // Modo contingência (sem login): usa o vínculo de dispositivo, se houver.
+      final vinculo = await _deviceStore?.lerAtivo();
+      if (vinculo == null) {
+        // Sem credencial (sessão nem vínculo): o backend recusaria (401/403).
+        _fila.clear();
+        return;
+      }
+      deviceToken = vinculo.token;
     }
 
     _enviando = true;
@@ -154,6 +173,9 @@ class TelemetryService {
         data: {
           'eventos': lote.map((e) => e.toJson()).toList(),
         },
+        options: deviceToken == null
+            ? null
+            : Options(headers: {'X-Device-Token': deviceToken}),
       );
     } catch (_) {
       // Best-effort: re-enfileira para retomada no próximo flush.
@@ -203,5 +225,18 @@ class TelemetryService {
   static String? _truncar(String? valor, int max) {
     if (valor == null) return null;
     return valor.length <= max ? valor : valor.substring(0, max);
+  }
+}
+
+/// Acesso à telemetria do app pela árvore de widgets. Retorna `null` quando o
+/// provider não está registrado (testes/rotas montadas sem o Provider) —
+/// telemetria nunca pode quebrar a UI.
+extension TelemetriaContext on BuildContext {
+  TelemetryService? get telemetria {
+    try {
+      return Provider.of<TelemetryService>(this, listen: false);
+    } catch (_) {
+      return null;
+    }
   }
 }
