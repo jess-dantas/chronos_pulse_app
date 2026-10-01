@@ -89,20 +89,20 @@ void main() {
 
   testWidgets('mantém a ação Sair logo abaixo dos detalhes do perfil',
       (tester) async {
+    // Viewport alta o bastante para "Alterar foto" (topo) e "Sair" (fim)
+    // ficarem montados ao mesmo tempo (o ListView só monta o que é visível).
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     auth.definirSessao(_usuario());
     await pumpTela(tester);
 
-    // O card de vínculo de dispositivo cresceu a lista: "Sair" pode ficar
-    // fora da viewport inicial (o ListView só monta o que é visível).
     final sair = find.text('Sair');
-    await tester.scrollUntilVisible(sair, 400);
-    await tester.pumpAndSettle();
-    expect(sair, findsOneWidget);
-
-    // A foto vem antes de "Sair" (mesmo card/rolagem).
     final alterarFoto = find.text('Alterar foto');
-    expect(tester.getTopLeft(alterarFoto).dy,
-        lessThan(tester.getTopLeft(sair).dy));
+    expect(sair, findsOneWidget);
+    expect(alterarFoto, findsOneWidget);
+    expect(tester.getTopLeft(alterarFoto).dy, lessThan(tester.getTopLeft(sair).dy));
   });
 
   testWidgets('Sair pede confirmação e encerra a sessão', (tester) async {

@@ -176,9 +176,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
+      // Largura máxima como na Home de Ponto: o conteúdo não estica em telas
+      // largas (web/desktop).
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
           Center(
             child: Column(
               children: [
@@ -364,7 +369,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
               onTap: () => encerrarSessaoConfirmada(context),
             ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
