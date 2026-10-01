@@ -81,13 +81,14 @@ void main() {
       expect(AppRouter.podeModuloPainel(u, 'privacidade'), isTrue);
     });
 
-    test('aprovacao-ajustes: apenas Admin/Gestor RH com módulo PONTO associado', () {
+    test('aprovacao-ajustes: apenas Gestor RH com módulo PONTO associado', () {
       final adminComPonto = _usuario(role: 'ADMIN_EMPRESA', modulos: ['PONTO']);
       final rhComPonto = _usuario(role: 'GESTOR_RH', modulos: ['PONTO']);
       final rhSemPonto = _usuario(role: 'GESTOR_RH', modulos: ['RECURSOS_HUMANOS']);
       final colab = _usuario(role: 'COLABORADOR', modulos: ['PONTO']);
 
-      expect(AppRouter.podeModuloPainel(adminComPonto, 'aprovacao-ajustes'), isTrue);
+      // Admin Empresa não tem mais a visão de aprovação (somente Gestor RH).
+      expect(AppRouter.podeModuloPainel(adminComPonto, 'aprovacao-ajustes'), isFalse);
       expect(AppRouter.podeModuloPainel(rhComPonto, 'aprovacao-ajustes'), isTrue);
       expect(AppRouter.podeModuloPainel(rhSemPonto, 'aprovacao-ajustes'), isFalse);
       expect(AppRouter.podeModuloPainel(colab, 'aprovacao-ajustes'), isFalse);

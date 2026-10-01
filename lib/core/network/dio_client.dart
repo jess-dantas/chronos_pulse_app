@@ -63,7 +63,15 @@ class DioClient {
 
           String userFriendlyMessage;
           if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
-            userFriendlyMessage = 'Revise suas credenciais.';
+            // Prioriza a mensagem real do servidor (ex.: "Acesso não
+            // autorizado.", "Ajuste não está pendente") — "Revise suas
+            // credenciais." fica só quando o corpo não traz motivo.
+            final dynamic data = error.response?.data;
+            final servidor =
+                (data is Map) ? (data['mensagem'] ?? data['message']) : null;
+            userFriendlyMessage = servidor != null
+                ? servidor.toString()
+                : 'Revise suas credenciais.';
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout) {

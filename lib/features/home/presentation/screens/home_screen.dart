@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _carregarFilaRh() async {
     final usuario = context.read<AuthProvider>().usuario;
-    if (usuario == null || !usuario.isAdminOrRh) return;
+    if (usuario == null || !usuario.isGestorRh) return;
 
     try {
       final pendentes =
@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           : 'Toque para revisar a fila',
                       icone: Icons.how_to_reg_outlined,
                       cor: Colors.deepPurple,
-                      onTap: usuario?.isAdminOrRh == true
+                      onTap: usuario?.isGestorRh == true
                           ? () => context.go('/painel/aprovacao-ajustes')
                           : null,
                     ),

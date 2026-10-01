@@ -98,8 +98,7 @@ class AppRouter {
     return switch (modulo) {
       'ponto' =>
         (usuario.isAdminOrRh || usuario.isColaborador) && contratado('PONTO'),
-      'aprovacao-ajustes' =>
-        usuario.isAdminOrRh && contratado('PONTO'),
+      'aprovacao-ajustes' => usuario.isGestorRh && contratado('PONTO'),
       'colaboradores' =>
         usuario.isAdminOrRh && contratado('RECURSOS_HUMANOS'),
       'estoque' => usuario.temAcessoEstoque && contratado('ESTOQUE'),
