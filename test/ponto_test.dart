@@ -1039,6 +1039,40 @@ void main() {
       expect(celulas.first.horaOriginal, isNull);
     });
 
+    test('Ajuste distante da batida original (HE) cria célula própria', () {
+      final celulas = EspelhoAgrupador.celulasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(id: 'o2', tipo: 'SAIDA', quando: dia(18, 0)),
+        batida(id: 'a1', tipo: 'ENTRADA', quando: dia(19, 0), ajuste: true),
+      ]);
+
+      expect(celulas.length, equals(3),
+          reason: 'a HE não deve sobrescrever a Entrada das 08:00');
+      final original = celulas
+          .firstWhere((c) => c.tipoRegistro == 'ENTRADA' && !c.ajuste);
+      expect(original.hora, equals('08:00'));
+      final extra = celulas.firstWhere((c) => c.ajuste);
+      expect(extra.hora, equals('19:00'));
+      expect(extra.incluiOriginal, isFalse);
+      expect(extra.horaOriginal, isNull);
+    });
+
+    test('Ajuste pareia com a batida original mais próxima do mesmo tipo', () {
+      final celulas = EspelhoAgrupador.celulasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(id: 'o2', tipo: 'ENTRADA', quando: dia(11, 0)),
+        batida(id: 'a1', tipo: 'ENTRADA', quando: dia(10, 30), ajuste: true),
+      ]);
+
+      expect(celulas.length, equals(2));
+      final normal = celulas.firstWhere((c) => !c.ajuste);
+      expect(normal.hora, equals('08:00'),
+          reason: 'a batida distante permanece intacta');
+      final pareado = celulas.firstWhere((c) => c.ajuste);
+      expect(pareado.hora, equals('10:30'));
+      expect(pareado.horaOriginal, equals('11:00'));
+    });
+
     test('colunasDoDia mapeia Entrada/Intervalo/Retorno/Saída e sobrepõe ajuste', () {
       final colunas = EspelhoAgrupador.colunasDoDia([
         batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
@@ -1082,6 +1116,21 @@ void main() {
       expect(colunas[1]!.ajuste, isTrue);
       expect(colunas[1]!.hora, equals('13:05'));
       expect(colunas[1]!.incluiOriginal, isFalse);
+    });
+
+    test('colunasDoDia: ajuste distante (HE) não sobrepõe a coluna da batida', () {
+      final colunas = EspelhoAgrupador.colunasDoDia([
+        batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
+        batida(id: 'o2', tipo: 'INTERVALO', quando: dia(12, 0)),
+        batida(id: 'o3', tipo: 'RETORNO', quando: dia(13, 0)),
+        batida(id: 'o4', tipo: 'SAIDA', quando: dia(18, 0)),
+        batida(id: 'a1', tipo: 'ENTRADA', quando: dia(19, 0), ajuste: true),
+      ]);
+
+      expect(colunas[0]!.hora, equals('08:00'));
+      expect(colunas[0]!.ajuste, isFalse);
+      expect(colunas.where((c) => c?.hora == '19:00'), isEmpty,
+          reason: 'sem coluna livre, a marcação extra não cabe nas 4 colunas');
     });
   });
 

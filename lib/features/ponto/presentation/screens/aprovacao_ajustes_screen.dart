@@ -193,6 +193,39 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
         'Justificativa: ${ajuste.justificativa ?? '—'}';
   }
 
+  /// Fila agrupada por (colaborador, dia local): uma linha expansível por
+  /// grupo, com as ações de aprovação/rejeição em cada ajuste individual.
+  List<({String chave, String nome, DateTime dia, List<FilaAjusteModel> itens})>
+      _grupos() {
+    final porChave = <String, List<FilaAjusteModel>>{};
+    for (final ajuste in _fila) {
+      final local = ajuste.dataHoraDispositivo.toLocal();
+      final dia = DateTime(local.year, local.month, local.day);
+      final chave =
+          '${ajuste.colaboradorId ?? ajuste.nomeExibicao}|${dia.millisecondsSinceEpoch}';
+      porChave.putIfAbsent(chave, () => []).add(ajuste);
+    }
+
+    final grupos = porChave.entries.map((e) {
+      final itens = e.value
+        ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+      final local = itens.first.dataHoraDispositivo.toLocal();
+      return (
+        chave: e.key,
+        nome: itens.first.nomeExibicao,
+        dia: DateTime(local.year, local.month, local.day),
+        itens: itens,
+      );
+    }).toList();
+
+    grupos.sort((a, b) {
+      final porDia = b.dia.compareTo(a.dia);
+      if (porDia != 0) return porDia;
+      return a.nome.compareTo(b.nome);
+    });
+    return grupos;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appBar = AppBar(
@@ -260,21 +293,64 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
                 ],
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _carregarFila,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _fila.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final ajuste = _fila[index];
-                  return _AjusteCard(
-                    ajuste: ajuste,
-                    onAprovar: () => _aprovarAjuste(ajuste),
-                    onRejeitar: () => _rejeitarAjuste(ajuste),
-                  );
-                },
-              ),
+          : Builder(
+              builder: (context) {
+                final grupos = _grupos();
+                return RefreshIndicator(
+                  onRefresh: _carregarFila,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: grupos.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final g = grupos[index];
+                      return Card(
+                        key: ValueKey(g.chave),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Theme(
+                          data: Theme.of(context)
+                              .copyWith(dividerColor: Colors.transparent),
+                          child: ExpansionTile(
+                            initiallyExpanded: grupos.length == 1,
+                            tilePadding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            childrenPadding:
+                                const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                            title: Row(
+                              children: [
+                                const Icon(Icons.person,
+                                    size: 20, color: Colors.deepPurple),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    g.nome,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            subtitle: Text(
+                              '${DateFormat('dd/MM/yyyy').format(g.dia)} · '
+                              '${g.itens.length == 1 ? '1 ajuste pendente' : '${g.itens.length} ajustes pendentes'}',
+                            ),
+                            children: g.itens
+                                .map((ajuste) => _AjusteCard(
+                                      ajuste: ajuste,
+                                      onAprovar: () => _aprovarAjuste(ajuste),
+                                      onRejeitar: () => _rejeitarAjuste(ajuste),
+                                    ))
+                                .toList(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
     );
   }
@@ -329,19 +405,6 @@ class _AjusteCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.person, size: 18, color: Colors.deepPurple),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    ajuste.nomeExibicao,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
             Row(
               children: [
                 const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
