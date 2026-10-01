@@ -9,7 +9,7 @@ abstract class AdminAuthRepository {
   Future<Map<String, dynamic>> twoFactorConfirm(String codigo,
       {String? bearerToken});
   Future<void> twoFactorDisable(String codigo);
-  Future<void> alterarSenha(String senhaAtual, String novaSenha);
+  Future<void> alterarSenha(String novaSenha);
   Future<Map<String, dynamic>> bootstrapStatus();
   Future<Map<String, dynamic>> bootstrap({
     required String username,

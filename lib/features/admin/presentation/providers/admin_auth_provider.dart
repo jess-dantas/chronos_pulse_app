@@ -236,7 +236,6 @@ class AdminAuthProvider extends ChangeNotifier {
   }
 
   Future<bool> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) async {
     _isLoading = true;
@@ -244,7 +243,7 @@ class AdminAuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.alterarSenha(senhaAtual, novaSenha);
+      await _repository.alterarSenha(novaSenha);
       _isLoading = false;
       notifyListeners();
       return true;

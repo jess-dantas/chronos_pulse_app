@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../providers/admin_auth_provider.dart';
 
 class AdminAlterarSenhaScreen extends StatefulWidget {
@@ -12,14 +14,12 @@ class AdminAlterarSenhaScreen extends StatefulWidget {
 
 class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _senhaAtualController = TextEditingController();
   final _novaSenhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _senhaAtualController.dispose();
     _novaSenhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
@@ -28,15 +28,23 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
   Future<void> _salvar() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
+    final confirmado = await ConfirmLogoutDialog.show(
+      context,
+      title: 'Certeza de alterar senha?',
+      message: 'A nova senha passa a valer nos próximos acessos. '
+          'Confira antes de confirmar.',
+      confirmText: 'Alterar',
+      cancelText: 'Desistir',
+    );
+    if (confirmado != true || !mounted) return;
+
     final adminAuth = context.read<AdminAuthProvider>();
     final sucesso = await adminAuth.alterarSenha(
-      senhaAtual: _senhaAtualController.text,
       novaSenha: _novaSenhaController.text,
     );
     if (!mounted) return;
 
     if (sucesso) {
-      _senhaAtualController.clear();
       _novaSenhaController.clear();
       _confirmarSenhaController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,24 +107,6 @@ class _AdminAlterarSenhaScreenState extends State<AdminAlterarSenhaScreen> {
                             ),
                       ),
                       const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _senhaAtualController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Senha atual',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Informe a senha atual';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _novaSenhaController,
                         obscureText: _obscurePassword,

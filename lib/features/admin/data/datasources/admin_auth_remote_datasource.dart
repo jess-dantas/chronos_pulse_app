@@ -246,13 +246,12 @@ class AdminAuthRemoteDataSource {
     }
   }
 
-  /// POST /admin/auth/alterar-senha { senhaAtual, novaSenha }
-  Future<void> alterarSenha(String senhaAtual, String novaSenha) async {
+  /// POST /admin/auth/alterar-senha { novaSenha }
+  Future<void> alterarSenha(String novaSenha) async {
     try {
       await _dioClient.dio.post(
         '$_adminBaseUrl/admin/auth/alterar-senha',
         data: {
-          'senhaAtual': senhaAtual,
           'novaSenha': novaSenha,
         },
       );

@@ -68,11 +68,9 @@ class AuthRepository {
   }
 
   Future<String> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) {
     return _remoteDataSource.alterarSenha(
-      senhaAtual: senhaAtual,
       novaSenha: novaSenha,
     );
   }

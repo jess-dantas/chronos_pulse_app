@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/security/device_token_store.dart';
+import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
@@ -380,7 +381,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     BuildContext context,
     AuthProvider auth,
   ) async {
-    final controladorAtual = TextEditingController();
     final controladorNova = TextEditingController();
     final controladorConfirmacao = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -394,13 +394,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: controladorAtual,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Senha atual'),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Informe a senha atual' : null,
-              ),
               TextFormField(
                 controller: controladorNova,
                 obscureText: true,
@@ -429,8 +422,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
           FilledButton(
             onPressed: () async {
               if (!(formKey.currentState?.validate() ?? false)) return;
+              final confirmado = await ConfirmLogoutDialog.show(
+                dialogContext,
+                title: 'Certeza de alterar senha?',
+                message: 'A nova senha passa a valer nos próximos acessos. '
+                    'Confira antes de confirmar.',
+                confirmText: 'Alterar',
+                cancelText: 'Desistir',
+              );
+              if (confirmado != true) return;
+              if (!dialogContext.mounted) return;
               final ok = await auth.alterarSenha(
-                senhaAtual: controladorAtual.text,
                 novaSenha: controladorNova.text,
               );
               if (!dialogContext.mounted) return;

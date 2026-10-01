@@ -303,7 +303,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) async {
     _isLoading = true;
@@ -312,7 +311,6 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authRepository.alterarSenha(
-        senhaAtual: senhaAtual,
         novaSenha: novaSenha,
       );
       _isLoading = false;

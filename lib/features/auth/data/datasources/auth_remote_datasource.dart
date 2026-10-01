@@ -136,13 +136,12 @@ class AuthRemoteDataSource {
   }
 
   Future<String> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) async {
     try {
       final response = await _dioClient.dio.post(
         ApiConstants.alterarSenhaEndpoint,
-        data: {'senhaAtual': senhaAtual, 'novaSenha': novaSenha},
+        data: {'novaSenha': novaSenha},
       );
       final msg = (response.data is Map ? response.data['mensagem'] : null);
       return msg ?? 'Senha alterada com sucesso.';

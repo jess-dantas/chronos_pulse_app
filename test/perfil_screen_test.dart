@@ -23,8 +23,15 @@ class _FakeAuth extends AuthProvider {
 
   UsuarioModel? _sessao;
   bool logoutChamado = false;
+  String? novaSenhaChamada;
 
   void definirSessao(UsuarioModel usuario) => _sessao = usuario;
+
+  @override
+  Future<bool> alterarSenha({required String novaSenha}) async {
+    novaSenhaChamada = novaSenha;
+    return true;
+  }
 
   @override
   UsuarioModel? get usuario => _sessao;
@@ -124,5 +131,46 @@ void main() {
 
     expect(auth.logoutChamado, isTrue);
     expect(auth.usuario, isNull);
+  });
+
+  testWidgets('Alterar senha dispensa senha atual e pede confirmação',
+      (tester) async {
+    auth.definirSessao(_usuario());
+    await pumpTela(tester);
+
+    final alterar = find.text('Alterar senha');
+    await tester.scrollUntilVisible(alterar, 400);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(alterar);
+    await tester.pumpAndSettle();
+    await tester.tap(alterar);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Senha atual'), findsNothing);
+    expect(find.text('Nova senha'), findsOneWidget);
+    expect(find.text('Confirmar nova senha'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'Nova@1234');
+    await tester.enterText(find.byType(TextFormField).at(1), 'Nova@1234');
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Certeza de alterar senha?'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Desistir'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Alterar'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Desistir'));
+    await tester.pumpAndSettle();
+    expect(auth.novaSenhaChamada, isNull);
+    expect(find.text('Nova senha'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Alterar'));
+    await tester.pumpAndSettle();
+
+    expect(auth.novaSenhaChamada, 'Nova@1234');
+    expect(find.text('Senha alterada com sucesso.'), findsOneWidget);
+    expect(find.text('Nova senha'), findsNothing);
   });
 }
