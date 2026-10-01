@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/errors/mensagens_erro.dart';
+import '../../../../core/security/biometria_preferences.dart';
 import '../../../../core/security/session_storage.dart';
 import '../../../../core/telemetry/telemetry_service.dart';
 import '../../../ponto/data/datasources/ponto_local_datasource.dart';
@@ -135,8 +136,9 @@ class AuthProvider extends ChangeNotifier {
         refreshToken != null &&
         refreshToken.isNotEmpty) {
       // Sessão restaurada ao abrir o app: exige biometria antes de liberar
-      // o conteúdo (login por biometria — só em memória, nesta abertura).
-      _sessaoDesbloqueada = false;
+      // o conteúdo (login por biometria — só em memória, nesta abertura),
+      // salvo quando o bloqueio foi desligado em Segurança.
+      _sessaoDesbloqueada = !(prefs.getBool(BiometriaPreferences.chave) ?? true);
       final nome = await _lerPerfil(_keyNome) ?? '';
       final email = await _lerPerfil(_keyEmail) ?? '';
       final cpf = await _lerPerfil(_keyCpf);

@@ -39,6 +39,7 @@ import '../../features/navigation/presentation/screens/admin_shell.dart';
 import '../../features/navigation/presentation/screens/main_shell.dart';
 import '../../features/patrimonio/presentation/screens/patrimonio_home_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
+import '../../features/perfil/presentation/screens/perfil_seguranca_screen.dart';
 import '../../features/ponto/presentation/screens/home_ponto_screen.dart';
 import '../../features/privacidade/presentation/screens/privacidade_screen.dart';
 import '../../features/protocolo/presentation/screens/protocolo_home_screen.dart';
@@ -194,6 +195,11 @@ class AppRouter {
         GoRoute(
           path: '/perfil/2fa',
           builder: (context, state) => const PerfilTwoFactorScreen(),
+        ),
+        // Ajustes de segurança do colaborador: biometria ao abrir + 2FA.
+        GoRoute(
+          path: '/perfil/seguranca',
+          builder: (context, state) => const PerfilSegurancaScreen(),
         ),
         // Gate biométrico de abertura (login por biometria) — sessão
         // restaurada exige a biometria do aparelho antes do conteúdo.

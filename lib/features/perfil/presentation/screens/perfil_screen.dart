@@ -303,13 +303,14 @@ class _PerfilScreenState extends State<PerfilScreen> {
             const SizedBox(height: 16),
             Card(
               child: ListTile(
-                key: const Key('perfil_two_factor_tile'),
-                leading: const Icon(Icons.shield_outlined),
-                title: const Text('Autenticação em duas etapas'),
-                subtitle:
-                    const Text('Proteja seu acesso com um código de 6 dígitos'),
+                key: const Key('perfil_seguranca_tile'),
+                leading: const Icon(Icons.security_outlined),
+                title: const Text('Segurança'),
+                subtitle: const Text(
+                  'Biometria ao abrir o app e autenticação em duas etapas',
+                ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/perfil/2fa'),
+                onTap: () => context.push('/perfil/seguranca'),
               ),
             ),
             const SizedBox(height: 16),
