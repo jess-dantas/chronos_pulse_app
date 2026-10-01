@@ -263,9 +263,14 @@ class _TransferirTitularidadeScreenState
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
+      // Largura máxima como na Home de Ponto: o conteúdo não estica em telas
+      // largas (web/desktop).
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 540),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -307,7 +312,9 @@ class _TransferirTitularidadeScreenState
               style: const TextStyle(color: Colors.redAccent),
             ),
           ],
-        ],
+          ],
+          ),
+        ),
       ),
     );
   }

@@ -153,7 +153,7 @@ class PontoRemoteDataSource {
       }
       return [];
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao buscar espelho de ponto na API');
     } catch (e) {
       throw Exception('Erro ao carregar espelho: ${e.toString()}');
@@ -181,7 +181,7 @@ class PontoRemoteDataSource {
       }
       throw Exception('Falha ao consultar relatório do espelho: status ${response.statusCode}');
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao consultar relatório do espelho de ponto na API');
     } catch (e) {
       throw Exception('Erro ao carregar relatório do espelho: ${e.toString()}');
@@ -214,7 +214,7 @@ class PontoRemoteDataSource {
       }
       throw Exception('Falha ao registrar ajuste: status ${response.statusCode}');
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao solicitar ajuste manual na API');
     } catch (e) {
       throw Exception('Erro ao ajustar ponto: ${e.toString()}');
@@ -248,7 +248,7 @@ class PontoRemoteDataSource {
       }
       throw Exception('Falha ao solicitar ajuste: status ${response.statusCode}');
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao solicitar ajuste na API');
     } catch (e) {
       throw Exception('Erro ao solicitar ajuste: ${e.toString()}');
@@ -268,7 +268,7 @@ class PontoRemoteDataSource {
       }
       return [];
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao buscar ajustes pendentes na API');
     } catch (e) {
       throw Exception('Erro ao carregar ajustes pendentes: ${e.toString()}');
@@ -290,7 +290,7 @@ class PontoRemoteDataSource {
       }
       return [];
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao buscar fila de ajustes na API');
     } catch (e) {
       throw Exception('Erro ao carregar fila de ajustes: ${e.toString()}');
@@ -309,7 +309,7 @@ class PontoRemoteDataSource {
       }
       throw Exception('Falha ao aprovar ajuste: status ${response.statusCode}');
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao aprovar ajuste na API');
     } catch (e) {
       throw Exception('Erro ao aprovar ajuste: ${e.toString()}');
@@ -321,7 +321,8 @@ class PontoRemoteDataSource {
     try {
       final response = await _dioClient.dio.put(
         ApiConstants.pontosAjustesRejeitarEndpoint(registroId),
-        data: {'motivo': motivo},
+        // O backend lê `motivo` como @RequestParam (query string).
+        queryParameters: {'motivo': motivo},
       );
 
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
@@ -329,7 +330,7 @@ class PontoRemoteDataSource {
       }
       throw Exception('Falha ao rejeitar ajuste: status ${response.statusCode}');
     } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message;
+      final msg = e.response?.data?['mensagem'] ?? e.response?.data?['message'] ?? e.message;
       throw Exception(msg ?? 'Erro ao rejeitar ajuste na API');
     } catch (e) {
       throw Exception('Erro ao rejeitar ajuste: ${e.toString()}');

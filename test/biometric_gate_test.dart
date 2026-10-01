@@ -52,7 +52,7 @@ class _HardwareFake extends HardwareService {
   Future<bool> biometriaDisponivel() async => disponivel;
 
   @override
-  Future<bool> autenticarBiometria() async {
+  Future<bool> autenticarBiometria({String motivo = ''}) async {
     chamadas++;
     if (lancarErro) throw Exception('sensor indisponível');
     return autentica;

@@ -96,7 +96,9 @@ class HardwareService {
 
   /// Dispara a verificação biométrica (FaceID, Impressão Digital ou PIN)
   /// Lança [Exception] com mensagem legível em caso de erro.
-  Future<bool> autenticarBiometria() async {
+  Future<bool> autenticarBiometria({
+    String motivo = 'Confirme sua identidade para registrar o ponto',
+  }) async {
     if (kIsWeb) return true;
 
     final bool deviceSupported = await _auth.isDeviceSupported();
@@ -111,7 +113,7 @@ class HardwareService {
     }
 
     return await _auth.authenticate(
-      localizedReason: 'Confirme sua identidade para registrar o ponto',
+      localizedReason: motivo,
       options: const AuthenticationOptions(
         stickyAuth: true,
         biometricOnly: false,

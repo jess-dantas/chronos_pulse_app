@@ -3,8 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../domain/constants/justificativas_ponto.dart';
-import '../../domain/services/sequencia_ponto.dart';
 import '../providers/ponto_provider.dart';
+import '../services/opcoes_ajuste.dart';
 
 class AjustePontoDialog extends StatefulWidget {
   final DateTime? dataInicial;
@@ -25,27 +25,30 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
 
   late DateTime _dataSelecionada;
   late TimeOfDay _horaSelecionada;
-  late String _tipoRegistro;
+  late List<OpcaoAjuste> _opcoes;
+  late String _opcaoValor;
   String? _justificativaSelecionada;
   final TextEditingController _observacaoController = TextEditingController();
   bool _isEnviando = false;
+
+  /// Tipo (`ENTRADA#2` → `ENTRADA`) enviado no payload.
+  String get _tipoRegistro => OpcaoAjuste.tipoDe(_opcaoValor);
 
   @override
   void initState() {
     super.initState();
     _dataSelecionada = widget.dataInicial ?? DateTime.now();
-    _horaSelecionada = TimeOfDay.now();
-    _tipoRegistro = _determinarProximoTipoParaData(_dataSelecionada);
+    _opcoes = OpcoesAjuste.doDia(widget.todosRegistros, _dataSelecionada);
+    _opcaoValor = _opcoes.last.valor;
+    _horaSelecionada = _opcoes.last.hora;
   }
 
-  String _determinarProximoTipoParaData(DateTime data) {
-    // Sequência ignora ajustes: só batidas de botão avançam Entrada →
-    // Intervalo → Retorno → Saída.
-    final registrosDoDia = widget.todosRegistros.where((r) {
-      final d = r.dataHoraDispositivo.toLocal();
-      return d.year == data.year && d.month == data.month && d.day == data.day;
-    }).toList();
-    return SequenciaPonto.proximo(registrosDoDia);
+  /// Recalcula os slots do dia selecionado e volta ao padrão "próxima batida".
+  void _recomputarOpcoesParaData(DateTime data) {
+    _dataSelecionada = data;
+    _opcoes = OpcoesAjuste.doDia(widget.todosRegistros, data);
+    _opcaoValor = _opcoes.last.valor;
+    _horaSelecionada = _opcoes.last.hora;
   }
 
   @override
@@ -62,10 +65,7 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
     if (picked != null) {
-      setState(() {
-        _dataSelecionada = picked;
-        _tipoRegistro = _determinarProximoTipoParaData(picked);
-      });
+      setState(() => _recomputarOpcoesParaData(picked));
     }
   }
 
@@ -227,22 +227,32 @@ class _AjustePontoDialogState extends State<AjustePontoDialog> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Tipo de Marcação
+                  // Tipo de Marcação — slots do dia selecionado (marcações
+                  // existentes com horário; duplicatas com "(HE)") + próxima.
                   DropdownButtonFormField<String>(
-                    initialValue: _tipoRegistro,
+                    initialValue: _opcaoValor,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Tipo de Marcação *',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       prefixIcon: const Icon(Icons.touch_app_outlined),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'ENTRADA', child: Text('Entrada (Início de Jornada)')),
-                      DropdownMenuItem(value: 'INTERVALO', child: Text('Intervalo (Saída para Almoço)')),
-                      DropdownMenuItem(value: 'RETORNO', child: Text('Retorno (Volta do Intervalo)')),
-                      DropdownMenuItem(value: 'SAIDA', child: Text('Saída (Fim de Jornada)')),
-                    ],
+                    items: _opcoes
+                        .map((o) => DropdownMenuItem(
+                              value: o.valor,
+                              child: Text(
+                                o.rotulo,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ))
+                        .toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _tipoRegistro = val);
+                      if (val == null) return;
+                      final opcao = _opcoes.firstWhere((o) => o.valor == val);
+                      setState(() {
+                        _opcaoValor = val;
+                        _horaSelecionada = opcao.hora;
+                      });
                     },
                   ),
                   const SizedBox(height: 16),

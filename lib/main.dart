@@ -157,6 +157,9 @@ void main() async {
       AdminAuthRepositoryImpl(adminAuthRemoteDataSource);
   final adminAuthProvider = AdminAuthProvider(adminAuthRepository, dioClient);
 
+  // 401 em rota /admin/** rota o refreshToken da sessão AdminPlataforma.
+  dioClient.onAdminRefreshToken = () => adminAuthProvider.renovarSessao();
+
   final patrimonioRemoteDataSource = PatrimonioRemoteDataSource(dioClient);
   final patrimonioRepository =
       PatrimonioRepository(remoteDataSource: patrimonioRemoteDataSource);
@@ -312,6 +315,9 @@ class _ChronosPulseAppState extends State<ChronosPulseApp>
     if (!AppModo.ehAdmin) {
       widget.authProvider.tryRestoreSession();
     }
+    // Sessão AdminPlataforma salva localmente: restaura (fica TRANCADA até
+    // a biometria no app nativo; no web a restauração nasce liberada).
+    widget.adminAuthProvider.restaurarSessao();
   }
 
   @override

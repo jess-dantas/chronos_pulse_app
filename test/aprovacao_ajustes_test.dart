@@ -144,6 +144,49 @@ void main() {
     expect(find.text('Ajuste aprovado com sucesso!'), findsOneWidget);
   });
 
+  testWidgets('fila agrupa por colaborador e dia e expande cada grupo',
+      (tester) async {
+    escalaDeTeste(tester);
+    final mariaHoje = _ajuste(id: 'reg-1');
+    final mariaOntem = FilaAjusteModel(
+      registroId: 'reg-3',
+      colaboradorId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      colaboradorNome: 'Maria Silva',
+      dataHoraDispositivo: DateTime(2026, 9, 9, 9),
+      tipoRegistro: 'INTERVALO',
+      justificativa: 'Intervalo não registrado',
+    );
+    final joao = FilaAjusteModel(
+      registroId: 'reg-2',
+      colaboradorId: 'ffffffff-0000-1111-2222-333333333333',
+      colaboradorNome: 'João Souza',
+      dataHoraDispositivo: DateTime(2026, 9, 10, 14),
+      tipoRegistro: 'SAIDA',
+      justificativa: 'Esqueci a saída',
+    );
+
+    await pumpTela(
+      tester,
+      _FakeFilaPontoProvider(fila: [mariaHoje, joao, mariaOntem]),
+    );
+
+    //3 grupos: Maria (10/09), Maria (09/09) e João (10/09) — nome no cabeçalho.
+    expect(find.text('Maria Silva'), findsNWidgets(2));
+    expect(find.text('João Souza'), findsOneWidget);
+    expect(find.text('10/09/2026 · 1 ajuste pendente'), findsNWidgets(2));
+    expect(find.text('09/09/2026 · 1 ajuste pendente'), findsOneWidget);
+
+    // Grupos múltiplos começam recolhidos: ações só após expandir.
+    expect(find.text('Esqueci a saída'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Aprovar'), findsNothing);
+
+    await tester.tap(find.text('João Souza'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Esqueci a saída'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Aprovar'), findsOneWidget);
+  });
+
   testWidgets('fila vazia mostra estado de nada pendente', (tester) async {
     escalaDeTeste(tester);
     await pumpTela(tester, _FakeFilaPontoProvider());

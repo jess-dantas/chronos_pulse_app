@@ -102,7 +102,6 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
           'Gestão de Colaboradores',
@@ -121,11 +120,6 @@ class _ColaboradoresScreenState extends State<ColaboradoresScreen> {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.person_add, size: 18),
                 label: const Text('Novo Colaborador'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.blue.shade800,
-                  elevation: 0,
-                ),
                 onPressed: _abrirDialogNovoColaborador,
               ),
             ),

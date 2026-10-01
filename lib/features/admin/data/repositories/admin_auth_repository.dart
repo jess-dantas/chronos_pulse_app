@@ -1,6 +1,9 @@
 abstract class AdminAuthRepository {
-  Future<Map<String, dynamic>> login(String username, String senha);
+  Future<Map<String, dynamic>> login(String username, {String? senha});
   Future<Map<String, dynamic>> verifyTwoFactor(String tempToken, String codigo);
+  Future<void> sendEmailCode(String tempToken);
+  Future<Map<String, dynamic>> verifyEmailCode(String tempToken, String codigo);
+  Future<Map<String, dynamic>> refresh(String refreshToken);
   Future<Map<String, dynamic>> twoFactorStatus();
   Future<Map<String, dynamic>> twoFactorSetup({String? bearerToken});
   Future<Map<String, dynamic>> twoFactorConfirm(String codigo,
@@ -16,8 +19,9 @@ abstract class AdminAuthRepository {
   });
   Future<Map<String, dynamic>> recover({
     required String username,
-    required String senha,
+    String? senha,
     required String recoveryCode,
+    String? novaSenha,
   });
   Future<void> logout(String refreshToken);
 }

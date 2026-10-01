@@ -400,22 +400,15 @@ class PontoRepository {
     return remoteDataSource.listarFilaAjustes();
   }
 
-  /// RH aprova ajuste
-  Future<RegistroPontoModel?> aprovarAjuste(String registroId) async {
-    try {
-      return await remoteDataSource.aprovarAjuste(registroId);
-    } catch (_) {
-      return null;
-    }
+  /// RH aprova ajuste — propaga o erro real para a tela exibir a causa
+  /// (antes `catch (_) => null` escondia 400/403/500 atrás de "Erro ao aprovar").
+  Future<RegistroPontoModel?> aprovarAjuste(String registroId) {
+    return remoteDataSource.aprovarAjuste(registroId);
   }
 
-  /// RH rejeita ajuste
-  Future<RegistroPontoModel?> rejeitarAjuste(String registroId, String motivo) async {
-    try {
-      return await remoteDataSource.rejeitarAjuste(registroId, motivo);
-    } catch (_) {
-      return null;
-    }
+  /// RH rejeita ajuste — propaga o erro real (mesmo motivo do aprovar).
+  Future<RegistroPontoModel?> rejeitarAjuste(String registroId, String motivo) {
+    return remoteDataSource.rejeitarAjuste(registroId, motivo);
   }
 
   Future<bool> verificarConexao() async {

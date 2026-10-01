@@ -7,8 +7,8 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
   AdminAuthRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<Map<String, dynamic>> login(String username, String senha) async {
-    return _remoteDataSource.login(username, senha);
+  Future<Map<String, dynamic>> login(String username, {String? senha}) async {
+    return _remoteDataSource.login(username, senha: senha);
   }
 
   @override
@@ -17,6 +17,24 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
     String codigo,
   ) {
     return _remoteDataSource.verifyTwoFactor(tempToken, codigo);
+  }
+
+  @override
+  Future<void> sendEmailCode(String tempToken) {
+    return _remoteDataSource.sendEmailCode(tempToken);
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyEmailCode(
+    String tempToken,
+    String codigo,
+  ) {
+    return _remoteDataSource.verifyEmailCode(tempToken, codigo);
+  }
+
+  @override
+  Future<Map<String, dynamic>> refresh(String refreshToken) {
+    return _remoteDataSource.refresh(refreshToken);
   }
 
   @override
@@ -69,13 +87,15 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
   @override
   Future<Map<String, dynamic>> recover({
     required String username,
-    required String senha,
+    String? senha,
     required String recoveryCode,
+    String? novaSenha,
   }) {
     return _remoteDataSource.recover(
       username: username,
       senha: senha,
       recoveryCode: recoveryCode,
+      novaSenha: novaSenha,
     );
   }
 

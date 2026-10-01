@@ -7,8 +7,8 @@ import '../../presentation/providers/admin_auth_provider.dart';
 import '../widgets/recovery_codes_dialog.dart';
 
 /// Login alternativo do Administrator usando um dos 8 códigos de
-/// recuperação (perda do autenticador). Devolve um novo conjunto de
-/// códigos após o sucesso.
+/// recuperação (perda do autenticador) — sem senha (R1). Permite trocar a
+/// senha no mesmo passo. Devolve um novo conjunto de códigos após o sucesso.
 class AdminRecoverScreen extends StatefulWidget {
   const AdminRecoverScreen({super.key});
 
@@ -19,15 +19,15 @@ class AdminRecoverScreen extends StatefulWidget {
 class _AdminRecoverScreenState extends State<AdminRecoverScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
-  final _senhaController = TextEditingController();
   final _codigoController = TextEditingController();
+  final _novaSenhaController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
     _usernameController.dispose();
-    _senhaController.dispose();
     _codigoController.dispose();
+    _novaSenhaController.dispose();
     super.dispose();
   }
 
@@ -35,10 +35,12 @@ class _AdminRecoverScreenState extends State<AdminRecoverScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final adminAuth = context.read<AdminAuthProvider>();
+    final novaSenha = _novaSenhaController.text.trim();
     final ok = await adminAuth.recuperar(
       username: _usernameController.text.trim(),
-      senha: _senhaController.text,
+      senha: null,
       recoveryCode: _codigoController.text.trim(),
+      novaSenha: novaSenha.isEmpty ? null : novaSenha,
     );
 
     if (!mounted) return;
@@ -119,7 +121,8 @@ class _AdminRecoverScreenState extends State<AdminRecoverScreen> {
                         const SizedBox(height: 8),
                         Text(
                           'Use um dos 8 códigos salvos quando ativou o 2FA. '
-                          'Após entrar, um novo conjunto de códigos será gerado.',
+                          'A senha não é necessária. Após entrar, um novo '
+                          'conjunto de códigos será gerado.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context)
                               .textTheme
@@ -147,32 +150,6 @@ class _AdminRecoverScreenState extends State<AdminRecoverScreen> {
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
-                          controller: _senhaController,
-                          obscureText: _obscurePassword,
-                          autofillHints: const [AutofillHints.password],
-                          decoration: InputDecoration(
-                            labelText: 'Senha',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          validator: (value) =>
-                              (value == null || value.isEmpty)
-                                  ? 'Informe a senha'
-                                  : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
                           controller: _codigoController,
                           autofillHints: const [AutofillHints.password],
                           decoration: InputDecoration(
@@ -195,6 +172,37 @@ class _AdminRecoverScreenState extends State<AdminRecoverScreen> {
                             return null;
                           },
                           onFieldSubmitted: (_) => _handleRecuperar(),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _novaSenhaController,
+                          obscureText: _obscurePassword,
+                          autofillHints: const [AutofillHints.newPassword],
+                          decoration: InputDecoration(
+                            labelText: 'Nova senha (opcional)',
+                            prefixIcon: const Icon(Icons.lock_reset_outlined),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
+                            ),
+                            helperText:
+                                'Deixe em branco para manter a senha atual.',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            final senha = value?.trim() ?? '';
+                            if (senha.isNotEmpty && senha.length < 8) {
+                              return 'A nova senha deve ter no mínimo 8 caracteres';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 24),
                         SizedBox(

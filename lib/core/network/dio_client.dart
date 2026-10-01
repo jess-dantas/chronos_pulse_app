@@ -11,7 +11,12 @@ class DioClient {
   /// Deve renovar o token (e persistir) e retornar `true` se teve sucesso.
   Future<bool> Function()? onRefreshToken;
 
+  /// Mesmo contrato de [onRefreshToken] para a sessão AdminPlataforma
+  /// (rotas `/admin/**`), que usa tokens próprios.
+  Future<bool> Function()? onAdminRefreshToken;
+
   Future<bool>? _refreshing;
+  Future<bool>? _renovandoAdmin;
 
   DioClient({String? initialToken}) {
     _authToken = initialToken;
@@ -45,13 +50,23 @@ class DioClient {
           final ehEndpointRefresh = _ehEndpointRefresh(error.requestOptions.path);
           final temToken =
               (_authToken != null && _authToken!.isNotEmpty);
+          final ehRotaAdmin = error.requestOptions.path.contains('/admin/');
+          final temTokenAdmin =
+              _adminToken != null && _adminToken!.isNotEmpty;
+          final usarRefreshAdmin = ehRotaAdmin && temTokenAdmin;
 
-          if (error.response?.statusCode == 401 && !jaRetentou && !ehEndpointRefresh && temToken) {
-            final renovado = await (_refreshing ??= _renovarToken());
+          if (error.response?.statusCode == 401 &&
+              !jaRetentou &&
+              !ehEndpointRefresh &&
+              (usarRefreshAdmin || temToken)) {
+            final renovado = usarRefreshAdmin
+                ? await (_renovandoAdmin ??= _renovarTokenAdmin())
+                : await (_refreshing ??= _renovarToken());
             if (renovado) {
               try {
                 final opcoes = error.requestOptions;
-                opcoes.headers['Authorization'] = 'Bearer $_authToken';
+                final token = usarRefreshAdmin ? _adminToken : _authToken;
+                opcoes.headers['Authorization'] = 'Bearer $token';
                 opcoes.extra['_retry'] = true;
                 final resposta = await dio.fetch(opcoes);
                 return handler.resolve(resposta);
@@ -63,7 +78,15 @@ class DioClient {
 
           String userFriendlyMessage;
           if (error.response?.statusCode == 401 || error.response?.statusCode == 403) {
-            userFriendlyMessage = 'Revise suas credenciais.';
+            // Prioriza a mensagem real do servidor (ex.: "Acesso não
+            // autorizado.", "Ajuste não está pendente") — "Revise suas
+            // credenciais." fica só quando o corpo não traz motivo.
+            final dynamic data = error.response?.data;
+            final servidor =
+                (data is Map) ? (data['mensagem'] ?? data['message']) : null;
+            userFriendlyMessage = servidor != null
+                ? servidor.toString()
+                : 'Revise suas credenciais.';
           } else if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.receiveTimeout) {
@@ -108,6 +131,18 @@ class DioClient {
       return false;
     } finally {
       _refreshing = null;
+    }
+  }
+
+  Future<bool> _renovarTokenAdmin() async {
+    try {
+      final callback = onAdminRefreshToken;
+      if (callback == null) return false;
+      return await callback();
+    } catch (_) {
+      return false;
+    } finally {
+      _renovandoAdmin = null;
     }
   }
 
