@@ -47,6 +47,11 @@ class AuthProvider extends ChangeNotifier {
   /// cada nova abertura do app cobra a biometria de novo.
   bool _sessaoDesbloqueada = true;
 
+  /// 2FA-first: estado da segunda etapa entre o login e a verificação do
+  /// código (TOTP ou OTP por e-mail). Vive só em memória.
+  bool _requiresTwoFactor = false;
+  String? _tempToken;
+
   AuthProvider(this._authRepository,
       {TelemetryService? telemetria,
       PontoLocalDataSource? pontoLocalDataSource})
@@ -58,6 +63,11 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get sessaoDesbloqueada => _sessaoDesbloqueada;
+
+  /// `true` quando o login parou na etapa de 2FA (usuário precisa digitar o
+  /// código em `/login/2fa`); [tempToken] é a credencial de 5 minutos.
+  bool get requiresTwoFactor => _requiresTwoFactor;
+  String? get tempToken => _tempToken;
 
   /// Confirmação biométrica bem-sucedida (ou liberação do gate): libera o
   /// conteúdo da sessão e reavalia o roteador.
@@ -223,21 +233,164 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _usuario = await _authRepository.login(cpf: cpf, senha: senha);
-      if (_usuario!.cpf == null || _usuario!.cpf!.isEmpty) {
-        _usuario = _usuario!.copyWith(cpf: cpf);
+      final usuario = await _authRepository.login(cpf: cpf, senha: senha);
+
+      // 2FA-first: sem tokens finais — guarda o tempToken (5 min) e manda a
+      // tela /login/2fa pedir o código (TOTP ou OTP por e-mail).
+      if (usuario.requiresTwoFactor) {
+        _requiresTwoFactor = true;
+        _tempToken = usuario.tempToken;
+        _isLoading = false;
+        notifyListeners();
+        return true;
       }
-      await _saveSession(_usuario!);
-      await _marcarInicioSessao();
-      // Autenticação explícita por senha: não cobra biometria de novo.
-      _sessaoDesbloqueada = true;
-      _isLoading = false;
-      notifyListeners();
-      registrarAtividade();
-      _telemetria?.registrarLoginSucesso();
-      return true;
+
+      return await _concluirLogin(usuario, cpfFallback: cpf);
     } catch (e) {
       _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Etapa 2 do 2FA-first por TOTP (6 dígitos).
+  Future<bool> verificarTwoFactor(String codigo) {
+    return _verificarCodigoTwoFactor(codigo, porEmail: false);
+  }
+
+  /// Etapa 2 do 2FA-first por OTP de e-mail (8 dígitos).
+  Future<bool> verificarCodigoEmailTwoFactor(String codigo) {
+    return _verificarCodigoTwoFactor(codigo, porEmail: true);
+  }
+
+  Future<bool> _verificarCodigoTwoFactor(String codigo,
+      {required bool porEmail}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final tempToken = _tempToken;
+    if (tempToken == null || tempToken.isEmpty) {
+      _requiresTwoFactor = false;
+      _isLoading = false;
+      _errorMessage = 'Sessão expirada. Refaça o login.';
+      notifyListeners();
+      return false;
+    }
+
+    try {
+      final usuario = await _authRepository.twoFactorVerify(
+        tempToken: tempToken,
+        codigo: codigo,
+        porEmail: porEmail,
+      );
+      return await _concluirLogin(usuario);
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Envia o OTP de 8 dígitos para o e-mail do usuário (etapa alternativa do
+  /// 2FA-first). Devolve `null` em sucesso ou a mensagem de erro.
+  Future<String?> enviarCodigoEmailTwoFactor() async {
+    final tempToken = _tempToken;
+    if (tempToken == null || tempToken.isEmpty) {
+      return 'Sessão expirada. Refaça o login.';
+    }
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.twoFactorEmailSend(tempToken: tempToken);
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return _errorMessage;
+    }
+  }
+
+  /// Cancela a etapa 2 pendente (voltar do `/login/2fa` para o login).
+  void cancelarTwoFactor() {
+    _requiresTwoFactor = false;
+    _tempToken = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<bool> _concluirLogin(UsuarioModel usuario,
+      {String? cpfFallback}) async {
+    if ((usuario.cpf == null || usuario.cpf!.isEmpty) &&
+        cpfFallback != null) {
+      _usuario = usuario.copyWith(cpf: cpfFallback);
+    } else {
+      _usuario = usuario;
+    }
+    await _saveSession(_usuario!);
+    await _marcarInicioSessao();
+    // Autenticação explícita por senha/código: não cobra biometria de novo.
+    _sessaoDesbloqueada = true;
+    _requiresTwoFactor = false;
+    _tempToken = null;
+    _isLoading = false;
+    notifyListeners();
+    registrarAtividade();
+    _telemetria?.registrarLoginSucesso();
+    return true;
+  }
+
+  /// Consulta se o 2FA do usuário logado está habilitado (`null` em erro,
+  /// com a mensagem em [errorMessage]).
+  Future<bool?> carregarStatusTwoFactor() async {
+    try {
+      return await _authRepository.twoFactorStatus();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Gera o segredo TOTP pendente (etapa 1 da ativação). `null` em erro.
+  Future<Map<String, String>?> iniciarSetupTwoFactor() async {
+    _errorMessage = null;
+    try {
+      return await _authRepository.twoFactorSetup();
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Confirma o código TOTP e **ativa** o 2FA. `false` em erro.
+  Future<bool> confirmarTwoFactor(String codigo) async {
+    _errorMessage = null;
+    try {
+      await _authRepository.twoFactorConfirm(codigo: codigo);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Desativa o 2FA (exige código TOTP válido). `false` em erro.
+  Future<bool> desabilitarTwoFactor(String codigo) async {
+    _errorMessage = null;
+    try {
+      await _authRepository.twoFactorDisable(codigo: codigo);
+      return true;
+    } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
@@ -433,6 +586,8 @@ class AuthProvider extends ChangeNotifier {
     _authRepository.logout();
     _usuario = null;
     _errorMessage = null;
+    _requiresTwoFactor = false;
+    _tempToken = null;
     await _clearSession();
     notifyListeners();
   }

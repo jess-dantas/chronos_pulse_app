@@ -19,9 +19,41 @@ class AuthRepository {
     required String senha,
   }) async {
     final usuario = await _remoteDataSource.login(cpf: cpf, senha: senha);
+    if (!usuario.requiresTwoFactor) {
+      _dioClient.updateToken(usuario.token);
+    }
+    return usuario;
+  }
+
+  /// 2FA-first: troca o tempToken pelos tokens finais (TOTP ou OTP e-mail).
+  Future<UsuarioModel> twoFactorVerify({
+    required String tempToken,
+    required String codigo,
+    bool porEmail = false,
+  }) async {
+    final usuario = porEmail
+        ? await _remoteDataSource.twoFactorEmailVerify(
+            tempToken: tempToken, codigo: codigo)
+        : await _remoteDataSource.twoFactorVerify(
+            tempToken: tempToken, codigo: codigo);
     _dioClient.updateToken(usuario.token);
     return usuario;
   }
+
+  Future<void> twoFactorEmailSend({required String tempToken}) {
+    return _remoteDataSource.twoFactorEmailSend(tempToken: tempToken);
+  }
+
+  Future<bool> twoFactorStatus() => _remoteDataSource.twoFactorStatus();
+
+  Future<Map<String, String>> twoFactorSetup() =>
+      _remoteDataSource.twoFactorSetup();
+
+  Future<void> twoFactorConfirm({required String codigo}) =>
+      _remoteDataSource.twoFactorConfirm(codigo: codigo);
+
+  Future<void> twoFactorDisable({required String codigo}) =>
+      _remoteDataSource.twoFactorDisable(codigo: codigo);
 
   Future<UsuarioModel> cadastrarEmpresa({
     required String cnpj,

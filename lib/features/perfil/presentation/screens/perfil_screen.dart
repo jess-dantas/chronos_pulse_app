@@ -301,6 +301,18 @@ class _PerfilScreenState extends State<PerfilScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                key: const Key('perfil_two_factor_tile'),
+                leading: const Icon(Icons.shield_outlined),
+                title: const Text('Autenticação em duas etapas'),
+                subtitle:
+                    const Text('Proteja seu acesso com um código de 6 dígitos'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/perfil/2fa'),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
           // Modo "bater ponto sem login" (vínculo de dispositivo, 7 dias).
           // Só faz sentido no app mobile: a Web mantém o login obrigatório.

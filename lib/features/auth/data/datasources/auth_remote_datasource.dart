@@ -193,6 +193,154 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// Etapa 2 do login 2FA-first (TOTP): troca o tempToken pelos tokens finais.
+  Future<UsuarioModel> twoFactorVerify({
+    required String tempToken,
+    required String codigo,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorVerifyEndpoint,
+        data: {'tempToken': tempToken, 'codigo': codigo.trim()},
+      );
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      }
+      throw Exception('Código inválido.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      if (e.response?.statusCode == 403) {
+        throw Exception(
+            'Conta temporariamente bloqueada por excesso de tentativas.');
+      }
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao verificar o código.'),
+      );
+    } catch (e) {
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    }
+  }
+
+  /// Envia o OTP de 8 dígitos por e-mail (etapa alternativa do 2FA).
+  Future<void> twoFactorEmailSend({required String tempToken}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorEmailSendEndpoint,
+        data: {'tempToken': tempToken},
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao enviar o código por e-mail.'));
+    }
+  }
+
+  /// Etapa 2 do login 2FA-first (OTP por e-mail): 8 dígitos.
+  Future<UsuarioModel> twoFactorEmailVerify({
+    required String tempToken,
+    required String codigo,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorEmailVerifyEndpoint,
+        data: {'tempToken': tempToken, 'codigo': codigo.trim()},
+      );
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      }
+      throw Exception('Código inválido.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      if (e.response?.statusCode == 403) {
+        throw Exception(
+            'Conta temporariamente bloqueada por excesso de tentativas.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    } catch (e) {
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    }
+  }
+
+  /// Gestão do 2FA do colaborador (sessão autenticada com Bearer).
+  Future<bool> twoFactorStatus() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.twoFactorStatusEndpoint,
+      );
+      return response.data is Map && response.data['enabled'] == true;
+    } on DioException catch (e) {
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao consultar o 2FA.'),
+      );
+    }
+  }
+
+  /// Gera o segredo TOTP pendente (ainda não habilitado).
+  Future<Map<String, String>> twoFactorSetup() async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorSetupEndpoint,
+      );
+      final data = response.data is Map ? response.data : const {};
+      return {
+        'secret': (data['secret'] ?? '') as String,
+        'otpauthUri': (data['otpauthUri'] ?? '') as String,
+      };
+    } on DioException catch (e) {
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro na configuração do 2FA.'),
+      );
+    }
+  }
+
+  Future<void> twoFactorConfirm({required String codigo}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorConfirmEndpoint,
+        data: {'codigo': codigo.trim()},
+      );
+    } on DioException catch (e) {
+      throw Exception(_mensagemServidor(e) ??
+          mensagemErroAmigavel(e, fallback: 'Erro ao ativar o 2FA.'));
+    }
+  }
+
+  Future<void> twoFactorDisable({required String codigo}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorDisableEndpoint,
+        data: {'codigo': codigo.trim()},
+      );
+    } on DioException catch (e) {
+      throw Exception(_mensagemServidor(e) ??
+          mensagemErroAmigavel(e, fallback: 'Erro ao desativar o 2FA.'));
+    }
+  }
+
+  String? _mensagemServidor(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg;
+    }
+    return null;
+  }
+
   Future<String> enviarFoto(List<int> bytes, String nomeArquivo) async {
     try {
       final formData = FormData.fromMap({

@@ -87,6 +87,13 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: Colors.redAccent,
         ),
       );
+      return;
+    }
+
+    // 2FA-first: o backend parou na etapa 1 (requiresTwoFactor) — pede o
+    // código TOTP/OTP por e-mail na tela dedicada.
+    if (sucesso && mounted && authProvider.requiresTwoFactor) {
+      context.push('/login/2fa');
     }
   }
 
