@@ -37,6 +37,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   final _codigoController = TextEditingController();
   bool _obscurePassword = true;
 
+  /// 2FA-first: o campo de senha fica escondido até o usuário pedir.
+  bool _mostrarSenha = false;
+
+  /// Alternativa ao TOTP: OTP de 8 dígitos enviado por e-mail.
+  bool _modoEmail = false;
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +67,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     final authProvider = context.read<AdminAuthProvider>();
     final sucesso = await authProvider.login(
       _usernameController.text.trim(),
-      _senhaController.text,
+      senha: _mostrarSenha ? _senhaController.text : null,
     );
 
     if (!mounted) return;
@@ -80,9 +86,21 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       return;
     }
 
+    final erro = authProvider.errorMessage ?? 'Erro ao realizar login.';
+    if (erro.contains('Senha é obrigatória') && !_mostrarSenha) {
+      // Conta sem 2FA: o backend exige senha — revela o campo na hora.
+      setState(() => _mostrarSenha = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Informe a senha para continuar.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(authProvider.errorMessage ?? 'Erro ao realizar login.'),
+        content: Text(erro),
         backgroundColor: Colors.redAccent,
       ),
     );
@@ -92,8 +110,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     if (!_codigoFormKey.currentState!.validate()) return;
 
     final authProvider = context.read<AdminAuthProvider>();
-    final sucesso =
-        await authProvider.verifyTwoFactor(_codigoController.text.trim());
+    final codigo = _codigoController.text.trim();
+    final sucesso = _modoEmail
+        ? await authProvider.verifyEmailCode(codigo)
+        : await authProvider.verifyTwoFactor(codigo);
 
     if (!mounted) return;
 
@@ -110,9 +130,61 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 
+  /// Envia OTP de 8 dígitos por e-mail e troca o passo 2 para o modo e-mail.
+  Future<void> _handleEnviarCodigoEmail() async {
+    final authProvider = context.read<AdminAuthProvider>();
+    final ok = await authProvider.enviarCodigoEmail();
+
+    if (!mounted) return;
+
+    if (ok) {
+      setState(() {
+        _modoEmail = true;
+        _codigoController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Código enviado para o e-mail cadastrado.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          authProvider.errorMessage ?? 'Erro ao enviar o código por e-mail.',
+        ),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
+  void _usarGoogleAuthenticator() {
+    setState(() {
+      _modoEmail = false;
+      _codigoController.clear();
+    });
+  }
+
+  /// "Usar senha": volta ao passo 1 já com o campo de senha visível.
+  void _usarSenha() {
+    context.read<AdminAuthProvider>().voltarParaLogin();
+    setState(() {
+      _mostrarSenha = true;
+      _modoEmail = false;
+      _codigoController.clear();
+    });
+  }
+
   void _voltarLogin() {
     context.read<AdminAuthProvider>().voltarParaLogin();
     _codigoController.clear();
+    setState(() {
+      _mostrarSenha = false;
+      _modoEmail = false;
+    });
   }
 
   @override
@@ -223,13 +295,19 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                 TextFormField(
                                   controller: _codigoController,
                                   keyboardType: TextInputType.number,
-                                  maxLength: 6,
+                                  maxLength: _modoEmail ? 8 : 6,
                                   autofillHints: const [AutofillHints.oneTimeCode],
                                   decoration: InputDecoration(
-                                    labelText: 'Código (6 dígitos)',
+                                    labelText: _modoEmail
+                                        ? 'Código enviado por e-mail '
+                                            '(8 dígitos)'
+                                        : 'Código (6 dígitos)',
                                     counterText: '',
-                                    helperText:
-                                        'Informe o código do Google Authenticator.',
+                                    helperText: _modoEmail
+                                        ? 'Verifique a caixa de entrada '
+                                            'do e-mail cadastrado.'
+                                        : 'Informe o código do Google '
+                                            'Authenticator.',
                                     prefixIcon:
                                         const Icon(Icons.pin_outlined),
                                     border: OutlineInputBorder(
@@ -238,12 +316,16 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   ),
                                   validator: (value) {
                                     final codigo = value?.trim() ?? '';
+                                    final tamanhoEsperado =
+                                        _modoEmail ? 8 : 6;
                                     if (codigo.isEmpty) {
                                       return 'Informe o código de verificação';
                                     }
-                                    if (codigo.length != 6 ||
+                                    if (codigo.length != tamanhoEsperado ||
                                         int.tryParse(codigo) == null) {
-                                      return 'O código deve ter 6 dígitos';
+                                      return _modoEmail
+                                          ? 'O código deve ter 8 dígitos'
+                                          : 'O código deve ter 6 dígitos';
                                     }
                                     return null;
                                   },
@@ -283,6 +365,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
+                                if (!_modoEmail)
+                                  TextButton(
+                                    onPressed: isCarregando
+                                        ? null
+                                        : _handleEnviarCodigoEmail,
+                                    child: const Text(
+                                      'Receber código por e-mail',
+                                    ),
+                                  ),
+                                if (_modoEmail)
+                                  TextButton(
+                                    onPressed: isCarregando
+                                        ? null
+                                        : _usarGoogleAuthenticator,
+                                    child: const Text(
+                                      'Usar Google Authenticator',
+                                    ),
+                                  ),
+                                TextButton(
+                                  onPressed: isCarregando ? null : _usarSenha,
+                                  child: const Text('Usar senha'),
+                                ),
                                 TextButton(
                                   onPressed: isCarregando ? null : _voltarLogin,
                                   child: const Text('Usar outra conta'),
@@ -324,38 +428,40 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _senhaController,
-                          obscureText: _obscurePassword,
-                          autofillHints: const [AutofillHints.password],
-                          decoration: InputDecoration(
-                            labelText: 'Senha',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                        if (_mostrarSenha) ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _senhaController,
+                            obscureText: _obscurePassword,
+                            autofillHints: const [AutofillHints.password],
+                            decoration: InputDecoration(
+                              labelText: 'Senha',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Informe a senha';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) => _handleLogin(),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Informe a senha';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _handleLogin(),
-                        ),
+                        ],
                         const SizedBox(height: 24),
                         SizedBox(
                           height: 50,
@@ -388,6 +494,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        if (!_mostrarSenha)
+                          TextButton(
+                            onPressed: isCarregando
+                                ? null
+                                : () => setState(() => _mostrarSenha = true),
+                            child: const Text('Usar senha'),
+                          ),
                         if (authProvider.bootstrapAvailable == true)
                           TextButton.icon(
                             onPressed: () =>

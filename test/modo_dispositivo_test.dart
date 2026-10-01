@@ -394,5 +394,5 @@ class _HardwareFake extends HardwareService {
   _HardwareFake({this.resultado = true});
 
   @override
-  Future<bool> autenticarBiometria() async => resultado;
+  Future<bool> autenticarBiometria({String motivo = ''}) async => resultado;
 }

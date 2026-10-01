@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../config/app_modo.dart';
 import '../../features/admin/presentation/screens/admin_alterar_senha_screen.dart';
 import '../../features/admin/presentation/screens/admin_auth_screen.dart';
+import '../../features/admin/presentation/screens/admin_biometric_gate_screen.dart';
 import '../../features/admin/presentation/screens/admin_bootstrap_screen.dart';
 import '../../features/admin/presentation/screens/admin_contratos_screen.dart';
 import '../../features/admin/presentation/screens/admin_recover_screen.dart';
@@ -48,8 +49,11 @@ class AppRouter {
   static const String rotaInicial = '/';
 
   /// Gate biométrico de abertura (login por biometria): toda sessão
-  /// RESTORIDA ao abrir o app passa por aqui antes de liberar o conteúdo.
+  /// RESTORADA ao abrir o app passa por aqui antes de liberar o conteúdo.
   static const String rotaBiometrico = '/biometria';
+
+  /// Gate biométrico da área AdminPlataforma (sessão admin restaurada).
+  static const String rotaBiometricoAdmin = '/admin/biometria';
 
   /// Rota inicial (`/`) em qualquer modo — o que `/` *renderiza* é que muda:
   /// - [AppModo.cliente] (app mobile): home de ponto (botão "Bater ponto" +
@@ -184,6 +188,11 @@ class AppRouter {
           path: rotaBiometrico,
           builder: (context, state) => const BiometricGateScreen(),
         ),
+        // Gate biométrico da área admin (sessão admin restaurada).
+        GoRoute(
+          path: rotaBiometricoAdmin,
+          builder: (context, state) => const AdminBiometricGateScreen(),
+        ),
         // Admin auth routes (públicas, não requerem autenticação)
         GoRoute(
           path: '/admin/auth/login',
@@ -265,19 +274,31 @@ class AppRouter {
     // App Admin (dono da plataforma): só existe /admin (+ /perfil).
     // Landing, login de cliente e painel de tenant são redirecionados.
     if (ehModoAdmin) {
+      final ehAuth = location.startsWith('/admin/auth/');
+      final ehGate = location == rotaBiometricoAdmin;
       final areaAdminModo =
           location == '/admin' || location.startsWith('/admin/');
       final areaPerfil =
           location == '/perfil' || location.startsWith('/perfil/');
+
+      // Gate: sessão admin restaurada fica TRANCADA até a biometria.
+      if (ehGate) {
+        if (!adminAuth.isAuthenticated) return '/admin/auth/login';
+        if (adminAuth.sessaoDesbloqueada) return '/admin/dashboard';
+        return null;
+      }
       if (!areaAdminModo && !areaPerfil) {
         return adminAuth.isAuthenticated
             ? '/admin/dashboard'
             : '/admin/auth/login';
       }
-      if (areaAdminModo &&
-          !location.startsWith('/admin/auth/') &&
-          !adminAuth.isAuthenticated) {
+      if (areaAdminModo && !ehAuth && !adminAuth.isAuthenticated) {
         return '/admin/auth/login';
+      }
+      if (adminAuth.isAuthenticated &&
+          !adminAuth.sessaoDesbloqueada &&
+          ((areaAdminModo && !ehAuth) || areaPerfil)) {
+        return rotaBiometricoAdmin;
       }
     }
 

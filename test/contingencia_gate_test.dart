@@ -54,7 +54,8 @@ class _FakeHardware extends HardwareService {
   Future<bool> biometriaDisponivel() async => disponivel;
 
   @override
-  Future<bool> autenticarBiometria() async => autenticar;
+  Future<bool> autenticarBiometria({String motivo = ''}) async =>
+      autenticar;
 }
 
 class _FakePrivacidadeDataSource extends PrivacidadeDataSource {

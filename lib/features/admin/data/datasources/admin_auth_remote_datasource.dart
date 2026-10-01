@@ -15,13 +15,15 @@ class AdminAuthRemoteDataSource {
         : base;
   }
 
-  Future<Map<String, dynamic>> login(String username, String senha) async {
+  /// Login admin. [senha] opcional (2FA-first): sem senha o backend exige
+  /// 2FA habilitado e devolve `requiresTwoFactor` + `tempToken` direto.
+  Future<Map<String, dynamic>> login(String username, {String? senha}) async {
     try {
       final response = await _dioClient.dio.post(
         '$_adminBaseUrl/admin/auth/login',
         data: {
           'username': username,
-          'senha': senha,
+          if (senha != null && senha.isNotEmpty) 'senha': senha,
         },
       );
 
@@ -54,6 +56,54 @@ class AdminAuthRemoteDataSource {
       throw Exception('Verificação 2FA inválida');
     } on DioException catch (e) {
       throw Exception(_extrairMensagem(e, 'Código 2FA inválido'));
+    }
+  }
+
+  /// POST /admin/auth/2fa/email/send { tempToken } — gera e envia por e-mail
+  /// um OTP de 8 dígitos (alternativa ao TOTP quando o aparelho está fora).
+  Future<void> sendEmailCode(String tempToken) async {
+    try {
+      await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/2fa/email/send',
+        data: {'tempToken': tempToken},
+      );
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao enviar o código por e-mail'));
+    }
+  }
+
+  /// POST /admin/auth/2fa/email/verify { tempToken, codigo } (8 dígitos).
+  Future<Map<String, dynamic>> verifyEmailCode(
+    String tempToken,
+    String codigo,
+  ) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/2fa/email/verify',
+        data: {'tempToken': tempToken, 'codigo': codigo},
+      );
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(response.data);
+      }
+      throw Exception('Código de e-mail inválido');
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Código de e-mail inválido'));
+    }
+  }
+
+  /// POST /admin/auth/refresh { refreshToken } — rotação de tokens admin.
+  Future<Map<String, dynamic>> refresh(String refreshToken) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(response.data);
+      }
+      throw Exception('Sessão expirada');
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Sessão expirada'));
     }
   }
 
@@ -111,19 +161,23 @@ class AdminAuthRemoteDataSource {
     }
   }
 
-  /// POST /admin/auth/2fa/recover — login com código de recuperação.
+  /// POST /admin/auth/2fa/recover — acesso com código de recuperação.
+  /// [senha] opcional (o recovery code já autentica) e [novaSenha] opcional
+  /// troca a senha no mesmo passo (R1).
   Future<Map<String, dynamic>> recover({
     required String username,
-    required String senha,
+    String? senha,
     required String recoveryCode,
+    String? novaSenha,
   }) async {
     try {
       final response = await _dioClient.dio.post(
         '$_adminBaseUrl/admin/auth/2fa/recover',
         data: {
           'username': username,
-          'senha': senha,
+          if (senha != null && senha.isNotEmpty) 'senha': senha,
           'recoveryCode': recoveryCode,
+          if (novaSenha != null && novaSenha.isNotEmpty) 'novaSenha': novaSenha,
         },
       );
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
