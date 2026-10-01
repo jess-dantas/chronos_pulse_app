@@ -102,11 +102,20 @@ jobs:
             --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL }} \
             --dart-define=APP_MODE=admin
 
+      # APKs versionados: <flavor>-release-<versão>-g<sha7>.apk (ex.: 1.0.0+1 → 1.0.0_1)
+      - name: Versiona APKs
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr '+' '_')
+          SHA=${GITHUB_SHA::7}
+          cd build/app/outputs/flutter-apk
+          mv app-cliente-release.apk "app-cliente-release-${VERSION}-g${SHA}.apk"
+          mv app-admin-release.apk "app-admin-release-${VERSION}-g${SHA}.apk"
+
       - name: Upload APKs de produção
         uses: actions/upload-artifact@v4
         with:
           name: chronos-pulse-android-${{ github.sha }}
           path: |
-            build/app/outputs/flutter-apk/app-cliente-release.apk
-            build/app/outputs/flutter-apk/app-admin-release.apk
+            build/app/outputs/flutter-apk/app-cliente-release-*.apk
+            build/app/outputs/flutter-apk/app-admin-release-*.apk
           if-no-files-found: error

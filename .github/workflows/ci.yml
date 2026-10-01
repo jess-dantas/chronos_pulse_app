@@ -58,11 +58,20 @@ jobs:
           --dart-define=API_URL=${{ secrets.RENDER_BACKEND_URL || 'https://chronos-pulse.onrender.com/api/v1' }}
           --dart-define=APP_MODE=cliente
 
+      # APK versionado: app-cliente-release-<versão>-g<sha7>.apk (ex.: 1.0.0+1 → 1.0.0_1)
+      - name: Versiona APK
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr '+' '_')
+          SHA=${GITHUB_SHA::7}
+          cd build/app/outputs/flutter-apk
+          mv app-cliente-release.apk "app-cliente-release-${VERSION}-g${SHA}.apk"
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk-cliente
-          path: build/app/outputs/flutter-apk/app-cliente-release.apk
+          path: build/app/outputs/flutter-apk/app-cliente-release-*.apk
+          if-no-files-found: error
 
   build-web:
     runs-on: ubuntu-latest
