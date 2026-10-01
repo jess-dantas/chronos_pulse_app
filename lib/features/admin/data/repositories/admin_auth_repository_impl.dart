@@ -65,6 +65,16 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
   }
 
   @override
+  Future<void> resetSenhaEnviar(String username) {
+    return _remoteDataSource.resetSenhaEnviar(username);
+  }
+
+  @override
+  Future<void> resetSenhaVerificar(String username, String codigo, String novaSenha) {
+    return _remoteDataSource.resetSenhaVerificar(username, codigo, novaSenha);
+  }
+
+  @override
   Future<Map<String, dynamic>> bootstrapStatus() {
     return _remoteDataSource.bootstrapStatus();
   }

@@ -8,6 +8,7 @@ import '../../features/admin/presentation/screens/admin_biometric_gate_screen.da
 import '../../features/admin/presentation/screens/admin_bootstrap_screen.dart';
 import '../../features/admin/presentation/screens/admin_contratos_screen.dart';
 import '../../features/admin/presentation/screens/admin_recover_screen.dart';
+import '../../features/admin/presentation/screens/admin_reset_senha_screen.dart';
 import '../../features/admin/presentation/screens/admin_recovery_codes_screen.dart';
 import '../../features/admin/presentation/screens/admin_setup_2fa_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -217,6 +218,10 @@ class AppRouter {
         GoRoute(
           path: '/admin/auth/recover',
           builder: (context, state) => const AdminRecoverScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/reset-senha',
+          builder: (context, state) => const AdminResetSenhaScreen(),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) =>

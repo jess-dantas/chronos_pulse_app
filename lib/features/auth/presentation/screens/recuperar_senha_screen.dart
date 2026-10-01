@@ -32,7 +32,16 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
 
   Future<void> _enviarCodigo() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    await _enviar();
+  }
 
+  /// Reenvio do OTP: o CPF já foi validado no primeiro envio (campo fica
+  /// desabilitado), então dispensa a validação do formulário completo.
+  Future<void> _reenviarCodigo() async {
+    await _enviar();
+  }
+
+  Future<void> _enviar() async {
     final authProvider = context.read<AuthProvider>();
     final mensagem = await authProvider.esqueciSenha(
       CpfInputFormatter.clean(_cpfController.text),
@@ -137,7 +146,7 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                         const SizedBox(height: 8),
                         Text(
                           _envioRealizado
-                              ? 'Enviamos um código de confirmação para o e-mail cadastrado no sistema.'
+                              ? 'Enviamos um código de 8 dígitos para o e-mail cadastrado no sistema.'
                               : 'Informe o CPF cadastrado para receber um código de recuperação no e-mail registrado.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -205,6 +214,8 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                           TextFormField(
                             controller: _codigoController,
                             keyboardType: TextInputType.number,
+                            maxLength: 8,
+                            autofillHints: const [AutofillHints.oneTimeCode],
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 18,
@@ -213,20 +224,27 @@ class _RecuperarSenhaScreenState extends State<RecuperarSenhaScreen> {
                             ),
                             decoration: InputDecoration(
                               labelText: 'Código de recuperação',
+                              counterText: '',
                               prefixIcon: const Icon(Icons.password),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                             validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
+                              final codigo = value?.trim() ?? '';
+                              if (codigo.isEmpty) {
                                 return 'Informe o código recebido por e-mail';
                               }
-                              if (value.trim().length < 6) {
-                                return 'Código inválido';
+                              if (codigo.length != 8 ||
+                                  int.tryParse(codigo) == null) {
+                                return 'O código deve ter 8 dígitos';
                               }
                               return null;
                             },
+                          ),
+                          TextButton(
+                            onPressed: isCarregando ? null : _reenviarCodigo,
+                            child: const Text('Reenviar código'),
                           ),
                           const SizedBox(height: 16),
                           TextFormField(

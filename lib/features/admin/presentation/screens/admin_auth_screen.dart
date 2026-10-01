@@ -515,6 +515,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                             'Entrar com código de recuperação',
                           ),
                         ),
+                        TextButton(
+                          onPressed: isCarregando
+                              ? null
+                              : () =>
+                                  context.go('/admin/auth/reset-senha'),
+                          child: const Text('Esqueci minha senha'),
+                        ),
                         ],
                       ],
                     ),
