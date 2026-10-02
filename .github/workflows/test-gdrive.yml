@@ -1,0 +1,25 @@
+name: Teste Upload Google Drive
+
+# Workflow temporário para validar o upload para o Google Drive sem deploy.
+# Após validação, remover este arquivo.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  teste-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gera arquivo de teste
+        run: |
+          printf 'chronos-pulse: upload de teste em %s\n' "$(date -u +%FT%TZ)" > teste-upload.txt
+
+      - name: Sobe para o Google Drive
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          GDRIVE_FOLDER_ID: 1GMbMgphU35o34-dMfoZrTE0p7k1dAgFg
+        run: bash .github/scripts/gdrive-upload.sh teste-upload.txt

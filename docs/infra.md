@@ -171,6 +171,11 @@ flutter build apk --release --flavor admin `
   sempre) **e** gera os APKs `cliente` + `admin` assinados com o keystore de
   release, apontando para `secrets.RENDER_BACKEND_URL`. Baixe-os na página da
   execução do workflow → aba **Artifacts** (`chronos-pulse-android-<sha>`).
+- **Google Drive**: o mesmo job `build-android-production` espelha os dois APKs
+  na pasta `chronos_pulse_app` do Drive via OAuth2 (script
+  `.github/scripts/gdrive-upload.sh`; folder ID no workflow). Validação manual:
+  workflow `test-gdrive.yml` (`workflow_dispatch`) — temporário, removido após
+  a primeira confirmação.
 - PRs em `develop`/`main` → `ci.yml` valida analyze/testes e gera o APK do
   flavor `cliente` como artefato de conferência.
 - **Keep-alive do Render**: ping periódico da API pelo **UptimeRobot**
@@ -178,7 +183,8 @@ flutter build apk --release --flavor admin `
   com cron. (O workflow `keep-alive.yml` já existiu aqui e foi removido.)
 - Secrets necessários no GitHub (já esperados pelo workflow):
   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
-  `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `RENDER_BACKEND_URL`.
+  `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `RENDER_BACKEND_URL`,
+  `GDRIVE_CLIENT_ID`, `GDRIVE_CLIENT_SECRET`, `GDRIVE_REFRESH_TOKEN`.
   ```powershell
   # gerar o valor do ANDROID_KEYSTORE_BASE64:
   [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\app\chronos_pulse_app\android\app\chronos-pulse-release.keystore'))

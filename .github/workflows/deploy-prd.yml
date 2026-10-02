@@ -119,3 +119,15 @@ jobs:
             build/app/outputs/flutter-apk/app-cliente-release-*.apk
             build/app/outputs/flutter-apk/app-admin-release-*.apk
           if-no-files-found: error
+
+      # Mesmos APKs do artefato, espelhados na pasta do Google Drive.
+      - name: Envia APKs para o Google Drive
+        env:
+          GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+          GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_CLIENT_SECRET }}
+          GDRIVE_REFRESH_TOKEN: ${{ secrets.GDRIVE_REFRESH_TOKEN }}
+          GDRIVE_FOLDER_ID: 1GMbMgphU35o34-dMfoZrTE0p7k1dAgFg
+        run: |
+          bash .github/scripts/gdrive-upload.sh \
+            build/app/outputs/flutter-apk/app-cliente-release-*.apk \
+            build/app/outputs/flutter-apk/app-admin-release-*.apk
