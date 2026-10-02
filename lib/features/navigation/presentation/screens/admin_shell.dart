@@ -68,6 +68,15 @@ class AdminShell extends StatelessWidget {
     ),
   };
 
+  /// Dock fixa do layout estreito (≤800px): só as 4 seções de maior uso;
+  /// o restante (Contratos, Alterar Senha, Segurança) fica no drawer.
+  static const List<String> _dockSlugs = [
+    'dashboard',
+    'leads',
+    'empresas',
+    'modulos',
+  ];
+
   List<_AdminDestino> _destinos() {
     return List.generate(
       AppRouter.adminOrdem.length,
@@ -82,6 +91,12 @@ class AdminShell extends StatelessWidget {
         );
       },
     );
+  }
+
+  List<_AdminDestino> _destinosDock() {
+    return _destinos()
+        .where((d) => _dockSlugs.contains(AppRouter.adminOrdem[d.branchIndex]))
+        .toList();
   }
 
   @override
@@ -314,20 +329,39 @@ class AdminShell extends StatelessWidget {
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              NavigationBar(
-                selectedIndex: selecionado,
-                onDestinationSelected: (index) =>
-                    navigationShell.goBranch(destinos[index].branchIndex),
-                destinations: destinos
-                    .map(
-                      (d) => NavigationDestination(
-                        icon: Icon(d.icon),
-                        selectedIcon:
-                            Icon(d.selectedIcon, color: Colors.deepPurple),
-                        label: d.label,
-                      ),
-                    )
-                    .toList(),
+              Builder(
+                builder: (dockContext) {
+                  final destinosDock = _destinosDock();
+                  final posicaoDock = destinosDock
+                      .indexWhere((d) => d.branchIndex == currentIndex);
+
+                  // Rota fora do dock (chegou pelo drawer): NavigationBar não
+                  // aceita -1 — renderiza a dock sem destaque, como o MainShell.
+                  if (posicaoDock < 0) {
+                    return _DockAdminSemDestaque(
+                      itens: destinosDock,
+                      onNavegar: (destino) =>
+                          navigationShell.goBranch(destino.branchIndex),
+                    );
+                  }
+                  return NavigationBar(
+                    selectedIndex: posicaoDock,
+                    onDestinationSelected: (index) => navigationShell
+                        .goBranch(destinosDock[index].branchIndex),
+                    destinations: destinosDock
+                        .map(
+                          (d) => NavigationDestination(
+                            icon: Icon(d.icon),
+                            selectedIcon: Icon(
+                              d.selectedIcon,
+                              color: Colors.deepPurple,
+                            ),
+                            label: d.label,
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
               ),
               Material(
                 elevation: 6,
@@ -439,6 +473,60 @@ class _MenuAdmin extends StatelessWidget {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dock do Admin sem item destacado (rota fora do dock, ex.: Contratos,
+/// alcançada pelo drawer). Mesmo visual da NavigationBar, só que sem
+/// indicador de seleção — espelho do `_DockSemDestaque` do MainShell.
+class _DockAdminSemDestaque extends StatelessWidget {
+  final List<_AdminDestino> itens;
+  final void Function(_AdminDestino destino) onNavegar;
+
+  const _DockAdminSemDestaque({
+    required this.itens,
+    required this.onNavegar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      elevation: 6,
+      color: scheme.surfaceContainerLow,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              for (final item in itens)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onNavegar(item),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(item.icon, color: scheme.onSurfaceVariant),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
