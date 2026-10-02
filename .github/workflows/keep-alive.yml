@@ -1,0 +1,28 @@
+name: Keep Alive (Render)
+
+# O Render suspende serviços free após ~15 min sem tráfego. Um ping a cada
+# 12 min mantém a API de produção acordada (GET /auth/ping é permitAll no
+# SecurityConfig). Observações:
+#   - `schedule` só roda a partir dos workflows da branch DEFAULT (main);
+#   - cron pode atrasar alguns minutos na fila do GitHub Actions.
+on:
+  schedule:
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping no backend de produção
+        env:
+          API_BASE: ${{ secrets.RENDER_BACKEND_URL || 'https://chronos-pulse.onrender.com/api/v1' }}
+        run: |
+          echo "Ping em $API_BASE/auth/ping"
+          curl -fsS --retry 3 --retry-delay 10 --max-time 60 "$API_BASE/auth/ping"
+          echo
