@@ -14,7 +14,7 @@
 | Perfil | Nome | CPF | Senha | Observação |
 |---|---|---|---|---|
 | `ADMIN_EMPRESA` | Admin Empresa | `11111111111` | `admin123` | Gestão completa; **herda todos os módulos contratados** no primeiro consentimento LGPD; vê o card **Transferir titularidade** em `/perfil` |
-| `GESTOR_RH` | Gestor de RH | `22222222222` | `admin123` | Colaboradores, ponto, estoque + gerência |
+| `GESTOR_RH` | Gestor de RH | `22222222222` | `admin123` | Escopo fixo `PONTO` + `RECURSOS_HUMANOS`: colaboradores, ponto e fiscal |
 | `COLABORADOR` | Colaborador 1 | `12345678901` | `senha123` | Apenas ponto eletrônico (candidato ideal ao wizard de titularidade) |
 | `COLABORADOR` | Colaborador 2 | `98765432100` | `senha123` | Ponto + estoque (`acessoEstoque=true`) |
 
