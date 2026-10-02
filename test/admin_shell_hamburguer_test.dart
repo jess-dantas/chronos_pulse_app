@@ -100,22 +100,34 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('layout estreito mostra o hambúrguer sem rail', (tester) async {
-    await pumpShell(tester);
+  testWidgets('layout estreito mostra o hambúrguer, sem rail, e dock de 4',
+      (tester) async {
+    await pumpShell(tester, rota: '/admin/modulos');
 
     expect(find.byType(AdminShell), findsOneWidget);
     expect(find.byTooltip('Menu do admin'), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).destinations,
-      hasLength(7),
-      reason: 'NavigationBar de 7 seções continua no rodapé',
+      hasLength(4),
+      reason: 'dock fixa em Dashboard/Leads/Empresas/Módulos (resto no drawer)',
+    );
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      3,
+      reason: 'Módulos é o 4º item do dock',
     );
   });
 
   testWidgets('hambúrguer abre o drawer com as seções e navega',
       (tester) async {
-    await pumpShell(tester);
+    await pumpShell(tester); // /admin/seguranca — fora do dock
+
+    expect(
+      find.byType(NavigationBar),
+      findsNothing,
+      reason: 'Segurança só existe no drawer: dock renderizada sem destaque',
+    );
 
     // O tap sintético não alcança o IconButton do AppBar neste ambiente de
     // teste (mesma observação do MainShell); a ação é invocada diretamente
@@ -159,8 +171,8 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(
       tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      4,
-      reason: 'NavigationBar destaca Módulos',
+      3,
+      reason: 'NavigationBar destaca Módulos (4º item do dock)',
     );
   });
 

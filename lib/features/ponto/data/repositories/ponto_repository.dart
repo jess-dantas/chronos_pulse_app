@@ -102,6 +102,11 @@ class PontoRepository {
         colaboradorId: colaboradorId);
     if (pendentes.isEmpty) return 0;
 
+    // Envio sempre em ordem cronológica: o backend deriva o tipo de cada
+    // batida na ordem em que recebe o lote — lote embaralhado gravava tipo
+    // fora de sequência.
+    pendentes.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+
     try {
       final idsSucesso = await remoteDataSource
           .sincronizarPontos(pendentes)

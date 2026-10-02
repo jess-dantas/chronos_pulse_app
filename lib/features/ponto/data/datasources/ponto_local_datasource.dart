@@ -27,6 +27,7 @@ class PontoLocalDataSource {
       'pontos',
       where: whereClause,
       whereArgs: whereArgs,
+      orderBy: 'dataHoraDispositivo ASC',
     );
 
     return result.map((json) => RegistroPontoModel.fromJson(json)).toList();
@@ -269,7 +270,8 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
         .where((r) =>
             !r.sincronizadoOffline &&
             (colaboradorId == null || r.colaboradorId == colaboradorId))
-        .toList();
+        .toList()
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   @override

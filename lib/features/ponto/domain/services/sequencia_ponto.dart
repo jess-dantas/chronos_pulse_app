@@ -9,13 +9,21 @@ class SequenciaPonto {
     'SAIDA',
   ];
 
-  /// Próximo tipo da sequência considerando APENAS batidas feitas pelo botão.
+  /// Próximo tipo da sequência pela MESMA regra do backend
+  /// (`RegistrarPontoUseCaseImpl.determinarProximoTipo`): pega o último tipo
+  /// do dia em ordem cronológica — contando também ajustes manuais, que o
+  /// servidor considera ao derivar — e devolve o próximo do ciclo.
   ///
-  /// Ajustes manuais (marcação corrigida/incluída) NÃO avançam o ciclo: senão o
-  /// histórico mista faria a sequência pular para INTERVALO em vez de alcançar
-  /// RETORNO/SAIDA. Mesma regra vale na tela principal e no diálogo de ajuste.
+  /// Tipo desconhecido/legado ou lista vazia → ENTRADA (fallback idêntico ao
+  /// do BE). Usar contagem (`length % 4`) divergia do servidor depois de um
+  /// ajuste: o botão anunciava um tipo e o servidor gravava outro.
   static String proximo(List<RegistroPontoModel> registros) {
-    final batidas = registros.where((r) => !r.ajusteManual).toList();
-    return ordem[batidas.length % ordem.length];
+    if (registros.isEmpty) return ordem.first;
+
+    final ordenados = [...registros]
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    final indice = ordem.indexOf(ordenados.last.tipoRegistro);
+    if (indice < 0) return ordem.first;
+    return ordem[(indice + 1) % ordem.length];
   }
 }

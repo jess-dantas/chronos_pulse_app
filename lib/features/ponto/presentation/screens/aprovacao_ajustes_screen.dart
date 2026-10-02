@@ -304,46 +304,122 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final g = grupos[index];
+                      final marcacoes = g.itens
+                          .map((a) => a.marcacoesDoDia)
+                          .firstWhere((m) => m.isNotEmpty,
+                              orElse: () => const []);
                       return Card(
                         key: ValueKey(g.chave),
                         elevation: 2,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        child: Theme(
-                          data: Theme.of(context)
-                              .copyWith(dividerColor: Colors.transparent),
-                          child: ExpansionTile(
-                            initiallyExpanded: grupos.length == 1,
-                            tilePadding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            childrenPadding:
-                                const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                            title: Row(
-                              children: [
-                                const Icon(Icons.person,
-                                    size: 20, color: Colors.deepPurple),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    g.nome,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                    overflow: TextOverflow.ellipsis,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Cabeçalho: colaborador + dia + pendências.
+                              Row(
+                                children: [
+                                  const Icon(Icons.person,
+                                      size: 20, color: Colors.deepPurple),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      g.nome,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'PENDENTE',
+                                      style: TextStyle(
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${DateFormat('dd/MM/yyyy').format(g.dia)} · '
+                                '${g.itens.length == 1 ? '1 ajuste pendente' : '${g.itens.length} ajustes pendentes'}',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+
+                              // Marcações do dia: chips UMA vez no card,
+                              // não repetidos em cada solicitação.
+                              if (marcacoes.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                const Row(
+                                  children: [
+                                    Icon(Icons.schedule,
+                                        size: 18, color: Colors.grey),
+                                    SizedBox(width: 8),
+                                    Text('Marcações do dia:',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w500)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: marcacoes.map((m) {
+                                    final hora = DateFormat('HH:mm')
+                                        .format(m.dataHora.toLocal());
+                                    return Chip(
+                                      avatar: Icon(
+                                        m.ajuste
+                                            ? Icons.edit_calendar
+                                            : Icons.punch_clock,
+                                        size: 16,
+                                        color: m.ajuste
+                                            ? Colors.orange
+                                            : Colors.deepPurple,
+                                      ),
+                                      label: Text(
+                                        '$hora ${m.tipoRegistro}'
+                                        '${m.ajuste ? ' (ajuste)' : ''}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      backgroundColor: m.ajuste
+                                          ? Colors.orange
+                                              .withValues(alpha: 0.12)
+                                          : Colors.deepPurple
+                                              .withValues(alpha: 0.08),
+                                      visualDensity: VisualDensity.compact,
+                                    );
+                                  }).toList(),
                                 ),
                               ],
-                            ),
-                            subtitle: Text(
-                              '${DateFormat('dd/MM/yyyy').format(g.dia)} · '
-                              '${g.itens.length == 1 ? '1 ajuste pendente' : '${g.itens.length} ajustes pendentes'}',
-                            ),
-                            children: g.itens
-                                .map((ajuste) => _AjusteCard(
-                                      ajuste: ajuste,
-                                      onAprovar: () => _aprovarAjuste(ajuste),
-                                      onRejeitar: () => _rejeitarAjuste(ajuste),
-                                    ))
-                                .toList(),
+
+                              // Uma linha compacta por solicitação.
+                              for (var i = 0; i < g.itens.length; i++) ...[
+                                const SizedBox(height: 12),
+                                Divider(
+                                    height: i == 0 ? 1 : 24,
+                                    color: i == 0
+                                        ? Colors.grey.shade300
+                                        : Colors.transparent),
+                                _LinhaAjuste(
+                                  ajuste: g.itens[i],
+                                  onAprovar: () => _aprovarAjuste(g.itens[i]),
+                                  onRejeitar: () => _rejeitarAjuste(g.itens[i]),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       );
@@ -356,12 +432,14 @@ class _AprovacaoAjustesScreenState extends State<AprovacaoAjustesScreen> {
   }
 }
 
-class _AjusteCard extends StatelessWidget {
+/// Linha compacta de uma solicitação dentro do card do dia: horário/tipo/NSR,
+/// justificativa (e observação) resumidas + ações Rejeitar/Aprovar.
+class _LinhaAjuste extends StatelessWidget {
   final FilaAjusteModel ajuste;
   final VoidCallback onAprovar;
   final VoidCallback onRejeitar;
 
-  const _AjusteCard({
+  const _LinhaAjuste({
     required this.ajuste,
     required this.onAprovar,
     required this.onRejeitar,
@@ -369,156 +447,80 @@ class _AjusteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataFormatada =
-        DateFormat('dd/MM/yyyy HH:mm').format(ajuste.dataHoraDispositivo.toLocal());
+    final dataFormatada = DateFormat('dd/MM HH:mm')
+        .format(ajuste.dataHoraDispositivo.toLocal());
+    final observacao = ajuste.observacao;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'PENDENTE',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  'NSR Lógico: #${ajuste.nsrLogico ?? ajuste.nsr ?? '—'}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
+            const Icon(Icons.touch_app_outlined,
+                size: 16, color: Colors.grey),
+            const SizedBox(width: 6),
+            Text(
+              '$dataFormatada · ${ajuste.tipoRegistro}',
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 13),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text('Data/Hora do ajuste: $dataFormatada'),
-              ],
+            const Spacer(),
+            Text(
+              'NSR #${ajuste.nsrLogico ?? ajuste.nsr ?? '—'}',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.touch_app_outlined, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text('Tipo: ${ajuste.tipoRegistro}'),
-              ],
-            ),
-            if (ajuste.marcacoesDoDia.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Row(
-                children: [
-                  Icon(Icons.schedule, size: 18, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text('Marcações do dia:', style: TextStyle(fontWeight: FontWeight.w500)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ajuste.marcacoesDoDia.map((m) {
-                  final hora = DateFormat('HH:mm').format(m.dataHora.toLocal());
-                  return Chip(
-                    avatar: Icon(
-                      m.ajuste ? Icons.edit_calendar : Icons.punch_clock,
-                      size: 16,
-                      color: m.ajuste ? Colors.orange : Colors.deepPurple,
-                    ),
-                    label: Text(
-                      '$hora ${m.tipoRegistro}${m.ajuste ? ' (ajuste)' : ''}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    backgroundColor: m.ajuste
-                        ? Colors.orange.withValues(alpha: 0.12)
-                        : Colors.deepPurple.withValues(alpha: 0.08),
-                    visualDensity: VisualDensity.compact,
-                  );
-                }).toList(),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(Icons.fact_check_outlined, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Justificativa:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      Text(ajuste.justificativa ?? '—'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (ajuste.observacao != null && ajuste.observacao!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.notes_outlined, size: 18, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Observação:', style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text(ajuste.observacao!),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: onRejeitar,
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text('Rejeitar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: onAprovar,
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text('Aprovar'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
           ],
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          ajuste.justificativa ?? '—',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (observacao != null && observacao.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            'Obs: $observacao',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            OutlinedButton.icon(
+              onPressed: onRejeitar,
+              icon: const Icon(Icons.close, size: 16),
+              label: const Text('Rejeitar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: onAprovar,
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Aprovar'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.green,
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
