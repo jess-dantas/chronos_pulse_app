@@ -156,6 +156,13 @@ class PontoLocalDataSource {
     final db = await DatabaseHelper.instance.database;
     await db.delete('pontos');
   }
+
+  /// Limpa só o histórico já sincronizado; a fila offline (não sincronizada)
+  /// sobrevive ao logout para ser reenviada após o próximo login.
+  Future<void> limparPontosSincronizadosLocais() async {
+    final db = await DatabaseHelper.instance.database;
+    await db.delete('pontos', where: 'sincronizadoOffline = ?', whereArgs: [1]);
+  }
 }
 
 /// Persistência local na Web via SharedPreferences (localStorage).
@@ -307,5 +314,11 @@ class PontoLocalDataSourceWeb implements PontoLocalDataSource {
   Future<void> limparPontosLocais() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_chave);
+  }
+
+  @override
+  Future<void> limparPontosSincronizadosLocais() async {
+    final lista = await _lerTodos();
+    await _persistir(lista.where((r) => !r.sincronizadoOffline).toList());
   }
 }

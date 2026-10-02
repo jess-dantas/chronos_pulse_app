@@ -640,6 +640,11 @@ class AuthProvider extends ChangeNotifier {
   /// Limpa os dados locais do dispositivo (sessão + fila offline de pontos).
   Future<void> limparDadosLocais() async {
     await _clearSession();
+    try {
+      await _pontoLocalDataSource?.limparPontosLocais();
+    } catch (_) {
+      // Limpeza local é best-effort (LGPD): falha não pode bloquear o logout.
+    }
   }
 
   Future<void> _clearSession() async {
@@ -659,7 +664,10 @@ class AuthProvider extends ChangeNotifier {
     await prefs.remove(_keyModulos);
     await prefs.remove(_keySessionInicio);
     try {
-      await _pontoLocalDataSource?.limparPontosLocais();
+      // Logout/expiração preserva a fila offline de pontos (offline-first:
+      // batidas não sincronizadas são reenviadas após o próximo login);
+      // só o histórico já sincronizado sai do dispositivo.
+      await _pontoLocalDataSource?.limparPontosSincronizadosLocais();
     } catch (_) {
       // Limpeza local é best-effort (LGPD): falha não pode bloquear o logout.
     }
