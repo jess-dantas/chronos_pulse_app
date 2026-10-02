@@ -77,6 +77,9 @@ import 'features/transparencia/presentation/providers/portal_publico_provider.da
 import 'features/titularidade/data/datasources/titularidade_remote_datasource.dart';
 import 'features/titularidade/data/repositories/titularidade_repository.dart';
 import 'features/titularidade/presentation/providers/titularidade_provider.dart';
+import 'features/usuarios/data/datasources/usuario_remote_datasource.dart';
+import 'features/usuarios/data/repositories/usuario_repository.dart';
+import 'features/usuarios/presentation/providers/usuario_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,6 +133,9 @@ void main() async {
   final colaboradorRemoteDataSource = ColaboradorRemoteDataSource(dioClient);
   final colaboradorRepository =
       ColaboradorRepository(remoteDataSource: colaboradorRemoteDataSource);
+
+  final usuarioRepository =
+      UsuarioRepository(remoteDataSource: UsuarioRemoteDataSource(dioClient));
 
   final estoqueRemoteDataSource = EstoqueRemoteDataSource(dioClient);
   final estoqueRepository =
@@ -247,6 +253,8 @@ void main() async {
           ChangeNotifierProvider.value(value: authProvider),
           ChangeNotifierProvider(
               create: (_) => ColaboradorProvider(colaboradorRepository)),
+          ChangeNotifierProvider(
+              create: (_) => UsuarioProvider(usuarioRepository)),
           ChangeNotifierProvider(
               create: (_) => EstoqueProvider(estoqueRepository)),
           ChangeNotifierProvider(

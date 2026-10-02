@@ -45,6 +45,11 @@ class MainShell extends StatelessWidget {
       icon: Icons.people_outline,
       selected: Icons.people,
     ),
+    'usuarios': (
+      label: 'Usuários',
+      icon: Icons.manage_accounts_outlined,
+      selected: Icons.manage_accounts,
+    ),
     'estoque': (
       label: 'Estoque',
       icon: Icons.inventory_2_outlined,

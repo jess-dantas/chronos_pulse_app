@@ -45,6 +45,7 @@ import '../../features/privacidade/presentation/screens/privacidade_screen.dart'
 import '../../features/protocolo/presentation/screens/protocolo_home_screen.dart';
 import '../../features/titularidade/presentation/screens/transferir_titularidade_screen.dart';
 import '../../features/transparencia/presentation/screens/transparencia_home_screen.dart';
+import '../../features/usuarios/presentation/screens/usuarios_screen.dart';
 
 /// Roteamento centralizado com URLs limpas (`/`, `/login`, `/painel/<modulo>`, `/admin`).
 class AppRouter {
@@ -74,6 +75,7 @@ class AppRouter {
     'ponto',
     'aprovacao-ajustes',
     'colaboradores',
+    'usuarios',
     'estoque',
     'compras',
     'licitacoes',
@@ -109,6 +111,9 @@ class AppRouter {
       'aprovacao-ajustes' => usuario.isGestorRh && contratado('PONTO'),
       'colaboradores' =>
         usuario.isAdminOrRh && contratado('RECURSOS_HUMANOS'),
+      // Contas administrativas: só o ADMIN_EMPRESA da empresa
+      // (backend UsuarioController exige hasRole ADMIN_EMPRESA).
+      'usuarios' => usuario.isAdminEmpresa,
       'estoque' => usuario.temAcessoEstoque && contratado('ESTOQUE'),
       'compras' => usuario.temAcessoEstoque && contratado('COMPRAS'),
       'licitacoes' => usuario.temAcessoEstoque && contratado('LICITACOES'),
@@ -429,6 +434,8 @@ class AppRouter {
         return const AprovacaoAjustesScreen();
       case 'colaboradores':
         return const ColaboradoresScreen();
+      case 'usuarios':
+        return const UsuariosScreen();
       case 'estoque':
         return const EstoqueHomeScreen();
       case 'compras':

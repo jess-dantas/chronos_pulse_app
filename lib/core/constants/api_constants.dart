@@ -163,6 +163,11 @@ class ApiConstants {
   static String usuarioModulosEndpoint(String usuarioId) =>
       '/usuarios/$usuarioId/modulos';
 
+  // Contas administrativas da empresa (ADMIN_EMPRESA)
+  static const String usuariosEndpoint = '/usuarios';
+  static String usuarioSuspenderEndpoint(String usuarioId) =>
+      '/usuarios/$usuarioId/suspender';
+
   // Módulo Plataforma (Catálogo de Módulos e Ativação por Empresa)
   static const String adminModulosCatalogoEndpoint = '/admin/modulos';
   static String adminModulosEmpresaEndpoint(String tenantId) => '/admin/empresas/$tenantId/modulos';
