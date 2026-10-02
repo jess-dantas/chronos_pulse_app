@@ -144,7 +144,7 @@ void main() {
     expect(find.text('Ajuste aprovado com sucesso!'), findsOneWidget);
   });
 
-  testWidgets('fila agrupa por colaborador e dia e expande cada grupo',
+  testWidgets('fila agrupa por colaborador e dia em cards com linhas compactas',
       (tester) async {
     escalaDeTeste(tester);
     final mariaHoje = _ajuste(id: 'reg-1');
@@ -176,15 +176,13 @@ void main() {
     expect(find.text('10/09/2026 · 1 ajuste pendente'), findsNWidgets(2));
     expect(find.text('09/09/2026 · 1 ajuste pendente'), findsOneWidget);
 
-    // Grupos múltiplos começam recolhidos: ações só após expandir.
-    expect(find.text('Esqueci a saída'), findsNothing);
-    expect(find.widgetWithText(FilledButton, 'Aprovar'), findsNothing);
-
-    await tester.tap(find.text('João Souza'));
-    await tester.pumpAndSettle();
-
+    // Todas as linhas compactas e ações visíveis sem expansão (um card por
+    // colaborador+dia); chips das marcações aparecem só no card de Maria 10/09.
     expect(find.text('Esqueci a saída'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Aprovar'), findsOneWidget);
+    expect(find.text('Esqueci o ponto do almoço'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Aprovar'), findsNWidgets(3));
+    expect(find.widgetWithText(OutlinedButton, 'Rejeitar'), findsNWidgets(3));
+    expect(find.text('Marcações do dia:'), findsOneWidget);
   });
 
   testWidgets('fila vazia mostra estado de nada pendente', (tester) async {
