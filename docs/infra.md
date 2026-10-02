@@ -173,11 +173,9 @@ flutter build apk --release --flavor admin `
   execução do workflow → aba **Artifacts** (`chronos-pulse-android-<sha>`).
 - PRs em `develop`/`main` → `ci.yml` valida analyze/testes e gera o APK do
   flavor `cliente` como artefato de conferência.
-- `keep-alive.yml` → **cron `*/12`** chama `GET /api/v1/auth/ping` na produção
-  para o Render **não suspender** o serviço free por inatividade. Só passa a
-  rodar quando o workflow existir na branch **default (`main`)** — `schedule`
-  não dispara a partir de outras branches; pode também atrasar alguns minutos
-  na fila do GitHub.
+- **Keep-alive do Render**: ping periódico da API pelo **UptimeRobot**
+  (monitor `804144234`) — fora do GitHub Actions, para não onerar o Actions
+  com cron. (O workflow `keep-alive.yml` já existiu aqui e foi removido.)
 - Secrets necessários no GitHub (já esperados pelo workflow):
   `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
   `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `RENDER_BACKEND_URL`.
