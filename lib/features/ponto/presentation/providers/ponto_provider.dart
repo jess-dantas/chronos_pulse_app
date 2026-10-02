@@ -5,6 +5,7 @@ import '../../data/models/espelho_relatorio_model.dart';
 import '../../data/models/fila_ajuste_model.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../../data/repositories/ponto_repository.dart';
+import '../../domain/services/sequencia_ponto.dart';
 
 class PontoProvider extends ChangeNotifier {
   final PontoRepository _repository;
@@ -14,6 +15,11 @@ class PontoProvider extends ChangeNotifier {
   bool _isOnline = false;
   bool _isVerificando = false;
   bool _isSincronizando = false;
+
+  /// POST imediato da batida mais recente em voo: o lote do heartbeat espera
+  /// ele terminar para nunca rodar junto (a batida em si NUNCA espera — ela
+  /// não pode perder o ritmo por causa do sync em background).
+  Future<bool>? _batidaEmVoo;
   bool _isDisposed = false;
   bool _carregandoEspelho = false;
   int _pendentesCount = 0;
@@ -44,6 +50,35 @@ class PontoProvider extends ChangeNotifier {
   /// preenchido, a batida NÃO está na fila offline e a UI não pode dizer
   /// "salva localmente".
   String? get ultimaFalhaLocal => _repository.ultimaFalhaLocal;
+
+  /// Próximo tipo da sequência pela regra do backend: último tipo do dia + 1,
+  /// considerando também os ajustes manuais aprovados no dia. O histórico da
+  /// home filtra ajustes (apresentação), então o dia é complementado com o
+  /// espelho — única fonte que os traz. Sem espelho carregado (offline),
+  /// cai no histórico local, o que equivale à regra antiga.
+  String proximoTipoBatida() {
+    final agora = DateTime.now();
+    final porInstante = <String, RegistroPontoModel>{
+      for (final r in _historico) r.dataHoraDispositivo.toIso8601String(): r,
+    };
+
+    final espelhoDoMesAtual = _mesSelecionado == agora.month &&
+        _anoSelecionado == agora.year;
+    if (espelhoDoMesAtual) {
+      for (final r in _espelho) {
+        final d = r.dataHoraDispositivo.toLocal();
+        final mesmoDia = d.year == agora.year &&
+            d.month == agora.month &&
+            d.day == agora.day;
+        if (mesmoDia) {
+          porInstante.putIfAbsent(
+              r.dataHoraDispositivo.toIso8601String(), () => r);
+        }
+      }
+    }
+
+    return SequenciaPonto.proximo(porInstante.values.toList());
+  }
 
   PontoProvider(this._repository, {TelemetryService? telemetria})
       : _telemetria = telemetria {
@@ -288,6 +323,18 @@ class PontoProvider extends ChangeNotifier {
   Future<int> sincronizar() async {
     if (_isSincronizando || _isDisposed) return 0;
 
+    // Espera o POST de uma batida em voo (a batida nunca espera o inverso):
+    // dois lotes em paralelo faziam o backend derivar tipos concorrentemente.
+    final batida = _batidaEmVoo;
+    if (batida != null) {
+      try {
+        await batida;
+      } catch (_) {
+        // falha da batida já tratada no caminho dela
+      }
+      if (_isDisposed || _isSincronizando) return 0;
+    }
+
     _isSincronizando = true;
     if (!_isDisposed) notifyListeners();
 
@@ -310,7 +357,14 @@ class PontoProvider extends ChangeNotifier {
   }
 
   Future<bool> registrarPonto(RegistroPontoModel registro) async {
-    final sincronizadoOnline = await _repository.registrarPonto(registro: registro);
+    final envio = _repository.registrarPonto(registro: registro);
+    _batidaEmVoo = envio;
+    bool sincronizadoOnline;
+    try {
+      sincronizadoOnline = await envio;
+    } finally {
+      if (identical(_batidaEmVoo, envio)) _batidaEmVoo = null;
+    }
     if (!sincronizadoOnline && _repository.ultimaFalhaServidor == null) {
       // Ficou na fila local (offline): registra para observar contingência.
       _telemetria?.registrar(

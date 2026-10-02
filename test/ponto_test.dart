@@ -270,6 +270,26 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   }
 }
 
+/// Remoto que mede a concorrência dos POSTs de sincronização (usado para
+/// provar que o heartbeat nunca roda junto com o POST imediato da batida).
+class _RemoteComControle extends MockPontoRemoteDataSource {
+  int ativos = 0;
+  int maxConcorrente = 0;
+
+  @override
+  Future<List<String>> sincronizarPontos(
+      List<RegistroPontoModel> registros) async {
+    ativos++;
+    if (ativos > maxConcorrente) maxConcorrente = ativos;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    } finally {
+      ativos--;
+    }
+    return super.sincronizarPontos(registros);
+  }
+}
+
 /// Simula o SQLite Web indisponível (ex.: WASM/IndexedDB que não inicializa):
 /// a escrita local falha imediatamente e a batida precisa seguir apenas online.
 class LocalDataSourceIndisponivel extends PontoLocalDataSource {
@@ -444,6 +464,130 @@ void main() {
       expect(totalSincronizados, equals(2));
       expect(provider.pendentesCount, equals(0));
       expect(provider.isOnline, isTrue);
+    });
+
+    test('Lote pendente sai do dispositivo em ordem cronológica', () async {
+      remoteDataSource.online = false;
+
+      final maisTarde = RegistroPontoModel(
+        idLocal: 'tarde',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'SAIDA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h-tarde',
+        sincronizadoOffline: false,
+      );
+      final maisCedo = RegistroPontoModel(
+        idLocal: 'cedo',
+        dataHoraDispositivo:
+            DateTime.now().toUtc().subtract(const Duration(hours: 3)),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h-cedo',
+        sincronizadoOffline: false,
+      );
+
+      // Enfileirada "de trás para frente" (ordem de inserção não é cronologia)
+      await provider.registrarPonto(maisTarde);
+      await provider.registrarPonto(maisCedo);
+      expect(provider.pendentesCount, equals(2));
+
+      remoteDataSource.online = true;
+      await provider.sincronizar();
+
+      expect(
+        remoteDataSource.ultimosSincronizados.map((r) => r.idLocal).toList(),
+        equals(['cedo', 'tarde']),
+        reason: 'o backend deriva o tipo na ordem de chegada do lote',
+      );
+    });
+
+    test('Heartbeat espera o POST da batida em voo (nunca dois lotes juntos)',
+        () async {
+      final controle = _RemoteComControle();
+      final repositoryComControle = PontoRepository(
+        localDataSource: localDataSource,
+        remoteDataSource: controle,
+      );
+      final providerComControle = PontoProvider(repositoryComControle);
+      addTearDown(providerComControle.dispose);
+
+      controle.online = false;
+      await providerComControle.checarConexao();
+
+      final pendente = RegistroPontoModel(
+        idLocal: 'p1',
+        dataHoraDispositivo: DateTime.now().toUtc(),
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h-p1',
+        sincronizadoOffline: false,
+      );
+      await providerComControle.registrarPonto(pendente);
+      expect(providerComControle.pendentesCount, equals(1));
+
+      controle.online = true;
+      await providerComControle.checarConexao();
+
+      // Batida nova dispara POST imediato; heartbeat dispara na sequência
+      // imediata — com o guard, o segundo espera o primeiro terminar.
+      final batidaFutura = providerComControle.registrarPonto(
+        RegistroPontoModel(
+          idLocal: 'p2',
+          dataHoraDispositivo: DateTime.now().toUtc(),
+          tipoRegistro: 'INTERVALO',
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h-p2',
+          sincronizadoOffline: false,
+        ),
+      );
+      final syncFutura = providerComControle.sincronizar();
+      await Future.wait([batidaFutura, syncFutura]);
+
+      expect(controle.maxConcorrente, equals(1),
+          reason: 'os POSTs de sincronização precisam ser serializados');
+    });
+
+    test('proximoTipoBatida conta ajuste do dia vindo do espelho (regra do BE)',
+        () async {
+      final agora = DateTime.now();
+      final dia = DateTime(agora.year, agora.month, agora.day);
+      remoteDataSource.espelhoRemoto = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: dia.add(const Duration(hours: 8))),
+        batida(id: 'b2', tipo: 'INTERVALO', quando: dia.add(const Duration(hours: 10))),
+        batida(
+          id: 'a1',
+          tipo: 'RETORNO',
+          quando: dia.add(const Duration(hours: 13)),
+          ajuste: true,
+        ),
+      ];
+      // Recarrega com o espelho já populado (o construtor rodou vazio).
+      await provider.carregarDados();
+
+      expect(
+        provider.historico.where((r) => !r.ajusteManual).length,
+        equals(2),
+        reason: 'a home segue escondendo ajustes (apresentação)',
+      );
+      expect(
+        provider.proximoTipoBatida(),
+        equals('SAIDA'),
+        reason:
+            'último do dia é o ajuste RETORNO → backend derivaria SAIDA',
+      );
     });
 
     test('Ajuste manual é excluído da home, mas permanece no espelho', () async {
@@ -1134,7 +1278,7 @@ void main() {
     });
   });
 
-  group('SequenciaPonto (ajustes não avançam o ciclo)', () {
+  group('SequenciaPonto (regra do backend: último tipo do dia + 1)', () {
     test('Batidas de botão seguem Entrada→Intervalo→Retorno→Saída', () {
       expect(SequenciaPonto.proximo([]), equals('ENTRADA'));
       expect(
@@ -1170,9 +1314,9 @@ void main() {
       );
     });
 
-    test('Ajustes manuais não contam para a próxima batida', () {
-      // Dia com 3 ajustes (E/I/R) e só 1 batida de botão (E):
-      // a próxima deve ser INTERVALO e não cair fora da sequência.
+    test('Ajuste no meio do dia não pula a sequência: vale o último cronológico', () {
+      // Ajustes E/I/R às 11:00-16:30 + batida de botão às 19:51 (última):
+      // a próxima é INTERVALO — mesma resposta do backend.
       final registros = [
         batida(id: 'a1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 11, 0), ajuste: true),
         batida(id: 'a2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 15, 30), ajuste: true),
@@ -1184,14 +1328,36 @@ void main() {
     });
 
     test('Ajuste de Saída não atrasa o ciclo após a 4ª batida de botão', () {
-      // E/I/R/S pelo botão + ajuste de Intervalo: a contagem continua 4 → Entrada
-      // (a próxima do ciclo), em vez de 5 → Intervalo.
+      // E/I/R/S pelo botão + ajuste de Intervalo no meio: o último do dia é
+      // a Saída às 18:00 → próxima = Entrada (igual ao backend).
       final registros = [
         batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
         batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
         batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
         batida(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
         batida(id: 'a1', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 10), ajuste: true),
+      ];
+
+      expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
+    });
+
+    test('Último do dia é um ajuste: próxima continua o ciclo a partir dele', () {
+      // Cenário que a regra antiga (contagem só de batidas de botão) errava:
+      // E/I pelo botão + RETORNO aprovado às 13:00 como última marcação.
+      // O backend deriva SAIDA a partir do último tipo — o botão precisa
+      // anunciar o mesmo (senão etiqueta e registro gravado divergiam).
+      final registros = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+        batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 10, 0)),
+        batida(id: 'a1', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0), ajuste: true),
+      ];
+
+      expect(SequenciaPonto.proximo(registros), equals('SAIDA'));
+    });
+
+    test('Tipo legado/desconhecido cai em ENTRADA (fallback igual ao BE)', () {
+      final registros = [
+        batida(id: 'x1', tipo: 'TIPO_INVALIDO', quando: DateTime(2026, 9, 12, 8, 0)),
       ];
 
       expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));

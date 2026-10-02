@@ -12,7 +12,6 @@ import '../../../../core/widgets/user_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/registro_ponto_model.dart';
 import '../providers/ponto_provider.dart';
-import '../../domain/services/sequencia_ponto.dart';
 import 'camera_screen.dart';
 import 'espelho_ponto_tab.dart';
 
@@ -230,7 +229,7 @@ class _HomePontoScreenState extends State<HomePontoScreen>
 
   Future<void> _executarRegistro(PontoProvider pontoProvider) async {
     final authProvider = context.read<AuthProvider>();
-    final proximoTipo = SequenciaPonto.proximo(pontoProvider.historico);
+    final proximoTipo = pontoProvider.proximoTipoBatida();
 
     // 1. Validação Biométrica (ou bypass em Web) — com timeout para nunca travar
     final autenticado = await _hardwareService
@@ -366,7 +365,7 @@ class _HomePontoScreenState extends State<HomePontoScreen>
     final horaFormatada = DateFormat('HH:mm:ss').format(_horarioAtual);
     final dataFormatada =
         DateFormat("EEEE, d 'de' MMMM", 'pt_BR').format(_horarioAtual);
-    final proximoTipo = SequenciaPonto.proximo(pontoProvider.historico);
+    final proximoTipo = pontoProvider.proximoTipoBatida();
     final corBotao = _obterCorTipo(proximoTipo);
 
     // Sem sessão não há espelho (exige Bearer): o modo dispositivo só
