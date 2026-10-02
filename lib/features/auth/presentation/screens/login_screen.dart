@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/hardware/hardware_service.dart';
 import '../../../../core/network/conexao_service.dart';
 import '../../../../core/security/device_token_store.dart';
+import '../../../../core/security/login_biometrico_store.dart';
 import '../../../../core/telemetry/telemetry_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
@@ -11,11 +13,20 @@ import '../../../../core/utils/cpf_input_formatter.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
-  /// Injeções opcionais (testes): diagnóstico de conexão e store do vínculo.
+  /// Injeções opcionais (testes): diagnóstico de conexão, store do vínculo,
+  /// hardware biométrico e credencial do login por biometria.
   final ConexaoService? conexao;
   final DeviceTokenStore? store;
+  final HardwareService? hardware;
+  final LoginBiometricoStore? loginBiometrico;
 
-  const LoginScreen({super.key, this.conexao, this.store});
+  const LoginScreen({
+    super.key,
+    this.conexao,
+    this.store,
+    this.hardware,
+    this.loginBiometrico,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -31,9 +42,17 @@ class _LoginScreenState extends State<LoginScreen> {
   /// aparelho tem vínculo de dispositivo ativo (7 dias).
   bool _vinculoAtivo = false;
 
+  /// Login por biometria (mobile only): credencial guardada + biometria do
+  /// aparelho disponível. Controla o botão e o auto-prompt da tela.
+  bool _biometricoPronto = false;
+  bool _biometriaEmAndamento = false;
+
   late final ConexaoService _conexao = widget.conexao ?? ConexaoService();
   late final DeviceTokenStore _store =
       widget.store ?? DeviceTokenStore.instancia;
+  late final HardwareService _hw = widget.hardware ?? HardwareService();
+  late final LoginBiometricoStore _loginBiometrico =
+      widget.loginBiometrico ?? LoginBiometricoStore.instancia;
 
   @override
   void initState() {
@@ -46,7 +65,72 @@ class _LoginScreenState extends State<LoginScreen> {
       // funcionar). O redirecionamento para a contingência acontece na
       // home de ponto — aqui o usuário escolheu logar, não o contrário.
       _verificarConexao();
+      _verificarLoginBiometrico();
     }
+  }
+
+  /// Biometria-first: com credencial guardada e biometria do aparelho
+  /// disponível, oferece o botão e dispara o prompt automaticamente. Sem
+  /// credencial/biometria nada muda — a tela segue o formulário normal.
+  Future<void> _verificarLoginBiometrico() async {
+    try {
+      final temCredencial = await _loginBiometrico.possuiCredencial();
+      if (!temCredencial || !mounted) return;
+      final disponivel = await _hw.biometriaDisponivel();
+      if (!disponivel || !mounted) return;
+      setState(() => _biometricoPronto = true);
+      await _entrarComBiometria();
+    } catch (_) {
+      // Falha de leitura/biometria: segue o formulário de senha.
+    }
+  }
+
+  Future<void> _entrarComBiometria() async {
+    if (_biometriaEmAndamento || !mounted) return;
+    setState(() => _biometriaEmAndamento = true);
+
+    bool autenticado;
+    try {
+      autenticado = await _hw
+          .autenticarBiometria()
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {
+      autenticado = false;
+    }
+
+    // Cancelado/erro: volta para o formulário sem tocar em credencial nem
+    // vínculo (a tentativa pode ser repetida pelo botão).
+    if (!autenticado || !mounted) {
+      if (mounted) setState(() => _biometriaEmAndamento = false);
+      return;
+    }
+
+    final cpf = await _loginBiometrico.lerCpf();
+    final senha = await _loginBiometrico.lerSenha();
+    if (cpf == null || senha == null || !mounted) {
+      if (mounted) setState(() => _biometriaEmAndamento = false);
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    final sucesso = await authProvider.login(cpf, senha);
+    if (!mounted) return;
+    setState(() => _biometriaEmAndamento = false);
+
+    if (!sucesso) {
+      // Credencial velha (senha trocada) ou offline: mantém a credencial —
+      // o próximo login por senha a corrige (ou a rede volta e o replay
+      // funciona). O usuário cai no formulário normal.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              authProvider.errorMessage ?? 'Erro ao realizar login.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    await _aposLogin(cpf);
   }
 
   Future<void> _verificarConexao() async {
@@ -90,10 +174,36 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    if (sucesso && mounted) await _aposLogin(cpfLimpo);
+  }
+
+  /// Pós-login comum (formulário e biometria): se o CPF logado difere do
+  /// dono do vínculo de dispositivo ativo, o vínculo antigo é invalidado
+  /// (outro dono no aparelho → novo primeiro acesso na contingência) e o
+  /// roteador segue para o 2FA quando exigido.
+  Future<void> _aposLogin(String cpfDigitado) async {
+    await _sincronizarVinculoComCpf(cpfDigitado);
+    if (!mounted) return;
+
     // 2FA-first: o backend parou na etapa 1 (requiresTwoFactor) — pede o
     // código TOTP/OTP por e-mail na tela dedicada.
-    if (sucesso && mounted && authProvider.requiresTwoFactor) {
+    if (context.read<AuthProvider>().requiresTwoFactor) {
       context.push('/login/2fa');
+    }
+  }
+
+  Future<void> _sincronizarVinculoComCpf(String cpfDigitado) async {
+    if (kIsWeb) return;
+    try {
+      final vinculo = await _store.lerAtivo();
+      // Vínculo sem cpf gravado (antigo) também é invalidado: dono
+      // desconhecido não pode sobreviver a um login de outro CPF.
+      if (vinculo != null && vinculo.cpf != cpfDigitado) {
+        await _store.limpar();
+        if (mounted) setState(() => _vinculoAtivo = false);
+      }
+    } catch (_) {
+      // Best-effort: falha do armazenamento não bloqueia o login.
     }
   }
 
@@ -269,6 +379,36 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        if (_biometricoPronto) ...[
+                          OutlinedButton.icon(
+                            key: const Key('login_biometrico_button'),
+                            icon: _biometriaEmAndamento
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.fingerprint, size: 20),
+                            label: Text(
+                              _biometriaEmAndamento
+                                  ? 'Confirme sua biometria'
+                                  : 'Entrar com biometria',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _biometriaEmAndamento
+                                ? null
+                                : _entrarComBiometria,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         if (_vinculoAtivo) ...[
                           OutlinedButton.icon(
                             key: const Key('login_modo_dispositivo_button'),

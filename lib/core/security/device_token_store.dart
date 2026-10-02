@@ -7,11 +7,17 @@ class VinculoDispositivo {
   final String nome;
   final DateTime expiraEm;
 
+  /// CPF do dono do vínculo (vazio em vínculos antigos, gravados antes do
+  /// campo). Serve para detectar troca de dono no aparelho: outro CPF no
+  /// login invalida o vínculo.
+  final String cpf;
+
   const VinculoDispositivo({
     required this.token,
     required this.cpcId,
     required this.nome,
     required this.expiraEm,
+    this.cpf = '',
   });
 }
 
@@ -41,6 +47,9 @@ class DeviceTokenStore {
   static const String chaveNome = 'chronos_device_nome';
   static const String chaveExpiraEm = 'chronos_device_expira_em';
 
+  /// CPF do dono do vínculo — sobrevive ao logout junto com o vínculo.
+  static const String chaveCpf = 'chronos_device_cpf';
+
   /// Se o DONO do vínculo tem o 2FA habilitado (gravado na ativação e
   /// sincronizado pelo `device/status`). Define se o modo sem login cobra o
   /// código na etapa 2 (ordem: biometria → 2FA → vínculo).
@@ -55,11 +64,13 @@ class DeviceTokenStore {
     required String cpcId,
     required String nome,
     required DateTime expiraEm,
+    String cpf = '',
   }) async {
     await _gravar(chaveToken, token);
     await _gravar(chaveCpcId, cpcId);
     await _gravar(chaveNome, nome);
     await _gravar(chaveExpiraEm, expiraEm.toUtc().millisecondsSinceEpoch.toString());
+    await _gravar(chaveCpf, cpf);
   }
 
   /// Vínculo vigente, ou `null` quando não existe/expirou (a expiração local
@@ -88,6 +99,7 @@ class DeviceTokenStore {
         cpcId: cpcId,
         nome: await _ler(chaveNome) ?? '',
         expiraEm: expiraEm,
+        cpf: await _ler(chaveCpf) ?? '',
       );
     } catch (_) {
       // Armazenamento inacessível: sem vínculo utilizável (fail-safe).
@@ -116,6 +128,7 @@ class DeviceTokenStore {
     await _remover(chaveCpcId);
     await _remover(chaveNome);
     await _remover(chaveExpiraEm);
+    await _remover(chaveCpf);
     await _remover(chaveTwoFactor);
   }
 }

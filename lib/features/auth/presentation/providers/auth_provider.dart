@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/errors/mensagens_erro.dart';
 import '../../../../core/security/biometria_preferences.dart';
+import '../../../../core/security/login_biometrico_store.dart';
 import '../../../../core/security/session_storage.dart';
 import '../../../../core/telemetry/telemetry_service.dart';
 import '../../../ponto/data/datasources/ponto_local_datasource.dart';
@@ -14,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
   final TelemetryService? _telemetria;
   final PontoLocalDataSource? _pontoLocalDataSource;
+  final LoginBiometricoStore _loginBiometrico;
   UsuarioModel? _usuario;
   bool _isLoading = false;
   String? _errorMessage;
@@ -55,9 +57,11 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider(this._authRepository,
       {TelemetryService? telemetria,
-      PontoLocalDataSource? pontoLocalDataSource})
+      PontoLocalDataSource? pontoLocalDataSource,
+      LoginBiometricoStore? loginBiometrico})
       : _telemetria = telemetria,
-        _pontoLocalDataSource = pontoLocalDataSource;
+        _pontoLocalDataSource = pontoLocalDataSource,
+        _loginBiometrico = loginBiometrico ?? LoginBiometricoStore.instancia;
 
   UsuarioModel? get usuario => _usuario;
   bool get isAuthenticated => _usuario != null && _usuario!.token.isNotEmpty;
@@ -236,6 +240,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       final usuario = await _authRepository.login(cpf: cpf, senha: senha);
+
+      // Credencial para o login por biometria (mobile only): gravada após a
+      // senha ser VALIDADA (etapa 1 do 2FA também conta). Replay biométrico
+      // passa pelo mesmo 2FA quando o usuário tem.
+      await _salvarCredencialBiometrica(cpf, senha);
 
       // 2FA-first: sem tokens finais — guarda o tempToken (5 min) e manda a
       // tela /login/2fa pedir o código (TOTP ou OTP por e-mail).
@@ -468,6 +477,7 @@ class AuthProvider extends ChangeNotifier {
       await _authRepository.alterarSenha(
         novaSenha: novaSenha,
       );
+      await _atualizarSenhaCredencialBiometrica(novaSenha);
       _isLoading = false;
       notifyListeners();
       return true;
@@ -476,6 +486,32 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Grava/ atualiza a credencial do login biométrico sem derrubar o fluxo
+  /// quando o armazenamento seguro falhar (best-effort).
+  Future<void> _salvarCredencialBiometrica(String cpf, String senha) async {
+    if (kIsWeb) return;
+    try {
+      await _loginBiometrico.salvar(cpf: cpf, senha: senha);
+    } catch (_) {
+      // Sem credencial o login biométrico simplesmente não é oferecido.
+    }
+  }
+
+  /// Troca a senha guardada da credencial biométrico quando existe (criar
+  /// credencial só acontece no login por senha — não muda aqui).
+  Future<void> _atualizarSenhaCredencialBiometrica(String novaSenha) async {
+    if (kIsWeb) return;
+    try {
+      final cpf = await _loginBiometrico.lerCpf();
+      if (cpf != null && cpf.isNotEmpty) {
+        await _loginBiometrico.salvar(cpf: cpf, senha: novaSenha);
+      }
+    } catch (_) {
+      // Best-effort: falha deixa a senha antiga guardada (replay falha e o
+      // usuário reentra com a senha nova; o próximo login a corrige).
     }
   }
 
@@ -561,6 +597,7 @@ class AuthProvider extends ChangeNotifier {
         cpcId: cpcId,
         nome: usuario.nome,
         deviceName: deviceName,
+        cpf: usuario.cpf ?? '',
       );
       return vinculo.expiraEm;
     } catch (e) {
@@ -592,6 +629,14 @@ class AuthProvider extends ChangeNotifier {
     _tempToken = null;
     await _clearSession();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    // Sem isso o Timer de inatividade sobrevive ao provider e, ao disparar,
+    // chama notifyListeners() num objeto já descartado.
+    _idleTimer?.cancel();
+    super.dispose();
   }
 
   void clearError() {
@@ -644,6 +689,12 @@ class AuthProvider extends ChangeNotifier {
       await _pontoLocalDataSource?.limparPontosLocais();
     } catch (_) {
       // Limpeza local é best-effort (LGPD): falha não pode bloquear o logout.
+    }
+    try {
+      // Credencial do login biométrico também é dado pessoal (LGPD).
+      await _loginBiometrico.limpar();
+    } catch (_) {
+      // Best-effort: falha não pode bloquear a limpeza.
     }
   }
 

@@ -27,6 +27,7 @@ void main() {
         cpcId: 'cpc-123',
         nome: 'Samsung A32',
         expiraEm: expira,
+        cpf: '12345678901',
       );
 
       final vinculo = await store.lerAtivo();
@@ -34,8 +35,28 @@ void main() {
       expect(vinculo!.token, 'dt-token-cru');
       expect(vinculo.cpcId, 'cpc-123');
       expect(vinculo.nome, 'Samsung A32');
+      expect(vinculo.cpf, '12345678901',
+          reason: 'o dono do vínculo acompanha o token');
       expect(vinculo.expiraEm.isAfter(DateTime.now().toUtc()), isTrue);
       expect(await store.vinculoAtivo(), isTrue);
+    });
+
+    test('vínculo legado (sem cpf gravado) devolve cpf vazio', () async {
+      final store = _store({
+        DeviceTokenStore.chaveToken: 'dt-antigo',
+        DeviceTokenStore.chaveCpcId: 'cpc-2',
+        DeviceTokenStore.chaveNome: 'Aparelho',
+        DeviceTokenStore.chaveExpiraEm: DateTime.now()
+            .toUtc()
+            .add(const Duration(days: 1))
+            .millisecondsSinceEpoch
+            .toString(),
+      });
+
+      final vinculo = await store.lerAtivo();
+      expect(vinculo, isNotNull);
+      expect(vinculo!.cpf, '',
+          reason: 'vínculo pré-atualização não tem dono conhecido');
     });
 
     test('sem vínculo gravado devolve null', () async {
