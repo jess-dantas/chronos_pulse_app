@@ -20,6 +20,11 @@ class UsuarioModel {
   final String? foto;
   final List<String> modulos;
 
+  /// 2FA-first: quando o login responde `requiresTwoFactor`, o `token` vem
+  /// vazio e o `tempToken` (5 min) é a credencial da segunda etapa.
+  final bool requiresTwoFactor;
+  final String? tempToken;
+
   UsuarioModel({
     required this.token,
     this.refreshToken,
@@ -38,6 +43,8 @@ class UsuarioModel {
     this.acessoProtocolo = false,
     this.foto,
     this.modulos = const [],
+    this.requiresTwoFactor = false,
+    this.tempToken,
   });
 
   bool get isAdminPlataforma => role == 'ADMIN_PLATAFORMA';
@@ -105,6 +112,8 @@ class UsuarioModel {
       acessoProtocolo: acessoProtocolo,
       foto: foto ?? this.foto,
       modulos: modulos ?? this.modulos,
+      requiresTwoFactor: requiresTwoFactor,
+      tempToken: tempToken,
     );
   }
 
@@ -132,6 +141,8 @@ class UsuarioModel {
       acessoProtocolo: json['acessoProtocolo'] ?? false,
       foto: json['foto'],
       modulos: modulos,
+      requiresTwoFactor: json['requiresTwoFactor'] == true,
+      tempToken: json['tempToken'],
     );
   }
 

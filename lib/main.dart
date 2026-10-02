@@ -16,6 +16,7 @@ import 'core/router/app_router.dart';
 import 'core/router/url_strategy.dart';
 import 'core/telemetry/telemetry_interceptor.dart';
 import 'core/telemetry/telemetry_service.dart';
+import 'core/security/biometria_preferences.dart';
 import 'core/security/device_token_store.dart';
 import 'core/security/session_storage.dart';
 import 'core/theme/app_theme.dart';
@@ -102,6 +103,7 @@ void main() async {
   }
 
   final temaInicial = await ThemeProvider.carregarTema();
+  final biometriaPrefs = await BiometriaPreferences.carregar();
 
   final dioClient = DioClient();
 
@@ -241,6 +243,7 @@ void main() async {
         providers: [
           ChangeNotifierProvider(
               create: (_) => ThemeProvider(initialMode: temaInicial)),
+          ChangeNotifierProvider.value(value: biometriaPrefs),
           ChangeNotifierProvider.value(value: authProvider),
           ChangeNotifierProvider(
               create: (_) => ColaboradorProvider(colaboradorRepository)),

@@ -50,7 +50,7 @@ Os providers são registrados em `main.dart` no `MultiProvider` e injetados via 
 
 - **Telas empurradas** (`context.push` / `Navigator.push` a partir de uma tela do painel): AppBar usa a seta padrão do `Navigator` (auto `leading`) — ex.: detalhes de licitação, `/perfil`, wizard de titularidade.
 - **Fluxos de entrada/autenticação** (landing, login, cadastro, wizard admin 2FA): botão "Voltar" **explícito** no AppBar (não confiam no histórico).
-- **Telas raiz de branch** (abas do `MainShell`/`AdminShell`): **sem** seta de voltar — o branch é navegado pelo rail/NavigationBar; em telas estreitas o shell exibe AppBar com título + logout.
+- **Telas raiz de branch** (abas do `MainShell`/`AdminShell`): **sem** seta de voltar — o branch é navegado pelo rail/NavigationBar; em telas estreitas o shell exibe AppBar com título + logout (e, no `AdminShell`, o hambúrguer que abre o drawer das seções).
 - **Exceção intencional:** `AdminSetup2FAScreen` **não** expõe voltar (setup forçado — sair é só pelo fluxo).
 - Diálogos destrutivos (logout, transferir titularidade) usam `ConfirmLogoutDialog` com **"Não" em destaque** (`FilledButton` primário) e "Sim" em `TextButton` de erro.
 

@@ -246,18 +246,45 @@ class AdminAuthRemoteDataSource {
     }
   }
 
-  /// POST /admin/auth/alterar-senha { senhaAtual, novaSenha }
-  Future<void> alterarSenha(String senhaAtual, String novaSenha) async {
+  /// POST /admin/auth/alterar-senha { novaSenha }
+  Future<void> alterarSenha(String novaSenha) async {
     try {
       await _dioClient.dio.post(
         '$_adminBaseUrl/admin/auth/alterar-senha',
         data: {
-          'senhaAtual': senhaAtual,
           'novaSenha': novaSenha,
         },
       );
     } on DioException catch (e) {
       throw Exception(_extrairMensagem(e, 'Erro ao alterar a senha'));
+    }
+  }
+
+  /// POST /admin/auth/reset-senha/enviar { username }
+  Future<void> resetSenhaEnviar(String username) async {
+    try {
+      await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/reset-senha/enviar',
+        data: {'username': username},
+      );
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao enviar o código'));
+    }
+  }
+
+  /// POST /admin/auth/reset-senha/verificar { username, codigo, novaSenha }
+  Future<void> resetSenhaVerificar(String username, String codigo, String novaSenha) async {
+    try {
+      await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/reset-senha/verificar',
+        data: {
+          'username': username,
+          'codigo': codigo,
+          'novaSenha': novaSenha,
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao redefinir a senha'));
     }
   }
 

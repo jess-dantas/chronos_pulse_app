@@ -57,6 +57,20 @@ class ApiConstants {
   // Vínculo de dispositivo (bater ponto sem login por 7 dias, mobile only)
   static const String deviceVincularEndpoint = '/auth/device/vincular';
   static const String deviceRevogarEndpoint = '/auth/device/revogar';
+
+  // 2FA do colaborador (TOTP + OTP por e-mail)
+  static const String twoFactorVerifyEndpoint = '/auth/2fa/verify';
+  static const String twoFactorEmailSendEndpoint = '/auth/2fa/email/send';
+  static const String twoFactorEmailVerifyEndpoint = '/auth/2fa/email/verify';
+  static const String twoFactorStatusEndpoint = '/auth/2fa/status';
+  static const String twoFactorSetupEndpoint = '/auth/2fa/setup';
+  static const String twoFactorConfirmEndpoint = '/auth/2fa/confirm';
+  static const String twoFactorDisableEndpoint = '/auth/2fa/disable';
+
+  // Modo sem login (status + verificação 2FA via X-Device-Token)
+  static const String deviceStatusEndpoint = '/auth/device/status';
+  static const String deviceVerificarEndpoint = '/auth/device/verificar';
+
   static const String meFotoEndpoint = '/auth/me/foto';
   static const String alterarSenhaEndpoint = '/auth/alterar-senha';
   static const String esqueciSenhaEndpoint = '/auth/esqueci-senha';

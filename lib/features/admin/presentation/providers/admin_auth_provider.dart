@@ -236,7 +236,6 @@ class AdminAuthProvider extends ChangeNotifier {
   }
 
   Future<bool> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) async {
     _isLoading = true;
@@ -244,7 +243,49 @@ class AdminAuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.alterarSenha(senhaAtual, novaSenha);
+      await _repository.alterarSenha(novaSenha);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Passo 1 do reset de senha sem 2FA: envia OTP de 8 dígitos por e-mail.
+  Future<bool> resetSenhaEnviar(String username) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.resetSenhaEnviar(username.trim());
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Passo 2 do reset de senha: valida o OTP e redefine a senha.
+  Future<bool> resetSenhaVerificar({
+    required String username,
+    required String codigo,
+    required String novaSenha,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.resetSenhaVerificar(username.trim(), codigo, novaSenha);
       _isLoading = false;
       notifyListeners();
       return true;

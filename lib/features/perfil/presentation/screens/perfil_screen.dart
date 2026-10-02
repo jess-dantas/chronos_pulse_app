@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/security/device_token_store.dart';
+import '../../../../core/widgets/dialogs/confirm_logout_dialog.dart';
 import '../../../../core/widgets/logout_helper.dart';
 import '../../../../core/widgets/user_avatar.dart';
 import '../../../admin/presentation/providers/admin_auth_provider.dart';
@@ -300,6 +301,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                key: const Key('perfil_seguranca_tile'),
+                leading: const Icon(Icons.security_outlined),
+                title: const Text('Segurança'),
+                subtitle: const Text(
+                  'Biometria ao abrir o app e autenticação em duas etapas',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/perfil/seguranca'),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
           // Modo "bater ponto sem login" (vínculo de dispositivo, 7 dias).
           // Só faz sentido no app mobile: a Web mantém o login obrigatório.
@@ -336,7 +350,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           title: const Text('Bater ponto sem login'),
                           subtitle: const Text(
                             'Vincule este aparelho por 7 dias para registrar '
-                            'ponto com biometria, mesmo sem sessão aberta.',
+                            'ponto com biometria (e o código do 2FA, se '
+                            'ativado), mesmo sem sessão aberta.',
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: _ativarVinculo,
@@ -380,7 +395,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
     BuildContext context,
     AuthProvider auth,
   ) async {
-    final controladorAtual = TextEditingController();
     final controladorNova = TextEditingController();
     final controladorConfirmacao = TextEditingController();
     final formKey = GlobalKey<FormState>();
@@ -394,13 +408,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextFormField(
-                controller: controladorAtual,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Senha atual'),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Informe a senha atual' : null,
-              ),
               TextFormField(
                 controller: controladorNova,
                 obscureText: true,
@@ -429,8 +436,17 @@ class _PerfilScreenState extends State<PerfilScreen> {
           FilledButton(
             onPressed: () async {
               if (!(formKey.currentState?.validate() ?? false)) return;
+              final confirmado = await ConfirmLogoutDialog.show(
+                dialogContext,
+                title: 'Certeza de alterar senha?',
+                message: 'A nova senha passa a valer nos próximos acessos. '
+                    'Confira antes de confirmar.',
+                confirmText: 'Alterar',
+                cancelText: 'Desistir',
+              );
+              if (confirmado != true) return;
+              if (!dialogContext.mounted) return;
               final ok = await auth.alterarSenha(
-                senhaAtual: controladorAtual.text,
                 novaSenha: controladorNova.text,
               );
               if (!dialogContext.mounted) return;

@@ -136,13 +136,12 @@ class AuthRemoteDataSource {
   }
 
   Future<String> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) async {
     try {
       final response = await _dioClient.dio.post(
         ApiConstants.alterarSenhaEndpoint,
-        data: {'senhaAtual': senhaAtual, 'novaSenha': novaSenha},
+        data: {'novaSenha': novaSenha},
       );
       final msg = (response.data is Map ? response.data['mensagem'] : null);
       return msg ?? 'Senha alterada com sucesso.';
@@ -192,6 +191,154 @@ class AuthRemoteDataSource {
         mensagemErroAmigavel(e, fallback: 'Erro ao redefinir senha.'),
       );
     }
+  }
+
+  /// Etapa 2 do login 2FA-first (TOTP): troca o tempToken pelos tokens finais.
+  Future<UsuarioModel> twoFactorVerify({
+    required String tempToken,
+    required String codigo,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorVerifyEndpoint,
+        data: {'tempToken': tempToken, 'codigo': codigo.trim()},
+      );
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      }
+      throw Exception('Código inválido.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      if (e.response?.statusCode == 403) {
+        throw Exception(
+            'Conta temporariamente bloqueada por excesso de tentativas.');
+      }
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao verificar o código.'),
+      );
+    } catch (e) {
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    }
+  }
+
+  /// Envia o OTP de 8 dígitos por e-mail (etapa alternativa do 2FA).
+  Future<void> twoFactorEmailSend({required String tempToken}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorEmailSendEndpoint,
+        data: {'tempToken': tempToken},
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao enviar o código por e-mail.'));
+    }
+  }
+
+  /// Etapa 2 do login 2FA-first (OTP por e-mail): 8 dígitos.
+  Future<UsuarioModel> twoFactorEmailVerify({
+    required String tempToken,
+    required String codigo,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorEmailVerifyEndpoint,
+        data: {'tempToken': tempToken, 'codigo': codigo.trim()},
+      );
+      if (response.statusCode == 200) {
+        return UsuarioModel.fromJson(response.data);
+      }
+      throw Exception('Código inválido.');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception('Sessão expirada. Refaça o login.');
+      }
+      if (e.response?.statusCode == 403) {
+        throw Exception(
+            'Conta temporariamente bloqueada por excesso de tentativas.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    } catch (e) {
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    }
+  }
+
+  /// Gestão do 2FA do colaborador (sessão autenticada com Bearer).
+  Future<bool> twoFactorStatus() async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.twoFactorStatusEndpoint,
+      );
+      return response.data is Map && response.data['enabled'] == true;
+    } on DioException catch (e) {
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao consultar o 2FA.'),
+      );
+    }
+  }
+
+  /// Gera o segredo TOTP pendente (ainda não habilitado).
+  Future<Map<String, String>> twoFactorSetup() async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.twoFactorSetupEndpoint,
+      );
+      final data = response.data is Map ? response.data : const {};
+      return {
+        'secret': (data['secret'] ?? '') as String,
+        'otpauthUri': (data['otpauthUri'] ?? '') as String,
+      };
+    } on DioException catch (e) {
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro na configuração do 2FA.'),
+      );
+    }
+  }
+
+  Future<void> twoFactorConfirm({required String codigo}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorConfirmEndpoint,
+        data: {'codigo': codigo.trim()},
+      );
+    } on DioException catch (e) {
+      throw Exception(_mensagemServidor(e) ??
+          mensagemErroAmigavel(e, fallback: 'Erro ao ativar o 2FA.'));
+    }
+  }
+
+  Future<void> twoFactorDisable({required String codigo}) async {
+    try {
+      await _dioClient.dio.post(
+        ApiConstants.twoFactorDisableEndpoint,
+        data: {'codigo': codigo.trim()},
+      );
+    } on DioException catch (e) {
+      throw Exception(_mensagemServidor(e) ??
+          mensagemErroAmigavel(e, fallback: 'Erro ao desativar o 2FA.'));
+    }
+  }
+
+  String? _mensagemServidor(DioException e) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg;
+    }
+    return null;
   }
 
   Future<String> enviarFoto(List<int> bytes, String nomeArquivo) async {
@@ -248,6 +395,89 @@ class AuthRemoteDataSource {
       throw Exception(
         mensagemErroAmigavel(e, fallback: 'Erro ao desativar o dispositivo.'),
       );
+    }
+  }
+
+  static bool _semRede(DioException e) =>
+      e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.sendTimeout ||
+      e.type == DioExceptionType.receiveTimeout;
+
+  /// Status do vínculo + 2FA no modo sem login (`GET /device/status`,
+  /// header `X-Device-Token`, sem sessão).
+  ///
+  /// - [offline]: sem conexão — o chamador decide o fallback local;
+  /// - [revogado]: 401 — o vínculo não vale mais no servidor.
+  Future<({bool offline, bool revogado, bool twoFactorEnabled})>
+      deviceStatus({required String token}) async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.deviceStatusEndpoint,
+        options: Options(headers: {'X-Device-Token': token}),
+      );
+      final data = response.data is Map ? response.data as Map : const {};
+      return (
+        offline: false,
+        revogado: false,
+        twoFactorEnabled: data['twoFactorEnabled'] == true,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        return (offline: false, revogado: true, twoFactorEnabled: false);
+      }
+      if (_semRede(e)) {
+        return (offline: true, revogado: false, twoFactorEnabled: false);
+      }
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao confirmar o vínculo.'),
+      );
+    }
+  }
+
+  /// Verificação do 2FA no modo sem login (`POST /device/verificar`,
+  /// header `X-Device-Token`) — etapa 2 da ordem biometria → 2FA → vínculo.
+  ///
+  /// [codigo] nulo + [porEmail] gera e envia o OTP de 8 dígitos
+  /// (`enviado: true`); com código, `verificado: true` quando confere.
+  /// Código inválido lança exceção; [offline] = sem conexão.
+  Future<({bool offline, bool verificado, bool enviado, DateTime? expiraEm})>
+      deviceVerificar({
+    required String token,
+    String? codigo,
+    bool porEmail = false,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.deviceVerificarEndpoint,
+        options: Options(headers: {'X-Device-Token': token}),
+        data: {
+          'metodo': porEmail ? 'EMAIL' : 'TOTP',
+          if (codigo != null) 'codigo': codigo,
+        },
+      );
+      final data = response.data is Map ? response.data as Map : const {};
+      final expiraRaw = data['expiraEm'];
+      return (
+        offline: false,
+        verificado: data['verificado'] == true,
+        enviado: data['enviado'] == true,
+        expiraEm: expiraRaw is String ? DateTime.tryParse(expiraRaw) : null,
+      );
+    } on DioException catch (e) {
+      if (_semRede(e)) {
+        return (offline: true, verificado: false, enviado: false, expiraEm: null);
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception(
+            'O vínculo deste aparelho não é mais válido. Faça login e '
+            'ative "Bater ponto sem login" novamente.');
+      }
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 403) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
     }
   }
 }

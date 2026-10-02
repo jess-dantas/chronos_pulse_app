@@ -101,6 +101,16 @@ class AdminShell extends StatelessWidget {
 
         final appBar = AppBar(
           elevation: 1,
+          // Hambúrguer (layout estreito): abre o drawer com as seções do admin.
+          leading: !isWide
+              ? Builder(
+                  builder: (menuContext) => IconButton(
+                    icon: const Icon(Icons.menu),
+                    tooltip: 'Menu do admin',
+                    onPressed: () => Scaffold.of(menuContext).openDrawer(),
+                  ),
+                )
+              : null,
           title: Row(
             children: [
               ClipRRect(
@@ -137,7 +147,7 @@ class AdminShell extends StatelessWidget {
             ),
             if (adminAuth.isAuthenticated) ...[
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
+                constraints: BoxConstraints(maxWidth: isWide ? 320 : 160),
                 child: Text(
                   '${(adminAuth.currentAdmin?.nomeCompleto.isNotEmpty ?? false) ? adminAuth.currentAdmin!.nomeCompleto : 'Administrador'} (Plataforma)',
                   maxLines: 1,
@@ -152,7 +162,7 @@ class AdminShell extends StatelessWidget {
               const SizedBox(width: 16),
             ] else if (usuario != null) ...[
               ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
+                constraints: BoxConstraints(maxWidth: isWide ? 320 : 160),
                 child: Text(
                   '${usuario.nome.isNotEmpty ? usuario.nome : 'Admin'} (${usuario.role})',
                   maxLines: 1,
@@ -292,6 +302,14 @@ class AdminShell extends StatelessWidget {
 
         return Scaffold(
           appBar: appBar,
+          drawer: _MenuAdmin(
+            destinos: destinos,
+            branchAtual: currentIndex,
+            onNavegar: (destino) =>
+                navigationShell.goBranch(destino.branchIndex),
+            onPerfil: () => context.push('/perfil'),
+            onSair: () => encerrarSessao(),
+          ),
           body: navigationShell,
           bottomNavigationBar: Column(
             mainAxisSize: MainAxisSize.min,
@@ -349,6 +367,80 @@ class AdminShell extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Drawer (hambúrguer) do layout estreito com as seções do admin,
+/// atalho de perfil e sair — espelho do `_MenuLateral` do MainShell.
+class _MenuAdmin extends StatelessWidget {
+  final List<_AdminDestino> destinos;
+  final int branchAtual;
+  final void Function(_AdminDestino destino) onNavegar;
+  final VoidCallback onPerfil;
+  final VoidCallback onSair;
+
+  const _MenuAdmin({
+    required this.destinos,
+    required this.branchAtual,
+    required this.onNavegar,
+    required this.onPerfil,
+    required this.onSair,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            const ListTile(
+              leading: Icon(
+                Icons.admin_panel_settings,
+                color: Colors.deepPurple,
+              ),
+              title: Text(
+                'Chronos Pulse — Admin',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final destino in destinos)
+                    ListTile(
+                      leading: Icon(destino.icon),
+                      title: Text(destino.label),
+                      selected: destino.branchIndex == branchAtual,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onNavegar(destino);
+                      },
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Perfil'),
+              onTap: () {
+                Navigator.pop(context);
+                onPerfil();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Encerrar Sessão'),
+              onTap: () {
+                Navigator.pop(context);
+                onSair();
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

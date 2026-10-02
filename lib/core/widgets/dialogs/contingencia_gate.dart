@@ -261,9 +261,11 @@ class _ContingenciaDialogState extends State<_ContingenciaDialog> {
             _icone(tema.colorScheme.primary, Icons.fingerprint),
             const SizedBox(height: 16),
             const Text(
-              'Com a contingência ativada você bate ponto com a biometria '
-              'sem precisar logar — e até sem internet (a batida fica na '
-              'fila e sincroniza quando a conexão voltar).',
+              'Com a contingência ativada você bate ponto sem precisar '
+              'logar — a cada uso o app valida sua biometria, o código do '
+              '2FA (se você tiver a autenticação em duas etapas ativada) e '
+              'o vínculo do aparelho. Sem internet a batida fica na fila e '
+              'sincroniza quando a conexão voltar.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),

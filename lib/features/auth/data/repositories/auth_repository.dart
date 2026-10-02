@@ -19,9 +19,41 @@ class AuthRepository {
     required String senha,
   }) async {
     final usuario = await _remoteDataSource.login(cpf: cpf, senha: senha);
+    if (!usuario.requiresTwoFactor) {
+      _dioClient.updateToken(usuario.token);
+    }
+    return usuario;
+  }
+
+  /// 2FA-first: troca o tempToken pelos tokens finais (TOTP ou OTP e-mail).
+  Future<UsuarioModel> twoFactorVerify({
+    required String tempToken,
+    required String codigo,
+    bool porEmail = false,
+  }) async {
+    final usuario = porEmail
+        ? await _remoteDataSource.twoFactorEmailVerify(
+            tempToken: tempToken, codigo: codigo)
+        : await _remoteDataSource.twoFactorVerify(
+            tempToken: tempToken, codigo: codigo);
     _dioClient.updateToken(usuario.token);
     return usuario;
   }
+
+  Future<void> twoFactorEmailSend({required String tempToken}) {
+    return _remoteDataSource.twoFactorEmailSend(tempToken: tempToken);
+  }
+
+  Future<bool> twoFactorStatus() => _remoteDataSource.twoFactorStatus();
+
+  Future<Map<String, String>> twoFactorSetup() =>
+      _remoteDataSource.twoFactorSetup();
+
+  Future<void> twoFactorConfirm({required String codigo}) =>
+      _remoteDataSource.twoFactorConfirm(codigo: codigo);
+
+  Future<void> twoFactorDisable({required String codigo}) =>
+      _remoteDataSource.twoFactorDisable(codigo: codigo);
 
   Future<UsuarioModel> cadastrarEmpresa({
     required String cnpj,
@@ -68,11 +100,9 @@ class AuthRepository {
   }
 
   Future<String> alterarSenha({
-    required String senhaAtual,
     required String novaSenha,
   }) {
     return _remoteDataSource.alterarSenha(
-      senhaAtual: senhaAtual,
       novaSenha: novaSenha,
     );
   }
@@ -99,6 +129,9 @@ class AuthRepository {
 
   /// Ativa o vínculo do dispositivo (7 dias) e o persiste localmente para o
   /// modo "bater ponto sem login". [cpcId]/[nome] vêm da sessão ativa.
+  ///
+  /// Também grava se o dono tem o 2FA habilitado: define se o modo sem
+  /// login cobra o código a cada uso (ordem biometria → 2FA → vínculo).
   Future<DeviceTokenModel> vincularDevice({
     required String cpcId,
     required String nome,
@@ -111,6 +144,15 @@ class AuthRepository {
       nome: nome,
       expiraEm: vinculo.expiraEm,
     );
+    try {
+      await DeviceTokenStore.instancia
+          .salvarTwoFactor(await _remoteDataSource.twoFactorStatus());
+    } catch (_) {
+      // Sem o status não dá para afirmar: assume "sem 2FA" (o modo offline
+      // segue funcionando) — o `device/status` corrige na próxima entrada
+      // online e cobra o código na hora se for o caso.
+      await DeviceTokenStore.instancia.salvarTwoFactor(false);
+    }
     return vinculo;
   }
 

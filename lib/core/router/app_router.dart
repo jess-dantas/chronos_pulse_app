@@ -8,6 +8,7 @@ import '../../features/admin/presentation/screens/admin_biometric_gate_screen.da
 import '../../features/admin/presentation/screens/admin_bootstrap_screen.dart';
 import '../../features/admin/presentation/screens/admin_contratos_screen.dart';
 import '../../features/admin/presentation/screens/admin_recover_screen.dart';
+import '../../features/admin/presentation/screens/admin_reset_senha_screen.dart';
 import '../../features/admin/presentation/screens/admin_recovery_codes_screen.dart';
 import '../../features/admin/presentation/screens/admin_setup_2fa_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
@@ -22,6 +23,8 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/biometric_gate_screen.dart';
 import '../../features/auth/presentation/screens/cadastrar_empresa_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/perfil_two_factor_screen.dart';
+import '../../features/auth/presentation/screens/two_factor_login_screen.dart';
 import '../../features/auth/presentation/screens/recuperar_senha_screen.dart';
 import '../../features/colaborador/presentation/screens/colaboradores_screen.dart';
 import '../../features/compras/presentation/screens/compras_home_screen.dart';
@@ -36,6 +39,7 @@ import '../../features/navigation/presentation/screens/admin_shell.dart';
 import '../../features/navigation/presentation/screens/main_shell.dart';
 import '../../features/patrimonio/presentation/screens/patrimonio_home_screen.dart';
 import '../../features/perfil/presentation/screens/perfil_screen.dart';
+import '../../features/perfil/presentation/screens/perfil_seguranca_screen.dart';
 import '../../features/ponto/presentation/screens/home_ponto_screen.dart';
 import '../../features/privacidade/presentation/screens/privacidade_screen.dart';
 import '../../features/protocolo/presentation/screens/protocolo_home_screen.dart';
@@ -158,6 +162,11 @@ class AppRouter {
           path: '/login',
           builder: (context, state) => const LoginScreen(),
         ),
+        // Etapa 2 do login 2FA-first (código TOTP ou OTP por e-mail).
+        GoRoute(
+          path: '/login/2fa',
+          builder: (context, state) => const TwoFactorLoginScreen(),
+        ),
         GoRoute(
           path: '/cadastro',
           builder: (context, state) => const CadastrarEmpresaScreen(),
@@ -181,6 +190,16 @@ class AppRouter {
         GoRoute(
           path: '/perfil/titularidade',
           builder: (context, state) => const TransferirTitularidadeScreen(),
+        ),
+        // Gestão do 2FA do colaborador (ativação via QR e desativação).
+        GoRoute(
+          path: '/perfil/2fa',
+          builder: (context, state) => const PerfilTwoFactorScreen(),
+        ),
+        // Ajustes de segurança do colaborador: biometria ao abrir + 2FA.
+        GoRoute(
+          path: '/perfil/seguranca',
+          builder: (context, state) => const PerfilSegurancaScreen(),
         ),
         // Gate biométrico de abertura (login por biometria) — sessão
         // restaurada exige a biometria do aparelho antes do conteúdo.
@@ -217,6 +236,10 @@ class AppRouter {
         GoRoute(
           path: '/admin/auth/recover',
           builder: (context, state) => const AdminRecoverScreen(),
+        ),
+        GoRoute(
+          path: '/admin/auth/reset-senha',
+          builder: (context, state) => const AdminResetSenhaScreen(),
         ),
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) =>
@@ -358,7 +381,7 @@ class AppRouter {
     final autenticado = auth.isAuthenticated;
     final usuario = auth.usuario;
 
-    const publicas = ['/', '/login', '/cadastro', '/recuperar-senha'];
+    const publicas = ['/', '/login', '/login/2fa', '/cadastro', '/recuperar-senha'];
     final areaPainel = location == '/painel' || location.startsWith('/painel/');
 
     if (!autenticado) {

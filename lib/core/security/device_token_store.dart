@@ -41,6 +41,11 @@ class DeviceTokenStore {
   static const String chaveNome = 'chronos_device_nome';
   static const String chaveExpiraEm = 'chronos_device_expira_em';
 
+  /// Se o DONO do vínculo tem o 2FA habilitado (gravado na ativação e
+  /// sincronizado pelo `device/status`). Define se o modo sem login cobra o
+  /// código na etapa 2 (ordem: biometria → 2FA → vínculo).
+  static const String chaveTwoFactor = 'chronos_device_2fa';
+
   final Future<String?> Function(String key) _ler;
   final Future<void> Function(String key, String value) _gravar;
   final Future<void> Function(String key) _remover;
@@ -92,10 +97,25 @@ class DeviceTokenStore {
 
   Future<bool> vinculoAtivo() async => (await lerAtivo()) != null;
 
+  /// Persiste se o modo sem login deve exigir o código do 2FA a cada uso.
+  Future<void> salvarTwoFactor(bool ativo) =>
+      _gravar(chaveTwoFactor, ativo ? 'true' : 'false');
+
+  /// `true` quando o dono do vínculo atual tem o 2FA habilitado
+  /// (padrão `false`: só cobra o código se a ativação/servidor disser).
+  Future<bool> lerTwoFactor() async {
+    try {
+      return await _ler(chaveTwoFactor) == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> limpar() async {
     await _remover(chaveToken);
     await _remover(chaveCpcId);
     await _remover(chaveNome);
     await _remover(chaveExpiraEm);
+    await _remover(chaveTwoFactor);
   }
 }

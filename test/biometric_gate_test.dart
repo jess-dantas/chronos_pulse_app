@@ -344,5 +344,21 @@ void main() {
 
       auth.dispose();
     });
+
+    test('biometria desligada restaura a sessão já DESBLOQUEADA', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('chronos_biometria_ativa', false);
+
+      final repo = _RepoRefreshFake();
+      final auth = AuthProvider(repo);
+
+      await auth.tryRestoreSession();
+
+      expect(auth.isAuthenticated, isTrue);
+      expect(auth.sessaoDesbloqueada, isTrue,
+          reason: 'com o bloqueio desligado em Segurança o gate não é cobrado');
+
+      auth.dispose();
+    });
   });
 }
