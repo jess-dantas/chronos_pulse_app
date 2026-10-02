@@ -39,8 +39,32 @@ Refresh concorrentes são agrupados (uma única chamada em andamento), evitando 
 |---|---|---|
 | `SessionStorage` (secure) | `chronos_access_token` | Access token |
 | `SessionStorage` (secure) | `chronos_refresh_token` | Refresh token |
+| `SessionStorage` (secure) | `chronos_device_token` + `chronos_device_*` | Vínculo de dispositivo (modo sem login, 7 dias) |
+| `SessionStorage` (secure) | `chronos_device_2fa` | Se o dono do vínculo tem o 2FA — define a cobrança do código no modo |
 | `shared_preferences` | `chronos_usuario` | Usuário (JSON) |
 | `shared_preferences` | `chronos_modulos` | Lista de códigos de módulos ativos (salva/restaurada junto da sessão) |
+| `shared_preferences` | `chronos_biometria_ativa` | Exigir biometria ao abrir (padrão ativado; tela Segurança) |
+
+## Modo sem login (bater ponto sem login)
+
+Rota pública `/ponto/dispositivo` (`ModoPontoScreen`), mobile only — o guard
+valida, **nesta ordem**:
+
+1. **Vínculo local** (`DeviceTokenStore`, 7 dias) — sem ele o modo nem começa;
+2. **Biometria** do aparelho (`HardwareService`, timeout 8s);
+3. **2FA** — só quando o dono tem a autenticação em duas etapas habilitada
+   (flag `chronos_device_2fa`, gravada na ativação e sincronizada pelo
+   `GET /device/status`): TOTP de 6 dígitos ou OTP de 8 dígitos por e-mail,
+   validados pelo `POST /auth/device/verificar` com header `X-Device-Token`
+   (`ModoPontoTwoFactorScreen`). **Offline o código não é pulado**: sem
+   conexão a etapa bloqueia com orientação;
+4. **Vínculo (confirmação)** — `GET /device/status` valida o token no
+   servidor, sincroniza a flag de 2FA e detecta revogação (401 → limpa a
+   store e mostra o aviso). Offline, o vínculo local segue valendo e a
+   batida entra na fila de sincronização.
+
+A ativação do vínculo (`ContingenciaGate` após o login, ou o tile do Perfil)
+avisa o usuário dessa ordem a cada uso.
 
 ## Tempo de sessão
 

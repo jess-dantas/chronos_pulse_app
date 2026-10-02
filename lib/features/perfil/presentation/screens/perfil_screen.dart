@@ -350,7 +350,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
                           title: const Text('Bater ponto sem login'),
                           subtitle: const Text(
                             'Vincule este aparelho por 7 dias para registrar '
-                            'ponto com biometria, mesmo sem sessão aberta.',
+                            'ponto com biometria (e o código do 2FA, se '
+                            'ativado), mesmo sem sessão aberta.',
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: _ativarVinculo,

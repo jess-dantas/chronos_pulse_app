@@ -397,4 +397,87 @@ class AuthRemoteDataSource {
       );
     }
   }
+
+  static bool _semRede(DioException e) =>
+      e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.sendTimeout ||
+      e.type == DioExceptionType.receiveTimeout;
+
+  /// Status do vínculo + 2FA no modo sem login (`GET /device/status`,
+  /// header `X-Device-Token`, sem sessão).
+  ///
+  /// - [offline]: sem conexão — o chamador decide o fallback local;
+  /// - [revogado]: 401 — o vínculo não vale mais no servidor.
+  Future<({bool offline, bool revogado, bool twoFactorEnabled})>
+      deviceStatus({required String token}) async {
+    try {
+      final response = await _dioClient.dio.get(
+        ApiConstants.deviceStatusEndpoint,
+        options: Options(headers: {'X-Device-Token': token}),
+      );
+      final data = response.data is Map ? response.data as Map : const {};
+      return (
+        offline: false,
+        revogado: false,
+        twoFactorEnabled: data['twoFactorEnabled'] == true,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        return (offline: false, revogado: true, twoFactorEnabled: false);
+      }
+      if (_semRede(e)) {
+        return (offline: true, revogado: false, twoFactorEnabled: false);
+      }
+      throw Exception(
+        mensagemErroAmigavel(e, fallback: 'Erro ao confirmar o vínculo.'),
+      );
+    }
+  }
+
+  /// Verificação do 2FA no modo sem login (`POST /device/verificar`,
+  /// header `X-Device-Token`) — etapa 2 da ordem biometria → 2FA → vínculo.
+  ///
+  /// [codigo] nulo + [porEmail] gera e envia o OTP de 8 dígitos
+  /// (`enviado: true`); com código, `verificado: true` quando confere.
+  /// Código inválido lança exceção; [offline] = sem conexão.
+  Future<({bool offline, bool verificado, bool enviado, DateTime? expiraEm})>
+      deviceVerificar({
+    required String token,
+    String? codigo,
+    bool porEmail = false,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.deviceVerificarEndpoint,
+        options: Options(headers: {'X-Device-Token': token}),
+        data: {
+          'metodo': porEmail ? 'EMAIL' : 'TOTP',
+          if (codigo != null) 'codigo': codigo,
+        },
+      );
+      final data = response.data is Map ? response.data as Map : const {};
+      final expiraRaw = data['expiraEm'];
+      return (
+        offline: false,
+        verificado: data['verificado'] == true,
+        enviado: data['enviado'] == true,
+        expiraEm: expiraRaw is String ? DateTime.tryParse(expiraRaw) : null,
+      );
+    } on DioException catch (e) {
+      if (_semRede(e)) {
+        return (offline: true, verificado: false, enviado: false, expiraEm: null);
+      }
+      if (e.response?.statusCode == 401) {
+        throw Exception(
+            'O vínculo deste aparelho não é mais válido. Faça login e '
+            'ative "Bater ponto sem login" novamente.');
+      }
+      if (e.response?.statusCode == 400 || e.response?.statusCode == 403) {
+        throw Exception(_mensagemServidor(e) ?? 'Código inválido.');
+      }
+      throw Exception(mensagemErroAmigavel(
+          e, fallback: 'Erro ao verificar o código.'));
+    }
+  }
 }

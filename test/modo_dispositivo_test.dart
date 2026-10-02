@@ -23,6 +23,7 @@ import 'package:chronos_pulse_app/features/ponto/data/repositories/ponto_reposit
 import 'package:chronos_pulse_app/features/ponto/presentation/providers/ponto_provider.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/home_ponto_screen.dart';
 import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_screen.dart';
+import 'package:chronos_pulse_app/features/ponto/presentation/screens/modo_ponto_two_factor_screen.dart';
 
 import 'ponto_test.dart' show MockPontoLocalDataSource, MockPontoRemoteDataSource;
 
@@ -265,6 +266,266 @@ void main() {
       expect(find.textContaining('cancelada'), findsOneWidget);
       expect(find.text('Ir para o login'), findsOneWidget);
     });
+
+    testWidgets('sem 2FA: biometria ok confirma o vínculo e embarca',
+        (tester) async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+      final ds = _DataSourceFake();
+
+      await _pumpModo(
+        tester,
+        ModoPontoScreen(
+          store: _storeComVinculo(),
+          hardwareService: _HardwareFake(),
+          dataSource: ds,
+        ),
+      );
+      await _aguardar(tester,
+          () => find.byType(HomePontoScreen).evaluate().isNotEmpty);
+
+      expect(find.byType(HomePontoScreen), findsOneWidget);
+      expect(ds.chamadasStatus, 1, reason: 'vínculo confirmado no servidor');
+      expect(ds.chamadasVerificar, 0, reason: 'sem 2FA não cobra código');
+      expect(find.byType(ModoPontoTwoFactorScreen), findsNothing);
+    });
+
+    testWidgets('com 2FA: abre a etapa do código após a biometria',
+        (tester) async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+      await _storeComVinculo().salvarTwoFactor(true);
+      final ds = _DataSourceFake()..doisFator = true;
+
+      await _pumpModo(
+        tester,
+        ModoPontoScreen(
+          store: _storeComVinculo(),
+          hardwareService: _HardwareFake(),
+          dataSource: ds,
+        ),
+      );
+      await _aguardar(tester,
+          () => find.byType(ModoPontoTwoFactorScreen).evaluate().isNotEmpty);
+
+      expect(find.byType(ModoPontoTwoFactorScreen), findsOneWidget);
+      expect(find.byType(HomePontoScreen), findsNothing);
+      expect(ds.chamadasStatus, 0,
+          reason: 'vínculo só é confirmado depois do 2FA (ordem do fluxo)');
+      expect(
+        find.textContaining('biometria'),
+        findsWidgets,
+        reason: 'aviso da ordem das etapas visível na tela de código',
+      );
+    });
+
+    testWidgets('código TOTP válido conclui: biometria → 2FA → vínculo',
+        (tester) async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+      await _storeComVinculo().salvarTwoFactor(true);
+      final ds = _DataSourceFake()..doisFator = true;
+
+      await _pumpModo(
+        tester,
+        ModoPontoScreen(
+          store: _storeComVinculo(),
+          hardwareService: _HardwareFake(),
+          dataSource: ds,
+        ),
+      );
+      await _aguardar(tester,
+          () => find.byType(ModoPontoTwoFactorScreen).evaluate().isNotEmpty);
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '123456');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await _aguardar(tester,
+          () => find.byType(HomePontoScreen).evaluate().isNotEmpty);
+
+      expect(find.byType(HomePontoScreen), findsOneWidget);
+      expect(ds.chamadasVerificar, 1);
+      expect(ds.ultimoCodigo, '123456');
+      expect(ds.chamadasStatus, 1, reason: 'etapa 3 (vínculo) após o 2FA');
+      expect(await _storeComVinculo().lerTwoFactor(), isTrue);
+    });
+
+    testWidgets('offline com 2FA não embarca e orienta a conectar',
+        (tester) async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+      await _storeComVinculo().salvarTwoFactor(true);
+      final ds = _DataSourceFake()
+        ..doisFator = true
+        ..verificarOffline = true;
+
+      await _pumpModo(
+        tester,
+        ModoPontoScreen(
+          store: _storeComVinculo(),
+          hardwareService: _HardwareFake(),
+          dataSource: ds,
+        ),
+      );
+      await _aguardar(tester,
+          () => find.byType(ModoPontoTwoFactorScreen).evaluate().isNotEmpty);
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '123456');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byKey(const Key('modo_ponto_2fa_erro')), findsOneWidget);
+      expect(
+        find.textContaining('Sem conexão'),
+        findsOneWidget,
+        reason: 'sem internet o 2FA não pode ser pulado',
+      );
+      expect(find.byType(HomePontoScreen), findsNothing);
+    });
+
+    testWidgets('vínculo revogado no servidor limpa a store e avisa',
+        (tester) async {
+      await _storeComVinculo().salvar(
+        token: 'dt-abc',
+        cpcId: 'cpc-dono',
+        nome: 'Aparelho',
+        expiraEm: DateTime.now().toUtc().add(const Duration(days: 7)),
+      );
+      final ds = _DataSourceFake()..statusRevogado = true;
+
+      await _pumpModo(
+        tester,
+        ModoPontoScreen(
+          store: _storeComVinculo(),
+          hardwareService: _HardwareFake(),
+          dataSource: ds,
+        ),
+      );
+      await _aguardar(tester,
+          () => find.textContaining('revogado').evaluate().isNotEmpty);
+
+      expect(find.textContaining('revogado'), findsOneWidget);
+      expect(await _storeComVinculo().lerAtivo(), isNull,
+          reason: 'token inválido é removido do aparelho');
+      expect(find.byType(HomePontoScreen), findsNothing);
+    });
+  });
+
+  group('ModoPontoTwoFactorScreen — etapa 2 (código)', () {
+    late _DataSourceFake ds;
+
+    setUp(() => ds = _DataSourceFake());
+
+    Future<void> pumpTela(WidgetTester tester) {
+      return tester.pumpWidget(MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => ModoPontoTwoFactorScreen(
+                      deviceToken: 'dt-abc',
+                      dataSource: ds,
+                    ),
+                  ),
+                ),
+                child: const Text('ABRIR'),
+              ),
+            ),
+          ),
+        ),
+      ));
+    }
+
+    testWidgets('código com dígitos errados mostra o aviso sem chamar a API',
+        (tester) async {
+      await pumpTela(tester);
+      await tester.tap(find.text('ABRIR'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '123');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await tester.pump();
+
+      expect(find.text('O código deve conter 6 dígitos.'), findsOneWidget);
+      expect(ds.chamadasVerificar, 0);
+    });
+
+    testWidgets('receber código por e-mail troca a validação para 8 dígitos',
+        (tester) async {
+      await pumpTela(tester);
+      await tester.tap(find.text('ABRIR'));
+      await tester.pumpAndSettle();
+
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_por_email_button')));
+      await tester.pumpAndSettle();
+
+      expect(ds.chamadasVerificar, 1, reason: 'OTP enviado sem código');
+      expect(find.textContaining('8 dígitos'), findsWidgets);
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '123');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await tester.pump();
+      expect(find.text('O código deve conter 8 dígitos.'), findsOneWidget);
+    });
+
+    testWidgets('código inválido mostra o erro do servidor', (tester) async {
+      ds.codigoValido = false;
+      await pumpTela(tester);
+      await tester.tap(find.text('ABRIR'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '000000');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Código inválido. Tente novamente.'), findsOneWidget);
+    });
+
+    testWidgets('código válido conclui a etapa (pop(true))', (tester) async {
+      await pumpTela(tester);
+      await tester.tap(find.text('ABRIR'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+          find.byKey(const Key('modo_ponto_2fa_codigo_field')), '123456');
+      await tester
+          .tap(find.byKey(const Key('modo_ponto_2fa_verificar_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ModoPontoTwoFactorScreen), findsNothing);
+      expect(find.text('ABRIR'), findsOneWidget);
+      expect(ds.ultimoCodigo, '123456');
+      expect(ds.ultimoPorEmail, isFalse);
+    });
   });
 
   group('Contingência offline — fila local → sync com X-Device-Token', () {
@@ -395,4 +656,118 @@ class _HardwareFake extends HardwareService {
 
   @override
   Future<bool> autenticarBiometria({String motivo = ''}) async => resultado;
+}
+
+/// Datasource falso do modo sem login: `device/status` e `device/verificar`
+/// sem rede, com estados programáveis por teste.
+class _DataSourceFake extends AuthRemoteDataSource {
+  _DataSourceFake() : super(DioClient());
+
+  bool doisFator = false;
+  bool statusOffline = false;
+  bool statusRevogado = false;
+  bool verificarOffline = false;
+  bool codigoValido = true;
+  int chamadasStatus = 0;
+  int chamadasVerificar = 0;
+  String? ultimoCodigo;
+  bool? ultimoPorEmail;
+
+  @override
+  Future<({bool offline, bool revogado, bool twoFactorEnabled})>
+      deviceStatus({required String token}) {
+    chamadasStatus++;
+    return Future.value((
+      offline: statusOffline,
+      revogado: statusRevogado,
+      twoFactorEnabled: doisFator,
+    ));
+  }
+
+  @override
+  Future<({bool offline, bool verificado, bool enviado, DateTime? expiraEm})>
+      deviceVerificar({
+    required String token,
+    String? codigo,
+    bool porEmail = false,
+  }) {
+    chamadasVerificar++;
+    ultimoCodigo = codigo;
+    ultimoPorEmail = porEmail;
+    if (codigo == null) {
+      // Envio do OTP por e-mail (sem código no corpo).
+      return Future.value((
+        offline: verificarOffline,
+        verificado: false,
+        enviado: !verificarOffline,
+        expiraEm: null,
+      ));
+    }
+    return Future.value((
+      offline: verificarOffline,
+      verificado: !verificarOffline && codigoValido,
+      enviado: false,
+      expiraEm: null,
+    ));
+  }
+}
+
+/// PontoProvider sem timers de monitoramento (o construtor real agenda um
+/// timer periódico de 30s que derruba o teste).
+class _PontoFake extends PontoProvider {
+  _PontoFake()
+      : super(PontoRepository(
+          localDataSource: MockPontoLocalDataSource(),
+          remoteDataSource: MockPontoRemoteDataSource(),
+        ));
+
+  @override
+  Future<void> carregarDados() async {}
+
+  @override
+  void iniciarMonitoramento({Duration interval = const Duration(seconds: 30)}) {}
+}
+
+/// Monta o ModoPontoScreen com GoRouter + providers que o HomePontoScreen
+/// exige quando o embarque conclui.
+Future<void> _pumpModo(WidgetTester tester, ModoPontoScreen tela) async {
+  final auth = AuthProvider(AuthRepository(
+    remoteDataSource: AuthRemoteDataSource(DioClient()),
+    dioClient: DioClient(),
+  ));
+  final ponto = _PontoFake();
+  final router = GoRouter(
+    initialLocation: '/ponto/dispositivo',
+    routes: [
+      GoRoute(path: '/', builder: (c, s) => const Scaffold(body: Text('HOME'))),
+      GoRoute(
+          path: '/login', builder: (c, s) => const Scaffold(body: Text('LOGIN'))),
+      GoRoute(path: '/ponto/dispositivo', builder: (c, s) => tela),
+    ],
+  );
+  addTearDown(router.dispose);
+  addTearDown(auth.dispose);
+  addTearDown(ponto.dispose);
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider<PontoProvider>.value(value: ponto),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+}
+
+/// Avança frames até a condição (o HomePontoScreen tem relógio com timer de
+/// 1s — não se usa pumpAndSettle no fluxo de embarque).
+Future<void> _aguardar(
+  WidgetTester tester,
+  bool Function() condicao,
+) async {
+  for (var i = 0; i < 60 && !condicao(); i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }

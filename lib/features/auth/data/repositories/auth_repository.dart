@@ -129,6 +129,9 @@ class AuthRepository {
 
   /// Ativa o vínculo do dispositivo (7 dias) e o persiste localmente para o
   /// modo "bater ponto sem login". [cpcId]/[nome] vêm da sessão ativa.
+  ///
+  /// Também grava se o dono tem o 2FA habilitado: define se o modo sem
+  /// login cobra o código a cada uso (ordem biometria → 2FA → vínculo).
   Future<DeviceTokenModel> vincularDevice({
     required String cpcId,
     required String nome,
@@ -141,6 +144,15 @@ class AuthRepository {
       nome: nome,
       expiraEm: vinculo.expiraEm,
     );
+    try {
+      await DeviceTokenStore.instancia
+          .salvarTwoFactor(await _remoteDataSource.twoFactorStatus());
+    } catch (_) {
+      // Sem o status não dá para afirmar: assume "sem 2FA" (o modo offline
+      // segue funcionando) — o `device/status` corrige na próxima entrada
+      // online e cobra o código na hora se for o caso.
+      await DeviceTokenStore.instancia.salvarTwoFactor(false);
+    }
     return vinculo;
   }
 
