@@ -26,7 +26,7 @@ bool get temModuloTransparencia => isGestorPlataforma || _temModulo('TRANSPARENC
 
 Centralizado em `lib/core/router/app_router.dart`:
 
-- `AppRouter.painelOrdem` — ordem fixa dos 12 destinos (`home`, `ponto`, `aprovacao-ajustes`, `colaboradores`, `estoque`, `compras`, `licitacoes`, `patrimonio`, `frota`, `protocolo`, `transparencia`, `privacidade`).
+- `AppRouter.painelOrdem` — ordem fixa dos 13 destinos (`home`, `ponto`, `aprovacao-ajustes`, `colaboradores`, `usuarios`, `estoque`, `compras`, `licitacoes`, `patrimonio`, `frota`, `protocolo`, `transparencia`, `privacidade`).
 - `AppRouter.podeModuloPainel(usuario, slug)` — gating por rota.
 - `MainShell` (`lib/features/navigation/presentation/screens/main_shell.dart`) monta a lista escondendo/removendo itens não liberados; o índice selecionado é ajustado com `posicaoAtual`/`safeIndex` para nunca apontar para item removido. Ícones do rail em tamanho **20** e labels **11px** (mais compactos). No desktop o **bloco de perfil + logout** fica no **rodapé** do `NavigationRail`; tocar no perfil navega para **`/perfil`** (`context.push('/perfil')`).
 - **Nav mobile (≤800px)** — dock inferior com **4 itens fixos**: **Home**, **Ponto**, **Espelho** (deep link `/painel/ponto?aba=espelho`, que abre a aba "Espelho de Ponto" via `HomePontoScreen.abaInicial`) e **Perfil** (`/perfil`). Ponto/Espelho só aparecem se o usuário tiver o módulo `PONTO`. O **restante dos módulos** fica no **drawer (hambúrguer)** do AppBar, que lista todos os destinos acessíveis + Perfil + Encerrar Sessão. Quando a rota atual não é do dock (ex.: `/painel/estoque`, alcançado pelo drawer), a dock é renderizada **sem item destacado**. O `AdminShell` (Admin Plataforma) mantém a `NavigationBar` com seus 7 destinos **e também expõe o drawer (hambúrguer) no AppBar, listando as 7 seções + Perfil + Encerrar Sessão**.
@@ -35,16 +35,24 @@ Centralizado em `lib/core/router/app_router.dart`:
 |---|---|---|
 | 0 | Home | sempre (`true`) — `HomeScreen` (saudação, status do dia, atalhos) |
 | 1 | Ponto | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PONTO` |
-| 2 | Aprovação Ajustes | `isAdminOrRh` ∧ módulo `PONTO` |
+| 2 | Aprovação Ajustes | `isGestorRh` ∧ módulo `PONTO` |
 | 3 | Colaboradores | `isAdminOrRh` ∧ módulo `RECURSOS_HUMANOS` |
-| 4 | Estoque | `temAcessoEstoque` ∧ módulo `ESTOQUE` |
-| 5 | Compras | `temAcessoEstoque` ∧ módulo `COMPRAS` |
-| 6 | Licitações | `temAcessoEstoque` ∧ módulo `LICITACOES` |
-| 7 | Patrimônio | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PATRIMONIO` |
-| 8 | Frota | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `FROTA` |
-| 9 | Protocolo | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PROTOCOLO` |
-| 10 | Transparência | (`isAdminOrRh` ∥ `isColaborador` ∥ `acessoEstoque`) ∧ módulo `TRANSPARENCIA` |
-| 11 | Privacidade (LGPD) | sempre (`true`) |
+| 4 | Usuários | `isAdminEmpresa` (contas administrativas: listar/criar/suspender — backend `UsuarioController` exige `ADMIN_EMPRESA`) |
+| 5 | Estoque | `temAcessoEstoque` ∧ módulo `ESTOQUE` |
+| 6 | Compras | `temAcessoEstoque` ∧ módulo `COMPRAS` |
+| 7 | Licitações | `temAcessoEstoque` ∧ módulo `LICITACOES` |
+| 8 | Patrimônio | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PATRIMONIO` |
+| 9 | Frota | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `FROTA` |
+| 10 | Protocolo | (`isAdminOrRh` ∥ `isColaborador`) ∧ módulo `PROTOCOLO` |
+| 11 | Transparência | (`isAdminOrRh` ∥ `isColaborador` ∥ `acessoEstoque`) ∧ módulo `TRANSPARENCIA` |
+| 12 | Privacidade (LGPD) | sempre (`true`) |
+
+> **Agrupadores de módulos:** os switches de associação de módulos
+> (`AcessosModulosCard`, nos diálogos de colaborador) são agrupados por
+> **5 agrupadores fixos no código** (ordem aprovada, não configurável):
+> **RH** (`PONTO`, `RECURSOS_HUMANOS`), **Estoque** (`ESTOQUE`),
+> **Compras** (`COMPRAS`, `LICITACOES`), **Logística** (`PATRIMONIO`,
+> `FROTA`, `PROTOCOLO`) e **Transparência** (`TRANSPARENCIA`).
 
 > **Perfil / titularidade:** o bloco de perfil no rodapé do rail abre **`/perfil`** (rota própria, fora do `painelOrdem`); o redirect do `AppRouter` usa `location.startsWith('/perfil')` — autenticado → `null` (admin root ou usuário), `/perfil/titularidade` exige `isAdminEmpresa`. Não há tela própria de histórico — datas de admissão/desligamento já vêm no payload do colaborador (`data_admissao`/`data_desligamento`/`ativo`).
 

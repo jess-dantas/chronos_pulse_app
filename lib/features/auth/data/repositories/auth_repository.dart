@@ -136,6 +136,7 @@ class AuthRepository {
     required String cpcId,
     required String nome,
     String? deviceName,
+    String cpf = '',
   }) async {
     final vinculo = await _remoteDataSource.vincularDevice(deviceName: deviceName);
     await DeviceTokenStore.instancia.salvar(
@@ -143,6 +144,7 @@ class AuthRepository {
       cpcId: cpcId,
       nome: nome,
       expiraEm: vinculo.expiraEm,
+      cpf: cpf,
     );
     try {
       await DeviceTokenStore.instancia

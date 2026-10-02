@@ -3,7 +3,8 @@ import '../theme/app_theme.dart';
 
 /// Card com os switches de associação de módulos do colaborador.
 /// Exibe os módulos em [visiveis] (catálogo filtrado pelos módulos do
-/// usuário logado) e notifica o conjunto completo selecionado.
+/// usuário logado) agrupados pelos [grupos] fixos e notifica o conjunto
+/// completo selecionado.
 class AcessosModulosCard extends StatelessWidget {
   /// Catálogo completo dos módulos de tenant (sem PRIVACIDADE).
   static const List<String> codigosGlobais = [
@@ -16,6 +17,16 @@ class AcessosModulosCard extends StatelessWidget {
     'FROTA',
     'PROTOCOLO',
     'TRANSPARENCIA',
+  ];
+
+  /// Agrupadores fixos dos módulos de tenant (definidos no código, na ordem
+  /// aprovada — não vêm do backend nem da configuração da empresa).
+  static const List<({String nome, List<String> codigos})> grupos = [
+    (nome: 'RH', codigos: ['PONTO', 'RECURSOS_HUMANOS']),
+    (nome: 'Estoque', codigos: ['ESTOQUE']),
+    (nome: 'Compras', codigos: ['COMPRAS', 'LICITACOES']),
+    (nome: 'Logística', codigos: ['PATRIMONIO', 'FROTA', 'PROTOCOLO']),
+    (nome: 'Transparência', codigos: ['TRANSPARENCIA']),
   ];
 
   static const Map<String, ({IconData icon, String title, String subtitle})>
@@ -85,6 +96,10 @@ class AcessosModulosCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = AppTheme.onLilasSurface(context);
+    final visiveisSet = visiveis.toSet();
+    final emGrupo = grupos.expand((g) => g.codigos).toSet();
+    final foraDoGrupo =
+        codigosGlobais.where((c) => !emGrupo.contains(c)).toList();
 
     return Container(
       decoration: BoxDecoration(
@@ -114,36 +129,62 @@ class AcessosModulosCard extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          for (final codigo in codigosGlobais)
-            if (visiveis.contains(codigo))
-              Builder(
-                builder: (context) {
-                  final meta = _catalogo[codigo]!;
-                  return SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                    secondary: Icon(meta.icon, color: accent, size: 22),
-                    title: Text(
-                      meta.title,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    subtitle:
-                        Text(meta.subtitle, style: const TextStyle(fontSize: 12)),
-                    value: selecionados.contains(codigo),
-                    activeThumbColor: accent,
-                    onChanged: (v) {
-                      final novo = Set<String>.from(selecionados);
-                      if (v) {
-                        novo.add(codigo);
-                      } else {
-                        novo.remove(codigo);
-                      }
-                      onChanged(novo);
-                    },
-                  );
-                },
-              ),
+          for (final grupo in grupos) ...[
+            if (grupo.codigos.any(visiveisSet.contains))
+              _cabecalhoGrupo(grupo.nome, accent),
+            for (final codigo in grupo.codigos)
+              if (visiveis.contains(codigo)) _switchDoModulo(codigo, accent),
+          ],
+          if (foraDoGrupo.any(visiveisSet.contains)) ...[
+            _cabecalhoGrupo('Outros', accent),
+            for (final codigo in foraDoGrupo)
+              if (visiveis.contains(codigo)) _switchDoModulo(codigo, accent),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _cabecalhoGrupo(String nome, Color accent) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 12, 4, 2),
+      child: Text(
+        nome.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: accent,
+        ),
+      ),
+    );
+  }
+
+  Widget _switchDoModulo(String codigo, Color accent) {
+    final meta = _catalogo[codigo]!;
+    // Material transparente próprio: o card tem fundo colorido (DecoratedBox)
+    // e o ListTile pintaria fundo/ink no Material distante — assert de debug.
+    return Material(
+      type: MaterialType.transparency,
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        secondary: Icon(meta.icon, color: accent, size: 22),
+        title: Text(
+          meta.title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+        subtitle: Text(meta.subtitle, style: const TextStyle(fontSize: 12)),
+        value: selecionados.contains(codigo),
+        activeThumbColor: accent,
+        onChanged: (v) {
+          final novo = Set<String>.from(selecionados);
+          if (v) {
+            novo.add(codigo);
+          } else {
+            novo.remove(codigo);
+          }
+          onChanged(novo);
+        },
       ),
     );
   }
