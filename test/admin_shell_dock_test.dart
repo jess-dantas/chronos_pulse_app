@@ -100,46 +100,62 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('layout estreito mostra o hambúrguer, sem rail, e dock de 4',
-      (tester) async {
-    await pumpShell(tester, rota: '/admin/modulos');
+  testWidgets(
+      'layout estreito: dock de 3 (Home/Menu/Perfil), sem hambúrguer '
+      'nem barra de conta/sair', (tester) async {
+    await pumpShell(tester, rota: '/admin/dashboard');
 
     expect(find.byType(AdminShell), findsOneWidget);
-    expect(find.byTooltip('Menu do admin'), findsOneWidget);
+    expect(find.byTooltip('Menu do admin'), findsNothing);
     expect(find.byType(NavigationRail), findsNothing);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).destinations,
-      hasLength(4),
-      reason: 'dock fixa em Dashboard/Leads/Empresas/Módulos (resto no drawer)',
+      find.byIcon(Icons.menu),
+      findsOneWidget,
+      reason: 'sem hambúrguer no AppBar: só o item Menu da dock',
     );
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      3,
-      reason: 'Módulos é o 4º item do dock',
+      find.text('Admin Teste (Plataforma)'),
+      findsNothing,
+      reason: 'barra de conta/sair inferior foi removida',
     );
+
+    final dock = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(
+      dock.destinations,
+      hasLength(3),
+      reason: 'dock fixa em Home, Menu e Perfil (resto no drawer)',
+    );
+    expect(dock.selectedIndex, 0, reason: 'Home (Dashboard) é o branch inicial');
+    for (final label in ['Home', 'Menu', 'Perfil']) {
+      expect(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(label),
+        ),
+        findsOneWidget,
+        reason: 'dock lista o item $label',
+      );
+    }
   });
 
-  testWidgets('hambúrguer abre o drawer com as seções e navega',
+  testWidgets('item Menu da dock abre o drawer com as seções e navega',
       (tester) async {
-    await pumpShell(tester); // /admin/seguranca — fora do dock
+    await pumpShell(tester); // /admin/seguranca — fora do dashboard
 
     expect(
       find.byType(NavigationBar),
       findsNothing,
-      reason: 'Segurança só existe no drawer: dock renderizada sem destaque',
+      reason: 'rota fora do dashboard: dock renderizada sem destaque',
     );
+    for (final label in ['Home', 'Menu', 'Perfil']) {
+      expect(
+        find.text(label),
+        findsOneWidget,
+        reason: 'dock sem destaque ainda renderiza os 3 itens',
+      );
+    }
 
-    // O tap sintético não alcança o IconButton do AppBar neste ambiente de
-    // teste (mesma observação do MainShell); a ação é invocada diretamente
-    // para validar que o botão está wired ao drawer.
-    final menuButton = tester.widget<IconButton>(
-      find.ancestor(
-        of: find.byIcon(Icons.menu),
-        matching: find.byType(IconButton),
-      ),
-    );
-    expect(menuButton.onPressed, isNotNull);
-    menuButton.onPressed!();
+    await tester.tap(find.text('Menu'));
     await tester.pumpAndSettle();
 
     expect(find.byType(Drawer), findsOneWidget);
@@ -158,7 +174,7 @@ void main() {
         reason: 'drawer lista a seção $secao',
       );
     }
-    expect(find.text('Perfil'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Drawer), matching: find.text('Perfil')), findsOneWidget);
     expect(find.text('Encerrar Sessão'), findsOneWidget);
 
     await tester.tap(
@@ -168,12 +184,14 @@ void main() {
 
     expect(router.state.uri.toString(), '/admin/modulos');
     expect(find.byType(Drawer), findsNothing, reason: 'drawer fecha ao navegar');
-    expect(find.byType(NavigationBar), findsOneWidget);
     expect(
-      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-      3,
-      reason: 'NavigationBar destaca Módulos (4º item do dock)',
+      find.byType(NavigationBar),
+      findsNothing,
+      reason: 'Módulos continua fora do dashboard: dock sem destaque',
     );
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Menu'), findsOneWidget);
+    expect(find.text('Perfil'), findsOneWidget);
   });
 
   testWidgets('layout largo mantém o NavigationRail e esconde o hambúrguer',
