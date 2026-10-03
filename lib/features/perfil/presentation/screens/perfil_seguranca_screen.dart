@@ -4,17 +4,23 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/security/biometria_preferences.dart';
+import '../../../admin/presentation/providers/admin_auth_provider.dart';
 
-/// Tela "Segurança" do colaborador (`/perfil/seguranca`).
+/// Tela "Segurança" (`/perfil/seguranca`), compartilhada por colaborador e
+/// admin root.
 ///
-/// Concentra o bloqueio biométrico ao abrir o app (toggle, padrão ativado)
-/// e a entrada para a gestão da autenticação em duas etapas (2FA).
+/// Concentra o bloqueio biométrico ao abrir o app (toggle, padrão ativado —
+/// vale também para o gate admin) e a entrada para a gestão da autenticação
+/// em duas etapas: o colaborador vai para `/perfil/2fa` e o admin root para
+/// `/admin/seguranca`.
 class PerfilSegurancaScreen extends StatelessWidget {
   const PerfilSegurancaScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final biometria = context.watch<BiometriaPreferences>();
+    final adminAuth = context.watch<AdminAuthProvider>();
+    final ehAdminRoot = adminAuth.isAuthenticated;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Segurança')),
@@ -52,7 +58,9 @@ class PerfilSegurancaScreen extends StatelessWidget {
                     'Proteja seu acesso com um código de 6 dígitos',
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/perfil/2fa'),
+                  onTap: ehAdminRoot
+                      ? () => context.go('/admin/seguranca')
+                      : () => context.push('/perfil/2fa'),
                 ),
               ),
             ],

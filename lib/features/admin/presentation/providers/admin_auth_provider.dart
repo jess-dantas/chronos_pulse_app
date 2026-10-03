@@ -1,7 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/security/biometria_preferences.dart';
 import '../../../../core/security/session_storage.dart';
 import '../../data/models/admin_models.dart';
 import '../../data/repositories/admin_auth_repository.dart';
@@ -443,7 +445,9 @@ class AdminAuthProvider extends ChangeNotifier {
 
   /// Restaura a sessão admin salva localmente (app reaberto). A sessão
   /// restaurada nasce TRANCADA em apps nativos — exige o gate biométrico
-  /// antes de liberar o conteúdo; web não tem trava.
+  /// antes de liberar o conteúdo; web não tem trava. A preferência
+  /// "Exigir biometria ao abrir" (`/perfil/seguranca`, compartilhada com o
+  /// colaborador) também vale aqui: desligada, a restauração nasce liberada.
   Future<void> restaurarSessao() async {
     try {
       final access = await SessionStorage.readToken(keyAdminAccessToken);
@@ -457,11 +461,18 @@ class AdminAuthProvider extends ChangeNotifier {
           perfilJson.isEmpty) {
         return;
       }
+      bool biometriaAtiva = true;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        biometriaAtiva = prefs.getBool(BiometriaPreferences.chave) ?? true;
+      } catch (_) {
+        // Sem SharedPreferences (ambiente de teste): mantém o gate.
+      }
       final perfil = jsonDecode(perfilJson) as Map<String, dynamic>;
       _currentAdmin = AdminPlataformaModel.fromJson(perfil);
       _accessToken = access;
       _refreshToken = refresh;
-      _sessaoDesbloqueada = kIsWeb;
+      _sessaoDesbloqueada = kIsWeb || !biometriaAtiva;
       _dioClient.updateAdminToken(access);
       notifyListeners();
     } catch (_) {

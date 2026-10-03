@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/security/biometria_preferences.dart';
+import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/admin/data/repositories/admin_auth_repository_impl.dart';
+import 'package:chronos_pulse_app/features/admin/presentation/providers/admin_auth_provider.dart';
 import 'package:chronos_pulse_app/features/perfil/presentation/screens/perfil_seguranca_screen.dart';
 
 class _Tela2FAMarcador extends StatelessWidget {
@@ -15,12 +19,29 @@ class _Tela2FAMarcador extends StatelessWidget {
       const Scaffold(body: Center(child: Text('tela-2fa')));
 }
 
+/// Sessão admin controlável (mesmo padrão dos testes de shell).
+class _AdminFake extends AdminAuthProvider {
+  _AdminFake()
+      : super(
+          AdminAuthRepositoryImpl(AdminAuthRemoteDataSource(DioClient())),
+          DioClient(),
+        );
+
+  bool autenticado = false;
+
+  @override
+  bool get isAuthenticated => autenticado;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late BiometriaPreferences prefs;
 
-  Future<void> pumpTela(WidgetTester tester) async {
+  Future<void> pumpTela(
+    WidgetTester tester, {
+    AdminAuthProvider? adminAuth,
+  }) async {
     prefs = await BiometriaPreferences.carregar();
     final router = GoRouter(
       initialLocation: '/perfil/seguranca',
@@ -33,12 +54,22 @@ void main() {
           path: '/perfil/2fa',
           builder: (context, state) => const _Tela2FAMarcador(),
         ),
+        GoRoute(
+          path: '/admin/seguranca',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('tela-2fa-admin'))),
+        ),
       ],
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(
-      ChangeNotifierProvider<BiometriaPreferences>.value(
-        value: prefs,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<BiometriaPreferences>.value(value: prefs),
+          ChangeNotifierProvider<AdminAuthProvider>.value(
+            value: adminAuth ?? _AdminFake(),
+          ),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -132,6 +163,18 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('tela-2fa'), findsOneWidget);
+    });
+
+    testWidgets('admin root: tile do 2FA navega para /admin/seguranca',
+        (tester) async {
+      final admin = _AdminFake()..autenticado = true;
+      await pumpTela(tester, adminAuth: admin);
+
+      await tester.tap(find.byKey(const Key('seguranca_two_factor_tile')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('tela-2fa-admin'), findsOneWidget);
+      expect(find.text('tela-2fa'), findsNothing);
     });
 
     testWidgets('em tela larga o conteúdo fica centrado com largura máx 540',

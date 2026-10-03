@@ -11,6 +11,7 @@ import 'package:chronos_pulse_app/core/config/app_modo.dart';
 import 'package:chronos_pulse_app/core/hardware/hardware_service.dart';
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
 import 'package:chronos_pulse_app/core/router/app_router.dart';
+import 'package:chronos_pulse_app/core/security/biometria_preferences.dart';
 import 'package:chronos_pulse_app/core/security/session_storage.dart';
 import 'package:chronos_pulse_app/core/theme/theme_provider.dart';
 import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
@@ -532,6 +533,26 @@ void main() {
 
       expect(provider.isAuthenticated, isFalse);
       expect(provider.sessaoDesbloqueada, isTrue);
+
+      provider.dispose();
+    });
+
+    test('restaurarSessao nasce desbloqueada quando a biometria foi '
+        'desligada em Segurança', () async {
+      SharedPreferences.setMockInitialValues({
+        BiometriaPreferences.chave: false,
+      });
+      final provider = AdminAuthProvider(_RepoFake(), DioClient());
+
+      await provider.restaurarSessao();
+
+      expect(provider.isAuthenticated, isTrue);
+      expect(
+        provider.sessaoDesbloqueada,
+        isTrue,
+        reason: 'preferência "Exigir biometria ao abrir" desligada vale '
+            'também para o gate admin',
+      );
 
       provider.dispose();
     });
