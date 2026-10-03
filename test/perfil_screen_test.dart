@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
@@ -45,6 +46,18 @@ class _FakeAuth extends AuthProvider {
     _sessao = null;
     notifyListeners();
   }
+}
+
+/// Sessão admin root controlável (o PerfilScreen troca as rotas dos tiles).
+class _FakeAdminAuth extends AdminAuthProvider {
+  _FakeAdminAuth()
+      : super(
+          AdminAuthRepositoryImpl(AdminAuthRemoteDataSource(DioClient())),
+          DioClient(),
+        );
+
+  @override
+  bool get isAuthenticated => true;
 }
 
 UsuarioModel _usuario() => UsuarioModel(
@@ -172,5 +185,59 @@ void main() {
     expect(auth.novaSenhaChamada, 'Nova@1234');
     expect(find.text('Senha alterada com sucesso.'), findsOneWidget);
     expect(find.text('Nova senha'), findsNothing);
+  });
+
+  testWidgets('admin root vê Alterar senha (→ /admin/senha) e Segurança',
+      (tester) async {
+    final admin = _FakeAdminAuth();
+    final router = GoRouter(
+      initialLocation: '/perfil',
+      routes: [
+        GoRoute(
+          path: '/perfil',
+          builder: (context, state) => const PerfilScreen(),
+        ),
+        GoRoute(
+          path: '/admin/senha',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('tela-admin-senha'))),
+        ),
+        GoRoute(
+          path: '/perfil/seguranca',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('tela-seguranca'))),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthProvider>.value(value: auth),
+          ChangeNotifierProvider<AdminAuthProvider>.value(value: admin),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Admin root não tem foto (foto é POST /auth/me/foto de tenant).
+    expect(find.text('Alterar foto'), findsNothing);
+    expect(find.text('Administrador'), findsOneWidget);
+    expect(find.text('Alterar senha'), findsOneWidget);
+    expect(find.byKey(const Key('perfil_seguranca_tile')), findsOneWidget);
+    expect(find.text('Bater ponto sem login'), findsNothing);
+
+    await tester.tap(find.text('Alterar senha'));
+    await tester.pumpAndSettle();
+    expect(find.text('tela-admin-senha'), findsOneWidget);
+    expect(find.text('Nova senha'), findsNothing,
+        reason: 'admin não usa o diálogo inline do colaborador');
+
+    router.go('/perfil');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('perfil_seguranca_tile')));
+    await tester.pumpAndSettle();
+    expect(find.text('tela-seguranca'), findsOneWidget);
   });
 }

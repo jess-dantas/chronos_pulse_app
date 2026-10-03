@@ -41,6 +41,7 @@ Refresh concorrentes são agrupados (uma única chamada em andamento), evitando 
 | `SessionStorage` (secure) | `chronos_refresh_token` | Refresh token |
 | `SessionStorage` (secure) | `chronos_device_token` + `chronos_device_*` | Vínculo de dispositivo (modo sem login, 7 dias) |
 | `SessionStorage` (secure) | `chronos_device_2fa` | Se o dono do vínculo tem o 2FA — define a cobrança do código no modo |
+| `SessionStorage` (secure) | `chronos_admin_device_*` | Dispositivo confiável do Administrator (deviceToken, 30 dias — biometria-first) |
 | `shared_preferences` | `chronos_usuario` | Usuário (JSON) |
 | `shared_preferences` | `chronos_modulos` | Lista de códigos de módulos ativos (salva/restaurada junto da sessão) |
 | `shared_preferences` | `chronos_biometria_ativa` | Exigir biometria ao abrir (padrão ativado; tela Segurança) |
@@ -81,14 +82,26 @@ Sessão **separada** da do usuário de tenant (`AdminAuthProvider` + rota `/admi
 
 1. `GET /admin/auth/bootstrap/status` → se `bootstrapAvailable: true` (tabela `admin_plataforma` vazia — first-run), a tela de login exibe o link **"Criar primeiro Administrator"** → `/admin/auth/bootstrap`.
 2. `POST /admin/auth/bootstrap` (username ≤ 20, senha 8–100, nomeCompleto, email) → cria a conta e responde `requiresTwoFactor: true` + `setupRequired: true` + `tempToken` → rota **`/admin/auth/setup-2fa`** (setup **obrigatório**).
-3. `POST /admin/auth/login` (username ≤ 20 + senha 8–100) — **fora** de `/api/v1`. Respostas possíveis:
+3. **Biometria-first (dispositivo confiável)**: o tile **"Confiar neste
+   dispositivo"** (`/perfil/seguranca`, só admin root, não-web) chama
+   `POST /admin/auth/dispositivo` → grava `{ deviceToken, username,
+   expiraEm }` no `AdminDeviceTokenStore` (30 dias, sobrevive ao logout).
+   Na tela de login, com credencial guardada e biometria do aparelho
+   disponível, o **auto-prompt** (e o botão "Entrar com biometria")
+   confirma a biometria e envia o `deviceToken` no
+   `POST /admin/auth/login` — **pulando senha e 2FA**. Token
+   recusado/expirado no servidor → a credencial local é limpa e o usuário
+   cai no fluxo manual (2FA ou senha). Revogação:
+   `DELETE /admin/auth/dispositivo` no mesmo tile.
+4. `POST /admin/auth/login` (username ≤ 20 + senha 8–100) — **fora** de `/api/v1`. Respostas possíveis:
    - 2FA ativo: `requiresTwoFactor: true` + `tempToken` → tela de código (6 dígitos) → `POST /admin/auth/2fa/verify` troca o `tempToken` pelos tokens finais;
    - 2FA obrigatório mas desligado: `setupRequired: true` + `tempToken` → mesma rota de setup forçado;
    - sem 2FA (dev): tokens diretos.
-4. Setup (`AdminSetup2FaScreen`): `POST /admin/auth/2fa/setup` → `POST /admin/auth/2fa/confirm` → **dialog com 8 códigos de recuperação** (`RecoveryCodesDialog`, exibido uma única vez — salvar!) → tokens finais → `/admin/dashboard`.
-5. Perda de acesso 2FA: rota **`/admin/auth/recover`** → `POST /admin/auth/2fa/recover` (`username` + `senha` + `recoveryCode` `XXXXX-XXXXX`) → tokens + **8 novos** códigos exibidos no mesmo dialog.
-6. O access token admin é guardado em memória no `DioClient` (`updateAdminToken`) — rotas `/admin/**` usam esse token; demais rotas usam o token da sessão regular.
-7. Logout único: o botão de sessão (avatar + sair) no **rodapé** do rail do `AdminShell` (ou na barra de conta em layout narrow) encerra **as duas sessões** se estiverem ativas (admin root + usuário comum).
+   O login manual (senha/código) **nunca** envia `deviceToken` — só o tier da biometria.
+5. Setup (`AdminSetup2FaScreen`): `POST /admin/auth/2fa/setup` → `POST /admin/auth/2fa/confirm` → **dialog com 8 códigos de recuperação** (`RecoveryCodesDialog`, exibido uma única vez — salvar!) → tokens finais → `/admin/dashboard`.
+6. Perda de acesso 2FA: rota **`/admin/auth/recover`** → `POST /admin/auth/2fa/recover` (`username` + `senha` + `recoveryCode` `XXXXX-XXXXX`) → tokens + **8 novos** códigos exibidos no mesmo dialog.
+7. O access token admin é guardado em memória no `DioClient` (`updateAdminToken`) — rotas `/admin/**` usam esse token; demais rotas usam o token da sessão regular.
+8. Logout único: o botão de sessão (avatar + sair) no **rodapé** do rail do `AdminShell` (ou na barra de conta em layout narrow) encerra **as duas sessões** se estiverem ativas (admin root + usuário comum). O dispositivo confiável **sobrevive** ao logout (é para reentregar sem senha).
 
 2FA e senha (`AdminSegurancaScreen` / `AdminAlterarSenhaScreen`):
 

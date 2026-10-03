@@ -291,13 +291,19 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          if (!ehAdminRoot && usuario != null) ...[
+          // Alterar senha + Segurança: cliente usa o diálogo inline e o
+          // /perfil/seguranca; o admin root vai para as rotas do shell
+          // admin (/admin/senha) — o /perfil/seguranca é compartilhado
+          // (toggle de biometria, que também vale para o gate admin).
+          if (usuario != null || ehAdminRoot) ...[
             Card(
               child: ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: const Text('Alterar senha'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => _abrirDialogoSenha(context, auth),
+                onTap: ehAdminRoot
+                    ? () => context.go('/admin/senha')
+                    : () => _abrirDialogoSenha(context, auth),
               ),
             ),
             const SizedBox(height: 16),
@@ -359,16 +365,6 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          if (ehAdminRoot)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.security_outlined),
-                title: const Text('Segurança (2FA)'),
-                subtitle: const Text('Gerenciar autenticação em dois fatores'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.go('/admin/seguranca'),
-              ),
-            ),
           const SizedBox(height: 16),
           Card(
             child: ListTile(

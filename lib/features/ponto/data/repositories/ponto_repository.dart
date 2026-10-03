@@ -36,6 +36,11 @@ class PontoRepository {
   /// O banco local é limitado por timeout: se a escrita local não completar
   /// (ex.: SQLite Web com WASM/IndexedDB lento), a batida SEGUE apenas online
   /// em vez de travar o "Processando Registro..." por tempo indeterminado.
+  ///
+  /// Antes do POST, a fila offline é drenada junto: o backend deriva tipo e
+  /// nsr na ordem em que recebe as batidas, então uma batida nova chegando sozinha
+  /// faria a jornada pendente de ontem ser gravada DEPOIS dela (tipo errado e
+  /// nsr fora de ordem). O lote sai único, em ordem cronológica.
   Future<bool> registrarPonto({
     required RegistroPontoModel registro,
   }) async {
@@ -43,25 +48,28 @@ class PontoRepository {
     _ultimaFalhaLocal = null;
 
     // 1. Salva no banco local primeiro (com limite de tempo: nunca bloqueia a UI)
-    final localOk = await _salvarLocalComTimeout(registro);
+    await _salvarLocalComTimeout(registro);
 
-    // 2. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
+    // 2. Fila pendente + batida nova, deduplicadas e em ordem cronológica
+    final lote = await _montarLoteComPendentes(registro);
+
+    // 3. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
     try {
       final idsSucesso = await remoteDataSource
-          .sincronizarPontos([registro])
+          .sincronizarPontos(lote)
           .timeout(const Duration(seconds: 8));
 
       if (idsSucesso.contains(registro.idLocal) || idsSucesso.isNotEmpty) {
-        if (localOk) {
+        for (final id in idsSucesso) {
           try {
             await localDataSource
-                .marcarComoSincronizado(registro.idLocal)
+                .marcarComoSincronizado(id)
                 .timeout(const Duration(seconds: 3));
           } catch (_) {
             // marcação local falhou: irrelevante para o resultado online
           }
         }
-      return true; // Sincronizado online com sucesso
+        return true; // Sincronizado online com sucesso
       }
       return false; // Salvo offline
     } on RejeicaoServidorException catch (e) {
@@ -73,6 +81,29 @@ class PontoRepository {
       // Falha de rede ou servidor indisponível: ponto permanece salvo offline
       return false;
     }
+  }
+
+  /// Fila offline do aparelho + a batida nova num único lote em ordem
+  /// cronológica. A leitura da fila é limitada: se o banco local não
+  /// responder, segue só com a batida nova (comportamento antigo) em vez de
+  /// perder a marcação.
+  Future<List<RegistroPontoModel>> _montarLoteComPendentes(
+      RegistroPontoModel registro) async {
+    List<RegistroPontoModel> pendentes = [];
+    try {
+      pendentes = await localDataSource
+          .obterPontosNaoSincronizados(colaboradorId: registro.colaboradorId)
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('[PontoRepository] falha ao ler fila pendente para o lote: $e');
+    }
+
+    final porId = <String, RegistroPontoModel>{
+      for (final p in pendentes) p.idLocal: p,
+    };
+    porId[registro.idLocal] = registro;
+    return porId.values.toList()
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   Future<bool> _salvarLocalComTimeout(RegistroPontoModel registro) async {
@@ -105,7 +136,8 @@ class PontoRepository {
     // Envio sempre em ordem cronológica: o backend deriva o tipo de cada
     // batida na ordem em que recebe o lote — lote embaralhado gravava tipo
     // fora de sequência.
-    pendentes.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    pendentes
+        .sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
 
     try {
       final idsSucesso = await remoteDataSource
@@ -160,6 +192,42 @@ class PontoRepository {
     }
   }
 
+  /// Batidas locais (inclusive ajustes) das últimas 72h, em ordem cronológica.
+  ///
+  /// Alimenta a prévia da sequência quando o aparelho está offline: o
+  /// histórico de "hoje" ainda está vazio logo depois da meia-noite, mas a
+  /// jornada anterior (turno noturno) continua valendo para a próxima
+  /// batida. Cobre o mês atual e o anterior (a janela pode cruzar a virada
+  /// do mês). Falha de leitura vira lista vazia — a sequência decai para o
+  /// histórico de hoje sem derrubar a tela.
+  Future<List<RegistroPontoModel>> obterBatidasRecentes({
+    String? colaboradorId,
+  }) async {
+    final agora = DateTime.now();
+    final inicio = agora.subtract(const Duration(hours: 72));
+    final meses = <(int, int)>{
+      (agora.month, agora.year),
+      (inicio.month, inicio.year)
+    };
+
+    final resultado = <RegistroPontoModel>[];
+    for (final (mes, ano) in meses) {
+      try {
+        final lista = await localDataSource
+            .obterPorMesAno(colaboradorId: colaboradorId, mes: mes, ano: ano)
+            .timeout(const Duration(seconds: 3));
+        resultado.addAll(
+            lista.where((r) => !r.dataHoraDispositivo.isBefore(inicio)));
+      } catch (e) {
+        debugPrint('[PontoRepository] falha ao ler batidas recentes '
+            '(mês=$mes/$ano, colab=$colaboradorId): $e');
+      }
+    }
+    resultado
+        .sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    return resultado;
+  }
+
   /// Histórico do dia: mescla os registros locais com o espelho do servidor.
   ///
   /// Quando o banco local está indisponível (ex.: SQLite Web), o histórico
@@ -169,10 +237,12 @@ class PontoRepository {
   /// Com o servidor respondendo, o dia local é RECONCILIADO com o espelho
   /// (servidor vence): a sequência local passa a igual a do servidor e linhas
   /// removidas no servidor (limpeza de teste) somem também do aparelho.
-  Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterHistorico(
+      {String? colaboradorId}) async {
     final agora = DateTime.now();
     final inicioDia = DateTime(agora.year, agora.month, agora.day);
-    final fimDia = DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
+    final fimDia =
+        DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
 
     var locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
 
@@ -215,12 +285,14 @@ class PontoRepository {
     if (remotos.isEmpty) return locais;
 
     final chaves = remotos.map(_chaveRegistro).toSet();
-    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    final extras =
+        locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras]
       ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
-  Future<List<RegistroPontoModel>> obterEspelhoPonto({    String? colaboradorId,
+  Future<List<RegistroPontoModel>> obterEspelhoPonto({
+    String? colaboradorId,
     int? mes,
     int? ano,
   }) async {
@@ -249,7 +321,8 @@ class PontoRepository {
 
     // Mescla registros locais ainda não presentes no servidor (ex.: ajustes offline)
     final chaves = remotos.map(_chaveRegistro).toSet();
-    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    final extras =
+        locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras];
   }
 
@@ -275,16 +348,18 @@ class PontoRepository {
 
   /// Chave de identidade da batida para a mesclagem local×servidor.
   ///
-  /// Por instante exato: a MESMA batida tem o mesmo dataHoraDispositivo dos
-  /// dois lados (o servidor devolve o valor recebido), enquanto o tipo pode
-  /// divergir — o servidor re-deriva a sequência e o cliente não. A chave por
-  /// tipo|minuto fazia a mesma batida sobreviver DUAS vezes na lista
-  /// ("Saída" do servidor + "Entrada" do local no mesmo instante).
+  /// Por instante exato (millisecondsSinceEpoch, independente de fuso): a
+  /// MESMA batida tem o mesmo dataHoraDispositivo dos dois lados (o servidor
+  /// devolve o valor recebido), enquanto o tipo e o colaboradorId podem
+  /// divergir — o servidor re-deriva a sequência, e o registro local nasce
+  /// com colaboradorId nulo (preenchido só após a sincronização), o que
+  /// fazia a mesma batida sobreviver DUAS vezes na lista. Chavar por
+  /// colaboradorId|null quebrava justamente esse par. As listas já vêm
+  /// escopadas por colaborador, então o instant sozinho é suficiente.
   /// Batidas distintas no mesmo minuto têm instantes diferentes, então não
   /// colapsam.
   String _chaveRegistro(RegistroPontoModel r) {
-    return '${r.colaboradorId ?? ''}|'
-        '${r.dataHoraDispositivo.millisecondsSinceEpoch}';
+    return '${r.dataHoraDispositivo.millisecondsSinceEpoch}';
   }
 
   /// Consulta o relatório do espelho de ponto (art. 84 da Portaria MTP 671/2021)

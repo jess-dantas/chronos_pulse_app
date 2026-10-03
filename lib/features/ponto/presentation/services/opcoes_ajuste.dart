@@ -72,7 +72,14 @@ class OpcoesAjuste {
       ));
     }
 
-    final proximo = SequenciaPonto.proximo(doDia);
+    // A cadeia vale para o dia selecionado; o gap até o relógio de agora só
+    // decide (igual ao backend) quando o dia é HOJE — a batida nova acontece
+    // agora. Em dias anteriores a prévia é só a cadeia daquele dia.
+    final hoje = DateTime.now();
+    final ehHoje = data.year == hoje.year &&
+        data.month == hoje.month &&
+        data.day == hoje.day;
+    final proximo = SequenciaPonto.proximo(doDia, agora: ehHoje ? hoje : null);
     final ordem = ocorrencias[proximo] ?? 0;
     opcoes.add(OpcaoAjuste(
       valor: '$proximo#$ordem',

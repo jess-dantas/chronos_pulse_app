@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/hardware/hardware_service.dart';
+import '../../../../core/security/admin_device_token_store.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../providers/admin_auth_provider.dart';
@@ -23,7 +26,12 @@ class AdminAuthScreen extends StatelessWidget {
 }
 
 class AdminLoginScreen extends StatefulWidget {
-  const AdminLoginScreen({super.key});
+  /// Injeções opcionais (testes): hardware biométrico e credencial do
+  /// dispositivo confiável.
+  final HardwareService? hardware;
+  final AdminDeviceTokenStore? deviceStore;
+
+  const AdminLoginScreen({super.key, this.hardware, this.deviceStore});
 
   @override
   State<AdminLoginScreen> createState() => _AdminLoginScreenState();
@@ -43,6 +51,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   /// Alternativa ao TOTP: OTP de 8 dígitos enviado por e-mail.
   bool _modoEmail = false;
 
+  late final HardwareService _hw = widget.hardware ?? HardwareService();
+  late final AdminDeviceTokenStore _deviceStore =
+      widget.deviceStore ?? AdminDeviceTokenStore.instancia;
+
+  /// Biometria-first (mobile only): dispositivo confiável vinculado +
+  /// biometria do aparelho disponível. Controla o botão e o auto-prompt.
+  bool _biometricoPronto = false;
+  bool _biometriaEmAndamento = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +67,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       // Mostra o link de primeiro acesso apenas se a tabela de
       // administrators estiver vazia (bootstrapAvailable).
       context.read<AdminAuthProvider>().carregarBootstrapStatus();
+      if (!kIsWeb) _verificarDispositivoConfiavel();
     });
   }
 
@@ -59,6 +77,96 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     _senhaController.dispose();
     _codigoController.dispose();
     super.dispose();
+  }
+
+  /// Biometria-first: com dispositivo confiável vinculado e biometria do
+  /// aparelho disponível, oferece o botão e dispara o prompt automaticamente.
+  /// Sem credencial/biometria nada muda — a tela segue o formulário normal.
+  Future<void> _verificarDispositivoConfiavel() async {
+    try {
+      final credencial = await _deviceStore.lerAtiva();
+      if (credencial == null || !mounted) return;
+      final disponivel = await _hw.biometriaDisponivel();
+      if (!disponivel || !mounted) return;
+      setState(() {
+        _biometricoPronto = true;
+        _usernameController.text = credencial.username;
+      });
+      await _entrarComBiometria();
+    } catch (_) {
+      // Falha de leitura/biometria: segue o formulário normal.
+    }
+  }
+
+  Future<void> _entrarComBiometria() async {
+    if (_biometriaEmAndamento || !mounted) return;
+
+    final credencial = await _deviceStore.lerAtiva();
+    if (credencial == null) {
+      if (mounted) setState(() => _biometricoPronto = false);
+      return;
+    }
+    setState(() => _biometriaEmAndamento = true);
+
+    bool autenticado;
+    try {
+      autenticado = await _hw
+          .autenticarBiometria(motivo: 'Entre como ${credencial.username}')
+          .timeout(const Duration(seconds: 20));
+    } catch (_) {
+      autenticado = false;
+    }
+
+    // Cancelado/erro: volta para o formulário sem tocar na credencial
+    // (a tentativa pode ser repetida pelo botão).
+    if (!autenticado || !mounted) {
+      if (mounted) setState(() => _biometriaEmAndamento = false);
+      return;
+    }
+
+    final authProvider = context.read<AdminAuthProvider>();
+    final sucesso = await authProvider.login(
+      credencial.username,
+      deviceToken: credencial.token,
+    );
+    if (!mounted) return;
+    setState(() => _biometriaEmAndamento = false);
+
+    // deviceToken recusado no servidor (expirado/revogado): o backend caiu
+    // no fluxo normal — 2FA ou exigência de senha. A credencial está vencida,
+    // é limpa e o usuário segue pelo método manual.
+    if (authProvider.requiresTwoFactor) {
+      await _deviceStore.limpar();
+      if (!mounted) return;
+      setState(() => _biometricoPronto = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Dispositivo não reconhecido. Informe o código de verificação.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      return;
+    }
+
+    if (!sucesso) {
+      final erro = authProvider.errorMessage ?? 'Erro ao realizar login.';
+      if (erro.contains('Senha é obrigatória')) {
+        await _deviceStore.limpar();
+        if (!mounted) return;
+        setState(() {
+          _biometricoPronto = false;
+          _mostrarSenha = true;
+        });
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erro), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    context.go('/admin/dashboard');
   }
 
   Future<void> _handleLogin() async {
@@ -494,6 +602,36 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
+                        if (_biometricoPronto) ...[
+                          OutlinedButton.icon(
+                            key: const Key('admin_biometrico_button'),
+                            icon: _biometriaEmAndamento
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.fingerprint, size: 20),
+                            label: Text(
+                              _biometriaEmAndamento
+                                  ? 'Confirme sua biometria'
+                                  : 'Entrar com biometria',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(46),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _biometriaEmAndamento || isCarregando
+                                ? null
+                                : _entrarComBiometria,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         if (!_mostrarSenha)
                           TextButton(
                             onPressed: isCarregando

@@ -17,13 +17,22 @@ class AdminAuthRemoteDataSource {
 
   /// Login admin. [senha] opcional (2FA-first): sem senha o backend exige
   /// 2FA habilitado e devolve `requiresTwoFactor` + `tempToken` direto.
-  Future<Map<String, dynamic>> login(String username, {String? senha}) async {
+  /// [deviceToken] opcional (biometria-first): dispositivo confiável —
+  /// quando presente e válido o backend autentica direto, pulando senha e
+  /// 2FA. O login manual (senha/código) NUNCA envia deviceToken.
+  Future<Map<String, dynamic>> login(
+    String username, {
+    String? senha,
+    String? deviceToken,
+  }) async {
     try {
       final response = await _dioClient.dio.post(
         '$_adminBaseUrl/admin/auth/login',
         data: {
           'username': username,
           if (senha != null && senha.isNotEmpty) 'senha': senha,
+          if (deviceToken != null && deviceToken.isNotEmpty)
+            'deviceToken': deviceToken,
         },
       );
 
@@ -33,6 +42,37 @@ class AdminAuthRemoteDataSource {
       throw Exception('Revise suas credenciais');
     } on DioException catch (e) {
       throw Exception(_extrairMensagem(e, 'Erro ao autenticar'));
+    }
+  }
+
+  /// POST /admin/auth/dispositivo — vincula este aparelho como dispositivo
+  /// confiável do admin autenticado. Responde `{ deviceToken, expiraEm }`
+  /// (o valor cru aparece uma única vez).
+  Future<Map<String, dynamic>> dispositivoVincular({String? deviceName}) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '$_adminBaseUrl/admin/auth/dispositivo',
+        data: {
+          if (deviceName != null && deviceName.isNotEmpty)
+            'deviceName': deviceName,
+        },
+      );
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(response.data);
+      }
+      throw Exception('Resposta inesperada do vínculo de dispositivo');
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao confiar neste dispositivo'));
+    }
+  }
+
+  /// DELETE /admin/auth/dispositivo — revoga TODOS os vínculos de
+  /// dispositivo confiável do admin (perda/troca de aparelho).
+  Future<void> dispositivoRevogar() async {
+    try {
+      await _dioClient.dio.delete('$_adminBaseUrl/admin/auth/dispositivo');
+    } on DioException catch (e) {
+      throw Exception(_extrairMensagem(e, 'Erro ao revogar o dispositivo'));
     }
   }
 

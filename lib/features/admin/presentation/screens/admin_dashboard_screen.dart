@@ -80,19 +80,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lilasSurface(context),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppTheme.lilasBorder(context)),
-                        ),
-                        child: Text(
-                          usuario?.role.replaceAll('ROLE_', '') ?? '',
-                          style: TextStyle(
-                            color: AppTheme.onLilasSurface(context),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                      // Flexible + ellipsis: em telas estreitas (≤400px) o
+                      // chip do papel encolhe em vez de estourar o Row.
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lilasSurface(context),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppTheme.lilasBorder(context)),
+                          ),
+                          child: Text(
+                            usuario?.role.replaceAll('ROLE_', '') ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppTheme.onLilasSurface(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),

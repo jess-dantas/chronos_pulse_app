@@ -68,14 +68,8 @@ class AdminShell extends StatelessWidget {
     ),
   };
 
-  /// Dock fixa do layout estreito (≤800px): só as 4 seções de maior uso;
-  /// o restante (Contratos, Alterar Senha, Segurança) fica no drawer.
-  static const List<String> _dockSlugs = [
-    'dashboard',
-    'leads',
-    'empresas',
-    'modulos',
-  ];
+  /// Único branch destacável da dock mobile: o Dashboard.
+  static int get _branchHome => AppRouter.adminOrdem.indexOf('dashboard');
 
   List<_AdminDestino> _destinos() {
     return List.generate(
@@ -93,10 +87,54 @@ class AdminShell extends StatelessWidget {
     );
   }
 
-  List<_AdminDestino> _destinosDock() {
-    return _destinos()
-        .where((d) => _dockSlugs.contains(AppRouter.adminOrdem[d.branchIndex]))
-        .toList();
+  /// Dock mobile do admin (espelho do `_dockMobile` do MainShell): 3 itens
+  /// fixos — Home (Dashboard), Menu (abre o drawer com as demais seções) e
+  /// Perfil. `Builder` mantém o context DENTRO do Scaffold para o item
+  /// Menu chamar `Scaffold.of(dockContext).openDrawer()`.
+  Widget _dockAdmin(BuildContext context) {
+    final emHome = navigationShell.currentIndex == _branchHome;
+    return Builder(
+      builder: (dockContext) {
+        final itens = <_DockItem>[
+          _DockItem(
+            label: 'Home',
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home,
+            onTap: () => navigationShell.goBranch(_branchHome),
+          ),
+          _DockItem(
+            label: 'Menu',
+            icon: Icons.menu,
+            selectedIcon: Icons.menu,
+            onTap: () => Scaffold.of(dockContext).openDrawer(),
+          ),
+          _DockItem(
+            label: 'Perfil',
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person,
+            onTap: () => context.push('/perfil'),
+          ),
+        ];
+
+        // Home é o único branch destacável (Menu é ação; Perfil fica fora
+        // do shell). Rota de outra seção → dock sem destaque.
+        if (!emHome) return _DockAdminSemDestaque(itens: itens);
+
+        return NavigationBar(
+          selectedIndex: 0,
+          onDestinationSelected: (i) => itens[i].onTap(),
+          destinations: itens
+              .map(
+                (d) => NavigationDestination(
+                  icon: Icon(d.icon),
+                  selectedIcon: Icon(d.selectedIcon, color: Colors.deepPurple),
+                  label: d.label,
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
   }
 
   @override
@@ -116,16 +154,10 @@ class AdminShell extends StatelessWidget {
 
         final appBar = AppBar(
           elevation: 1,
-          // Hambúrguer (layout estreito): abre o drawer com as seções do admin.
-          leading: !isWide
-              ? Builder(
-                  builder: (menuContext) => IconButton(
-                    icon: const Icon(Icons.menu),
-                    tooltip: 'Menu do admin',
-                    onPressed: () => Scaffold.of(menuContext).openDrawer(),
-                  ),
-                )
-              : null,
+          // Sem hambúrguer: sem `automaticallyImplyLeading` o Flutter injeta
+          // o DrawerButton automático quando existe drawer — o item Menu da
+          // dock é o caminho oficial para abrir as seções.
+          automaticallyImplyLeading: false,
           title: Row(
             children: [
               ClipRRect(
@@ -326,87 +358,31 @@ class AdminShell extends StatelessWidget {
             onSair: () => encerrarSessao(),
           ),
           body: navigationShell,
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Builder(
-                builder: (dockContext) {
-                  final destinosDock = _destinosDock();
-                  final posicaoDock = destinosDock
-                      .indexWhere((d) => d.branchIndex == currentIndex);
-
-                  // Rota fora do dock (chegou pelo drawer): NavigationBar não
-                  // aceita -1 — renderiza a dock sem destaque, como o MainShell.
-                  if (posicaoDock < 0) {
-                    return _DockAdminSemDestaque(
-                      itens: destinosDock,
-                      onNavegar: (destino) =>
-                          navigationShell.goBranch(destino.branchIndex),
-                    );
-                  }
-                  return NavigationBar(
-                    selectedIndex: posicaoDock,
-                    onDestinationSelected: (index) => navigationShell
-                        .goBranch(destinosDock[index].branchIndex),
-                    destinations: destinosDock
-                        .map(
-                          (d) => NavigationDestination(
-                            icon: Icon(d.icon),
-                            selectedIcon: Icon(
-                              d.selectedIcon,
-                              color: Colors.deepPurple,
-                            ),
-                            label: d.label,
-                          ),
-                        )
-                        .toList(),
-                  );
-                },
-              ),
-              Material(
-                elevation: 6,
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: Row(
-                      children: [
-                        UserAvatar(
-                          nome: nomeExibicao(),
-                          icone: Icons.admin_panel_settings,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            '${nomeExibicao()} (Plataforma)',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.logout),
-                          tooltip: 'Encerrar Sessão',
-                          onPressed: () => encerrarSessao(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          bottomNavigationBar: _dockAdmin(context),
         );
       },
     );
   }
 }
 
-/// Drawer (hambúrguer) do layout estreito com as seções do admin,
-/// atalho de perfil e sair — espelho do `_MenuLateral` do MainShell.
+/// Item da dock mobile do admin (espelho do `_DockItem` do MainShell).
+class _DockItem {
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final VoidCallback onTap;
+
+  const _DockItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.onTap,
+  });
+}
+
+/// Drawer do layout estreito com as seções do admin, atalho de perfil e
+/// sair — espelho do `_MenuLateral` do MainShell. Aberto pelo item Menu
+/// da dock (não há mais hambúrguer no AppBar).
 class _MenuAdmin extends StatelessWidget {
   final List<_AdminDestino> destinos;
   final int branchAtual;
@@ -479,17 +455,13 @@ class _MenuAdmin extends StatelessWidget {
   }
 }
 
-/// Dock do Admin sem item destacado (rota fora do dock, ex.: Contratos,
+/// Dock do Admin sem item destacado (rota fora do dashboard, ex.: Contratos,
 /// alcançada pelo drawer). Mesmo visual da NavigationBar, só que sem
 /// indicador de seleção — espelho do `_DockSemDestaque` do MainShell.
 class _DockAdminSemDestaque extends StatelessWidget {
-  final List<_AdminDestino> itens;
-  final void Function(_AdminDestino destino) onNavegar;
+  final List<_DockItem> itens;
 
-  const _DockAdminSemDestaque({
-    required this.itens,
-    required this.onNavegar,
-  });
+  const _DockAdminSemDestaque({required this.itens});
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +478,7 @@ class _DockAdminSemDestaque extends StatelessWidget {
               for (final item in itens)
                 Expanded(
                   child: InkWell(
-                    onTap: () => onNavegar(item),
+                    onTap: item.onTap,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

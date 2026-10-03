@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
@@ -106,6 +107,7 @@ void main() {
   late AdminAuthProvider adminAuth;
   late PontoProvider ponto;
   late _ContaLeiturasLocais leiturasLocais;
+  late GoRouter goRouter;
 
   setUp(() {
     auth = _FakeAuth();
@@ -129,7 +131,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     auth.definirSessao(_usuario());
-    final goRouter = AppRouter.build(auth, adminAuth);
+    goRouter = AppRouter.build(auth, adminAuth);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -181,6 +183,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(HomePontoScreen), findsOneWidget);
+  });
+
+  testWidgets('atalho "Espelho de Ponto" abre a aba do espelho (?aba=espelho)',
+      (tester) async {
+    await pumpTela(tester);
+
+    final atalho = find.text('Espelho de Ponto');
+    await tester.ensureVisible(atalho);
+    await tester.pumpAndSettle();
+    await tester.tap(atalho);
+    // HomePontoScreen tem relógio com timer de 1s: evita pumpAndSettle eterno.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(goRouter.state.uri.toString(), '/painel/ponto?aba=espelho');
+    expect(find.byType(HomePontoScreen), findsOneWidget);
+    expect(
+      tester.widget<HomePontoScreen>(find.byType(HomePontoScreen)).abaInicial,
+      1,
+      reason: 'o deep link deve abrir na aba do espelho de ponto',
+    );
   });
 
   testWidgets(
