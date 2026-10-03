@@ -48,8 +48,7 @@ class PontoRepository {
     // 2. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
     try {
       final idsSucesso = await remoteDataSource
-          .sincronizarPontos([registro])
-          .timeout(const Duration(seconds: 8));
+          .sincronizarPontos([registro]).timeout(const Duration(seconds: 8));
 
       if (idsSucesso.contains(registro.idLocal) || idsSucesso.isNotEmpty) {
         if (localOk) {
@@ -61,7 +60,7 @@ class PontoRepository {
             // marcação local falhou: irrelevante para o resultado online
           }
         }
-      return true; // Sincronizado online com sucesso
+        return true; // Sincronizado online com sucesso
       }
       return false; // Salvo offline
     } on RejeicaoServidorException catch (e) {
@@ -105,7 +104,8 @@ class PontoRepository {
     // Envio sempre em ordem cronológica: o backend deriva o tipo de cada
     // batida na ordem em que recebe o lote — lote embaralhado gravava tipo
     // fora de sequência.
-    pendentes.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    pendentes
+        .sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
 
     try {
       final idsSucesso = await remoteDataSource
@@ -169,10 +169,12 @@ class PontoRepository {
   /// Com o servidor respondendo, o dia local é RECONCILIADO com o espelho
   /// (servidor vence): a sequência local passa a igual a do servidor e linhas
   /// removidas no servidor (limpeza de teste) somem também do aparelho.
-  Future<List<RegistroPontoModel>> obterHistorico({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterHistorico(
+      {String? colaboradorId}) async {
     final agora = DateTime.now();
     final inicioDia = DateTime(agora.year, agora.month, agora.day);
-    final fimDia = DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
+    final fimDia =
+        DateTime(agora.year, agora.month, agora.day, 23, 59, 59, 999);
 
     var locais = await obterHistoricoLocal(colaboradorId: colaboradorId);
 
@@ -215,12 +217,14 @@ class PontoRepository {
     if (remotos.isEmpty) return locais;
 
     final chaves = remotos.map(_chaveRegistro).toSet();
-    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    final extras =
+        locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras]
       ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
-  Future<List<RegistroPontoModel>> obterEspelhoPonto({    String? colaboradorId,
+  Future<List<RegistroPontoModel>> obterEspelhoPonto({
+    String? colaboradorId,
     int? mes,
     int? ano,
   }) async {
@@ -249,7 +253,8 @@ class PontoRepository {
 
     // Mescla registros locais ainda não presentes no servidor (ex.: ajustes offline)
     final chaves = remotos.map(_chaveRegistro).toSet();
-    final extras = locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
+    final extras =
+        locais.where((l) => !chaves.contains(_chaveRegistro(l))).toList();
     return [...remotos, ...extras];
   }
 
@@ -275,16 +280,18 @@ class PontoRepository {
 
   /// Chave de identidade da batida para a mesclagem local×servidor.
   ///
-  /// Por instante exato: a MESMA batida tem o mesmo dataHoraDispositivo dos
-  /// dois lados (o servidor devolve o valor recebido), enquanto o tipo pode
-  /// divergir — o servidor re-deriva a sequência e o cliente não. A chave por
-  /// tipo|minuto fazia a mesma batida sobreviver DUAS vezes na lista
-  /// ("Saída" do servidor + "Entrada" do local no mesmo instante).
+  /// Por instante exato (millisecondsSinceEpoch, independente de fuso): a
+  /// MESMA batida tem o mesmo dataHoraDispositivo dos dois lados (o servidor
+  /// devolve o valor recebido), enquanto o tipo e o colaboradorId podem
+  /// divergir — o servidor re-deriva a sequência, e o registro local nasce
+  /// com colaboradorId nulo (preenchido só após a sincronização), o que
+  /// fazia a mesma batida sobreviver DUAS vezes na lista. Chavar por
+  /// colaboradorId|null quebrava justamente esse par. As listas já vêm
+  /// escopadas por colaborador, então o instant sozinho é suficiente.
   /// Batidas distintas no mesmo minuto têm instantes diferentes, então não
   /// colapsam.
   String _chaveRegistro(RegistroPontoModel r) {
-    return '${r.colaboradorId ?? ''}|'
-        '${r.dataHoraDispositivo.millisecondsSinceEpoch}';
+    return '${r.dataHoraDispositivo.millisecondsSinceEpoch}';
   }
 
   /// Consulta o relatório do espelho de ponto (art. 84 da Portaria MTP 671/2021)

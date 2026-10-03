@@ -85,9 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 papel: usuario?.role ?? '—',
                 hoje: hoje,
                 fotoBytes: usuario?.temFoto == true ? usuario!.fotoBytes : null,
-                avatarIcone: usuario?.isAdminEmpresa == true
-                    ? Icons.business
-                    : null,
+                avatarIcone:
+                    usuario?.isAdminEmpresa == true ? Icons.business : null,
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -111,9 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     detalhe: ponto.isOnline
                         ? 'Online — tudo enviado'
                         : 'Offline — aguardando envio',
-                    icone: ponto.isOnline
-                        ? Icons.cloud_done
-                        : Icons.cloud_off,
+                    icone: ponto.isOnline ? Icons.cloud_done : Icons.cloud_off,
                     cor: ponto.isOnline ? Colors.blue : Colors.orange,
                   ),
                   if (_ajustesPendentesRh != null)
@@ -155,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     context,
                     rotulo: 'Espelho de Ponto',
                     icone: Icons.receipt_long_outlined,
-                    onTap: () => context.go('/painel/ponto'),
+                    onTap: () => context.go('/painel/ponto?aba=espelho'),
                   ),
                   _atalho(
                     context,
@@ -168,8 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       _atalho(
                         context,
                         rotulo: MainShell.metadados[modulo]?.label ?? modulo,
-                        icone:
-                            MainShell.metadados[modulo]?.icon ?? Icons.apps,
+                        icone: MainShell.metadados[modulo]?.icon ?? Icons.apps,
                         onTap: () => context.go('/painel/$modulo'),
                       ),
                 ],
@@ -205,7 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(24),
         child: Row(
           children: [
-            UserAvatar(nome: nome, raio: 30, fotoBytes: fotoBytes, icone: avatarIcone),
+            UserAvatar(
+                nome: nome, raio: 30, fotoBytes: fotoBytes, icone: avatarIcone),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -314,7 +311,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icone, size: 28, color: Theme.of(context).colorScheme.primary),
+                Icon(icone,
+                    size: 28, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 8),
                 Text(
                   rotulo,

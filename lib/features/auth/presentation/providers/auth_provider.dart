@@ -50,6 +50,12 @@ class AuthProvider extends ChangeNotifier {
   /// cada nova abertura do app cobra a biometria de novo.
   bool _sessaoDesbloqueada = true;
 
+  /// Destino que o usuário tentou acessar durante o bloqueio do gate
+  /// biométrico (deep link/atalho caiu em `/biometria`). Só vive em memória,
+  /// junto com o estado do gate desta abertura do app: é consumido quando o
+  /// gate é liberado para restaurar a navegação que foi interrompida.
+  String? _rotaPendenteGate;
+
   /// 2FA-first: estado da segunda etapa entre o login e a verificação do
   /// código (TOTP ou OTP por e-mail). Vive só em memória.
   bool _requiresTwoFactor = false;
@@ -68,6 +74,22 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get sessaoDesbloqueada => _sessaoDesbloqueada;
+
+  /// Rota tentada durante o bloqueio do gate, aguardando a biometria.
+  String? get rotaPendenteGate => _rotaPendenteGate;
+
+  /// Guarda o destino interrompido pelo gate (chamado pelo roteador quando a
+  /// sessão está trancada) para restaurá-lo após a liberação.
+  void definirRotaPendente(String rota) {
+    _rotaPendenteGate = rota;
+  }
+
+  /// Consome (e limpa) o destino pendente do gate, se houver.
+  String? consumirRotaPendente() {
+    final rota = _rotaPendenteGate;
+    _rotaPendenteGate = null;
+    return rota;
+  }
 
   /// `true` quando o login parou na etapa de 2FA (usuário precisa digitar o
   /// código em `/login/2fa`); [tempToken] é a credencial de 5 minutos.
@@ -122,6 +144,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> tryRestoreSession() async {
+    _rotaPendenteGate = null;
     final prefs = await SharedPreferences.getInstance();
     final token = await SessionStorage.readToken(keyAccessToken);
     final refreshToken = await SessionStorage.readToken(keyRefreshToken);
@@ -142,7 +165,8 @@ class AuthProvider extends ChangeNotifier {
       // Sessão restaurada ao abrir o app: exige biometria antes de liberar
       // o conteúdo (login por biometria — só em memória, nesta abertura),
       // salvo quando o bloqueio foi desligado em Segurança.
-      _sessaoDesbloqueada = !(prefs.getBool(BiometriaPreferences.chave) ?? true);
+      _sessaoDesbloqueada =
+          !(prefs.getBool(BiometriaPreferences.chave) ?? true);
       final nome = await _lerPerfil(_keyNome) ?? '';
       final email = await _lerPerfil(_keyEmail) ?? '';
       final cpf = await _lerPerfil(_keyCpf);
@@ -339,8 +363,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> _concluirLogin(UsuarioModel usuario,
       {String? cpfFallback}) async {
-    if ((usuario.cpf == null || usuario.cpf!.isEmpty) &&
-        cpfFallback != null) {
+    if ((usuario.cpf == null || usuario.cpf!.isEmpty) && cpfFallback != null) {
       _usuario = usuario.copyWith(cpf: cpfFallback);
     } else {
       _usuario = usuario;
@@ -627,6 +650,7 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     _requiresTwoFactor = false;
     _tempToken = null;
+    _rotaPendenteGate = null;
     await _clearSession();
     notifyListeners();
   }

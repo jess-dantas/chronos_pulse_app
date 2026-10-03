@@ -59,13 +59,13 @@ void main() {
       final carregada = await BiometriaPreferences.carregar();
 
       await carregada.setAtiva(false);
-      final bruto =
-          (await SharedPreferences.getInstance()).getBool('chronos_biometria_ativa');
+      final bruto = (await SharedPreferences.getInstance())
+          .getBool('chronos_biometria_ativa');
       expect(bruto, isFalse);
 
       await carregada.setAtiva(true);
-      final depois =
-          (await SharedPreferences.getInstance()).getBool('chronos_biometria_ativa');
+      final depois = (await SharedPreferences.getInstance())
+          .getBool('chronos_biometria_ativa');
       expect(depois, isTrue);
     });
   });
@@ -82,7 +82,8 @@ void main() {
       final chave = find.byKey(const Key('seguranca_biometria_switch'));
       expect(chave, findsOneWidget);
       expect(tester.widget<SwitchListTile>(chave).value, isTrue);
-      expect(find.byKey(const Key('seguranca_two_factor_tile')), findsOneWidget);
+      expect(
+          find.byKey(const Key('seguranca_two_factor_tile')), findsOneWidget);
     });
 
     testWidgets('desligar o toggle persiste a preferência', (tester) async {
@@ -97,13 +98,15 @@ void main() {
       expect(tester.widget<SwitchListTile>(chave).value, isFalse);
       expect(prefs.ativa, isFalse);
       expect(
-        (await SharedPreferences.getInstance()).getBool('chronos_biometria_ativa'),
+        (await SharedPreferences.getInstance())
+            .getBool('chronos_biometria_ativa'),
         isFalse,
       );
     });
 
     testWidgets('ligar o toggle persiste a preferência', (tester) async {
-      SharedPreferences.setMockInitialValues({'chronos_biometria_ativa': false});
+      SharedPreferences.setMockInitialValues(
+          {'chronos_biometria_ativa': false});
       await pumpTela(tester);
 
       final chave = find.byKey(const Key('seguranca_biometria_switch'));
@@ -116,7 +119,8 @@ void main() {
 
       expect(tester.widget<SwitchListTile>(chave).value, isTrue);
       expect(
-        (await SharedPreferences.getInstance()).getBool('chronos_biometria_ativa'),
+        (await SharedPreferences.getInstance())
+            .getBool('chronos_biometria_ativa'),
         isTrue,
       );
     });
@@ -124,11 +128,27 @@ void main() {
     testWidgets('tile do 2FA navega para /perfil/2fa', (tester) async {
       await pumpTela(tester);
 
-      await tester
-          .tap(find.byKey(const Key('seguranca_two_factor_tile')));
+      await tester.tap(find.byKey(const Key('seguranca_two_factor_tile')));
       await tester.pumpAndSettle();
 
       expect(find.text('tela-2fa'), findsOneWidget);
+    });
+
+    testWidgets('em tela larga o conteúdo fica centrado com largura máx 540',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await pumpTela(tester);
+
+      expect(tester.getSize(find.byType(ListView)).width, equals(540),
+          reason: 'não pode esticar de ponta a ponta no web/desktop');
+      expect(
+        tester.getCenter(find.byKey(const Key('seguranca_two_factor_tile'))).dx,
+        equals(600),
+        reason: 'conteúdo centrado na tela de 1200px',
+      );
     });
   });
 }

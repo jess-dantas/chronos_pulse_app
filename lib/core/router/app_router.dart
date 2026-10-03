@@ -109,27 +109,23 @@ class AppRouter {
       'ponto' =>
         (usuario.isAdminOrRh || usuario.isColaborador) && contratado('PONTO'),
       'aprovacao-ajustes' => usuario.isGestorRh && contratado('PONTO'),
-      'colaboradores' =>
-        usuario.isAdminOrRh && contratado('RECURSOS_HUMANOS'),
+      'colaboradores' => usuario.isAdminOrRh && contratado('RECURSOS_HUMANOS'),
       // Contas administrativas: só o ADMIN_EMPRESA da empresa
       // (backend UsuarioController exige hasRole ADMIN_EMPRESA).
       'usuarios' => usuario.isAdminEmpresa,
       'estoque' => usuario.temAcessoEstoque && contratado('ESTOQUE'),
       'compras' => usuario.temAcessoEstoque && contratado('COMPRAS'),
       'licitacoes' => usuario.temAcessoEstoque && contratado('LICITACOES'),
-      'patrimonio' =>
-        (usuario.isAdminOrRh || usuario.isColaborador) &&
-            contratado('PATRIMONIO'),
+      'patrimonio' => (usuario.isAdminOrRh || usuario.isColaborador) &&
+          contratado('PATRIMONIO'),
       'frota' =>
         (usuario.isAdminOrRh || usuario.isColaborador) && contratado('FROTA'),
-      'protocolo' =>
-        (usuario.isAdminOrRh || usuario.isColaborador) &&
-            contratado('PROTOCOLO'),
-      'transparencia' =>
-        (usuario.isAdminOrRh ||
-            usuario.isColaborador ||
-            usuario.acessoEstoque) &&
-            contratado('TRANSPARENCIA'),
+      'protocolo' => (usuario.isAdminOrRh || usuario.isColaborador) &&
+          contratado('PROTOCOLO'),
+      'transparencia' => (usuario.isAdminOrRh ||
+              usuario.isColaborador ||
+              usuario.acessoEstoque) &&
+          contratado('TRANSPARENCIA'),
       _ => false,
     };
   }
@@ -354,11 +350,25 @@ class AppRouter {
       if (location == rotaBiometrico) {
         if (gateAtivo) return null;
         if (auth.isAuthenticated && auth.usuario != null) {
+          // Gate liberado: retoma o destino que foi interrompido pelo
+          // bloqueio (deep link/atalho). O destino pendente passa de novo
+          // por todas as regras abaixo (RBAC do painel inclusive).
+          final pendente = auth.consumirRotaPendente();
+          if (pendente != null &&
+              (pendente.startsWith('/painel') ||
+                  pendente.startsWith('/perfil'))) {
+            return pendente;
+          }
           return primeiraRotaPainel(auth.usuario!);
         }
         return rotaInicialPara(modo);
       }
-      if (gateAtivo) return rotaBiometrico;
+      if (gateAtivo) {
+        // Sessão trancada: guarda o destino tentado antes de levar ao gate,
+        // para restaurá-lo quando a biometria for confirmada.
+        auth.definirRotaPendente(state.uri.toString());
+        return rotaBiometrico;
+      }
     }
 
     // Profile (inclui /perfil/titularidade): acessível a qualquer sessão
@@ -386,7 +396,13 @@ class AppRouter {
     final autenticado = auth.isAuthenticated;
     final usuario = auth.usuario;
 
-    const publicas = ['/', '/login', '/login/2fa', '/cadastro', '/recuperar-senha'];
+    const publicas = [
+      '/',
+      '/login',
+      '/login/2fa',
+      '/cadastro',
+      '/recuperar-senha'
+    ];
     final areaPainel = location == '/painel' || location.startsWith('/painel/');
 
     if (!autenticado) {

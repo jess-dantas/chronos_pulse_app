@@ -20,7 +20,8 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
   }
 
   @override
-  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados(
+      {String? colaboradorId}) async {
     return _banco
         .where((p) =>
             !p.sincronizadoOffline &&
@@ -29,7 +30,8 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
   }
 
   @override
-  Future<List<RegistroPontoModel>> obterHistoricoHoje({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterHistoricoHoje(
+      {String? colaboradorId}) async {
     final filtrados = (colaboradorId == null)
         ? _banco
         : _banco.where((p) => p.colaboradorId == colaboradorId).toList();
@@ -37,7 +39,8 @@ class MockPontoLocalDataSource extends PontoLocalDataSource {
     final lista =
         List<RegistroPontoModel>.from(filtrados.where((r) => !r.ajusteManual));
     // Espelha o datasource real: ordem cronológica crescente.
-    lista.sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    lista
+        .sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
     return lista;
   }
 
@@ -138,6 +141,31 @@ class _LocalLenta extends MockPontoLocalDataSource {
   }
 }
 
+/// Local com leitura por mês/ano em memória — o mock base delega ao SQLite
+/// real, que não existe fora do database_migration_test.
+class _LocalComMesAno extends MockPontoLocalDataSource {
+  final List<RegistroPontoModel> registros = [];
+
+  @override
+  Future<void> salvarPontoLocal(RegistroPontoModel registro) async {
+    registros.add(registro);
+  }
+
+  @override
+  Future<List<RegistroPontoModel>> obterPorMesAno({
+    String? colaboradorId,
+    int? mes,
+    int? ano,
+  }) async {
+    return registros.where((r) {
+      final data = r.dataHoraDispositivo.toLocal();
+      return (colaboradorId == null || r.colaboradorId == colaboradorId) &&
+          (mes == null || data.month == mes) &&
+          (ano == null || data.year == ano);
+    }).toList();
+  }
+}
+
 class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   bool online = true;
   bool rejeitar = false;
@@ -152,7 +180,8 @@ class MockPontoRemoteDataSource extends PontoRemoteDataSource {
   }
 
   @override
-  Future<List<String>> sincronizarPontos(List<RegistroPontoModel> registros) async {
+  Future<List<String>> sincronizarPontos(
+      List<RegistroPontoModel> registros) async {
     if (rejeitar) {
       throw const RejeicaoServidorException(
           'O servidor recebeu a batida, mas não foi possível gravá-la. Tente novamente.');
@@ -299,12 +328,14 @@ class LocalDataSourceIndisponivel extends PontoLocalDataSource {
   }
 
   @override
-  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterPontosNaoSincronizados(
+      {String? colaboradorId}) async {
     return [];
   }
 
   @override
-  Future<List<RegistroPontoModel>> obterHistoricoHoje({String? colaboradorId}) async {
+  Future<List<RegistroPontoModel>> obterHistoricoHoje(
+      {String? colaboradorId}) async {
     return [];
   }
 
@@ -356,7 +387,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('JustificativasPadronizadas', () {
-    test('Deve conter as 8 justificativas exigidas com descrições corretas', () {
+    test('Deve conter as 8 justificativas exigidas com descrições corretas',
+        () {
       final lista = JustificativasPonto.lista;
       expect(lista.length, equals(8));
 
@@ -392,7 +424,9 @@ void main() {
       provider.dispose();
     });
 
-    test('Deve salvar localmente como pendente quando offline e sincronizar ao ficar online', () async {
+    test(
+        'Deve salvar localmente como pendente quando offline e sincronizar ao ficar online',
+        () async {
       // 1. Simula servidor offline
       remoteDataSource.online = false;
       await provider.checarConexao();
@@ -565,8 +599,14 @@ void main() {
       final agora = DateTime.now();
       final dia = DateTime(agora.year, agora.month, agora.day);
       remoteDataSource.espelhoRemoto = [
-        batida(id: 'b1', tipo: 'ENTRADA', quando: dia.add(const Duration(hours: 8))),
-        batida(id: 'b2', tipo: 'INTERVALO', quando: dia.add(const Duration(hours: 10))),
+        batida(
+            id: 'b1',
+            tipo: 'ENTRADA',
+            quando: dia.add(const Duration(hours: 8))),
+        batida(
+            id: 'b2',
+            tipo: 'INTERVALO',
+            quando: dia.add(const Duration(hours: 10))),
         batida(
           id: 'a1',
           tipo: 'RETORNO',
@@ -585,12 +625,12 @@ void main() {
       expect(
         provider.proximoTipoBatida(),
         equals('SAIDA'),
-        reason:
-            'último do dia é o ajuste RETORNO → backend derivaria SAIDA',
+        reason: 'último do dia é o ajuste RETORNO → backend derivaria SAIDA',
       );
     });
 
-    test('Ajuste manual é excluído da home, mas permanece no espelho', () async {
+    test('Ajuste manual é excluído da home, mas permanece no espelho',
+        () async {
       final agora = DateTime.now();
       final sucesso = await provider.ajustarPontoManual(
         dataHora: agora,
@@ -627,10 +667,15 @@ void main() {
       expect(historico, isEmpty);
     });
 
-    test('Relatório do espelho (art. 84) acompanha o espelho com empregador, jornada e código de verificação', () async {
+    test(
+        'Relatório do espelho (art. 84) acompanha o espelho com empregador, jornada e código de verificação',
+        () async {
       remoteDataSource.online = true;
       remoteDataSource.espelhoRemoto = [
-        batida(id: 'e1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 1, 8, 0).toUtc()),
+        batida(
+            id: 'e1',
+            tipo: 'ENTRADA',
+            quando: DateTime(2026, 9, 1, 8, 0).toUtc()),
       ];
 
       await provider.carregarEspelho(mes: 9, ano: 2026);
@@ -641,11 +686,14 @@ void main() {
       expect(relatorio.empregador?.cnpj, equals('12345678000199'));
       expect(relatorio.trabalhador?.cargo, equals('Analista de Sistemas'));
       expect(relatorio.trabalhador?.dataAdmissao, equals(DateTime(2020, 3, 2)));
-      expect(relatorio.jornadaContratual?.nome, equals('Jornada Administrativa 44h'));
+      expect(relatorio.jornadaContratual?.nome,
+          equals('Jornada Administrativa 44h'));
       expect(relatorio.codigoVerificacao, hasLength(64));
     });
 
-    test('Batida não trava quando o banco local está indisponível e sincroniza online', () async {
+    test(
+        'Batida não trava quando o banco local está indisponível e sincroniza online',
+        () async {
       final localIndisponivel = LocalDataSourceIndisponivel();
       final remote = MockPontoRemoteDataSource();
       remote.online = true;
@@ -677,7 +725,9 @@ void main() {
       expect(providerSemLocal.pendentesCount, equals(0));
     });
 
-    test('Histórico reflete o espelho do servidor quando o banco local falha (Web)', () async {
+    test(
+        'Histórico reflete o espelho do servidor quando o banco local falha (Web)',
+        () async {
       final localIndisponivel = LocalDataSourceIndisponivel();
       final remote = MockPontoRemoteDataSource();
       remote.online = true;
@@ -710,7 +760,8 @@ void main() {
           reason: 'Registro vindo do servidor deve aparecer como sincronizado');
     });
 
-    test('Histórico local/NFC não duplica quando o servidor já tem a batida', () async {
+    test('Histórico local/NFC não duplica quando o servidor já tem a batida',
+        () async {
       final local = MockPontoLocalDataSource();
       final remote = MockPontoRemoteDataSource();
       remote.online = true;
@@ -751,7 +802,8 @@ void main() {
       expect(historico.length, equals(1));
     });
 
-    test('Reconciliação: tipo do servidor vence e a mesma batida não duplica', () async {
+    test('Reconciliação: tipo do servidor vence e a mesma batida não duplica',
+        () async {
       final agora = DateTime.now().toUtc();
 
       // O aparelho gravou ENTRADA offline; o servidor, com a sequência dele,
@@ -798,7 +850,8 @@ void main() {
       expect(localApos.first.nsr, equals(7));
     });
 
-    test('Reconciliação desenfileira pendente já aceito pelo servidor', () async {
+    test('Reconciliação desenfileira pendente já aceito pelo servidor',
+        () async {
       final agora = DateTime.now().toUtc();
       await localDataSource.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'p-off',
@@ -832,7 +885,8 @@ void main() {
           reason: 'batida aceita pelo servidor sai da fila de reenvio');
     });
 
-    test('Reconciliação remove órfão sincronizado e preserva pendente', () async {
+    test('Reconciliação remove órfão sincronizado e preserva pendente',
+        () async {
       final hoje = DateTime.now();
       final inicio = DateTime(hoje.year, hoje.month, hoje.day);
 
@@ -872,7 +926,55 @@ void main() {
       expect(await repository.obterQuantidadePendentes(), equals(1));
     });
 
-    test('carregarDados sobreposto enfileira e reexecuta com o colaborador vigente', () async {
+    test(
+        'Espelho não duplica a batida: local SEM colaboradorId vs remoto COM '
+        'UUID no mesmo instante', () async {
+      final agora = DateTime.now().toUtc();
+      final local = _LocalComMesAno();
+      await local.salvarPontoLocal(RegistroPontoModel(
+        idLocal: 'local-off',
+        dataHoraDispositivo: agora,
+        tipoRegistro: 'ENTRADA',
+        latitude: 0,
+        longitude: 0,
+        precisaoGps: 5,
+        fotoUrl: '',
+        hashLocal: 'h1',
+        sincronizadoOffline: true,
+      ));
+      remoteDataSource.espelhoRemoto = [
+        RegistroPontoModel(
+          idLocal: 'srv-1',
+          colaboradorId: 'uuid-colab',
+          dataHoraDispositivo: agora,
+          tipoRegistro: 'ENTRADA',
+          latitude: 0,
+          longitude: 0,
+          precisaoGps: 5,
+          fotoUrl: '',
+          hashLocal: 'h2',
+          sincronizadoOffline: true,
+        ),
+      ];
+
+      // O espelho não tem reconciliação do dia: só a mesclagem local×remoto.
+      // Antes a chave trazia colaboradorId, então '' x 'uuid' deixavam as duas
+      // linhas na lista (a mesma batida aparecia DUAS vezes no espelho).
+      final espelho = await PontoRepository(
+        localDataSource: local,
+        remoteDataSource: remoteDataSource,
+      ).obterEspelhoPonto(mes: agora.month, ano: agora.year);
+
+      expect(espelho.length, equals(1),
+          reason:
+              'a mesma batida (mesmo instante) não pode aparecer duas vezes');
+      expect(espelho.first.colaboradorId, equals('uuid-colab'),
+          reason: 'a linha do servidor é a fonte da verdade');
+    });
+
+    test(
+        'carregarDados sobreposto enfileira e reexecuta com o colaborador vigente',
+        () async {
       final lento = _LocalLenta();
       await lento.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'a1',
@@ -922,7 +1024,9 @@ void main() {
       expect(p.historico.first.colaboradorId, equals('colab-A'));
     });
 
-    test('Modo offline preserva a sequência de batidas (não volta à primeira batida)', () async {
+    test(
+        'Modo offline preserva a sequência de batidas (não volta à primeira batida)',
+        () async {
       final agora = DateTime.now();
       await localDataSource.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'r1',
@@ -966,14 +1070,16 @@ void main() {
       await provider.carregarDados();
 
       expect(provider.historico.length, equals(3),
-          reason: 'Sequência local deve permanecer visível com o servidor offline');
+          reason:
+              'Sequência local deve permanecer visível com o servidor offline');
       final tipos = provider.historico.map((r) => r.tipoRegistro).toList();
       expect(tipos, contains('ENTRADA'));
       expect(tipos, contains('INTERVALO'));
       expect(tipos, contains('RETORNO'));
     });
 
-    test('Batidas de hoje aparecem em ordem crescente (Entrada #1 → Retorno #N)',
+    test(
+        'Batidas de hoje aparecem em ordem crescente (Entrada #1 → Retorno #N)',
         () async {
       final agora = DateTime.now().toUtc();
       remoteDataSource.online = false;
@@ -1002,13 +1108,15 @@ void main() {
 
       final tipos = provider.historico.map((r) => r.tipoRegistro).toList();
       expect(tipos, equals(['ENTRADA', 'INTERVALO', 'RETORNO']),
-          reason: 'A lista deve ser cronológica: #1 Entrada, #2 Intervalo, #3 Retorno');
+          reason:
+              'A lista deve ser cronológica: #1 Entrada, #2 Intervalo, #3 Retorno');
       // Espelha o rótulo '#${index + 1}' da home: a mais antiga é #1.
       expect(provider.historico.first.tipoRegistro, equals('ENTRADA'));
       expect(provider.historico.last.tipoRegistro, equals('RETORNO'));
     });
 
-    test('Rejeição explícita do servidor preenche ultimaFalhaServidor', () async {
+    test('Rejeição explícita do servidor preenche ultimaFalhaServidor',
+        () async {
       remoteDataSource.online = true;
       remoteDataSource.rejeitar = true;
 
@@ -1031,7 +1139,8 @@ void main() {
           contains('não foi possível gravá-la'));
     });
 
-    test('Falha de rede NÃO preenche ultimaFalhaServidor (é offline, não rejeição)',
+    test(
+        'Falha de rede NÃO preenche ultimaFalhaServidor (é offline, não rejeição)',
         () async {
       remoteDataSource.online = false;
 
@@ -1054,7 +1163,8 @@ void main() {
           reason: 'Escrita local OK: a batida está na fila');
     });
 
-    test('Falha de escrita local preenche ultimaFalhaLocal e a nova batida limpa',
+    test(
+        'Falha de escrita local preenche ultimaFalhaLocal e a nova batida limpa',
         () async {
       final repo = PontoRepository(
         localDataSource: _LocalFalhaNaPrimeiraEscrita(),
@@ -1091,7 +1201,8 @@ void main() {
       expect(await repo.obterQuantidadePendentes(), 1);
     });
 
-    test('Ajuste manual gera idLocal UUID v4 (timestamp derrubava o lote no backend)',
+    test(
+        'Ajuste manual gera idLocal UUID v4 (timestamp derrubava o lote no backend)',
         () async {
       remoteDataSource.online = false;
 
@@ -1192,8 +1303,8 @@ void main() {
 
       expect(celulas.length, equals(3),
           reason: 'a HE não deve sobrescrever a Entrada das 08:00');
-      final original = celulas
-          .firstWhere((c) => c.tipoRegistro == 'ENTRADA' && !c.ajuste);
+      final original =
+          celulas.firstWhere((c) => c.tipoRegistro == 'ENTRADA' && !c.ajuste);
       expect(original.hora, equals('08:00'));
       final extra = celulas.firstWhere((c) => c.ajuste);
       expect(extra.hora, equals('19:00'));
@@ -1217,7 +1328,9 @@ void main() {
       expect(pareado.horaOriginal, equals('11:00'));
     });
 
-    test('colunasDoDia mapeia Entrada/Intervalo/Retorno/Saída e sobrepõe ajuste', () {
+    test(
+        'colunasDoDia mapeia Entrada/Intervalo/Retorno/Saída e sobrepõe ajuste',
+        () {
       final colunas = EspelhoAgrupador.colunasDoDia([
         batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
         batida(id: 'o2', tipo: 'INTERVALO', quando: dia(12, 0)),
@@ -1262,7 +1375,8 @@ void main() {
       expect(colunas[1]!.incluiOriginal, isFalse);
     });
 
-    test('colunasDoDia: ajuste distante (HE) não sobrepõe a coluna da batida', () {
+    test('colunasDoDia: ajuste distante (HE) não sobrepõe a coluna da batida',
+        () {
       final colunas = EspelhoAgrupador.colunasDoDia([
         batida(id: 'o1', tipo: 'ENTRADA', quando: dia(8, 0)),
         batida(id: 'o2', tipo: 'INTERVALO', quando: dia(12, 0)),
@@ -1283,45 +1397,75 @@ void main() {
       expect(SequenciaPonto.proximo([]), equals('ENTRADA'));
       expect(
         SequenciaPonto.proximo([
-          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(
+              id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
         ]),
         equals('INTERVALO'),
       );
       expect(
         SequenciaPonto.proximo([
-          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
-          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+          batida(
+              id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(
+              id: 'b2',
+              tipo: 'INTERVALO',
+              quando: DateTime(2026, 9, 12, 12, 0)),
         ]),
         equals('RETORNO'),
       );
       expect(
         SequenciaPonto.proximo([
-          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
-          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
-          batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
+          batida(
+              id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(
+              id: 'b2',
+              tipo: 'INTERVALO',
+              quando: DateTime(2026, 9, 12, 12, 0)),
+          batida(
+              id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
         ]),
         equals('SAIDA'),
       );
       // Ciclo reinicia após a Saída (5ª batida = Entrada Extra)
       expect(
         SequenciaPonto.proximo([
-          batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
-          batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
-          batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
+          batida(
+              id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
+          batida(
+              id: 'b2',
+              tipo: 'INTERVALO',
+              quando: DateTime(2026, 9, 12, 12, 0)),
+          batida(
+              id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
           batida(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
         ]),
         equals('ENTRADA'),
       );
     });
 
-    test('Ajuste no meio do dia não pula a sequência: vale o último cronológico', () {
+    test(
+        'Ajuste no meio do dia não pula a sequência: vale o último cronológico',
+        () {
       // Ajustes E/I/R às 11:00-16:30 + batida de botão às 19:51 (última):
       // a próxima é INTERVALO — mesma resposta do backend.
       final registros = [
-        batida(id: 'a1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 11, 0), ajuste: true),
-        batida(id: 'a2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 15, 30), ajuste: true),
-        batida(id: 'a3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 16, 30), ajuste: true),
-        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 19, 51)),
+        batida(
+            id: 'a1',
+            tipo: 'ENTRADA',
+            quando: DateTime(2026, 9, 12, 11, 0),
+            ajuste: true),
+        batida(
+            id: 'a2',
+            tipo: 'INTERVALO',
+            quando: DateTime(2026, 9, 12, 15, 30),
+            ajuste: true),
+        batida(
+            id: 'a3',
+            tipo: 'RETORNO',
+            quando: DateTime(2026, 9, 12, 16, 30),
+            ajuste: true),
+        batida(
+            id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 19, 51)),
       ];
 
       expect(SequenciaPonto.proximo(registros), equals('INTERVALO'));
@@ -1332,24 +1476,35 @@ void main() {
       // a Saída às 18:00 → próxima = Entrada (igual ao backend).
       final registros = [
         batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
-        batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
+        batida(
+            id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
         batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
         batida(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
-        batida(id: 'a1', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 10), ajuste: true),
+        batida(
+            id: 'a1',
+            tipo: 'INTERVALO',
+            quando: DateTime(2026, 9, 12, 12, 10),
+            ajuste: true),
       ];
 
       expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
     });
 
-    test('Último do dia é um ajuste: próxima continua o ciclo a partir dele', () {
+    test('Último do dia é um ajuste: próxima continua o ciclo a partir dele',
+        () {
       // Cenário que a regra antiga (contagem só de batidas de botão) errava:
       // E/I pelo botão + RETORNO aprovado às 13:00 como última marcação.
       // O backend deriva SAIDA a partir do último tipo — o botão precisa
       // anunciar o mesmo (senão etiqueta e registro gravado divergiam).
       final registros = [
         batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
-        batida(id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 10, 0)),
-        batida(id: 'a1', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0), ajuste: true),
+        batida(
+            id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 10, 0)),
+        batida(
+            id: 'a1',
+            tipo: 'RETORNO',
+            quando: DateTime(2026, 9, 12, 13, 0),
+            ajuste: true),
       ];
 
       expect(SequenciaPonto.proximo(registros), equals('SAIDA'));
@@ -1357,7 +1512,10 @@ void main() {
 
     test('Tipo legado/desconhecido cai em ENTRADA (fallback igual ao BE)', () {
       final registros = [
-        batida(id: 'x1', tipo: 'TIPO_INVALIDO', quando: DateTime(2026, 9, 12, 8, 0)),
+        batida(
+            id: 'x1',
+            tipo: 'TIPO_INVALIDO',
+            quando: DateTime(2026, 9, 12, 8, 0)),
       ];
 
       expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
@@ -1369,7 +1527,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
     });
 
-    test('Persiste entre instâncias — sobrevive a recarregamento (F5)', () async {
+    test('Persiste entre instâncias — sobrevive a recarregamento (F5)',
+        () async {
       final store = PontoLocalDataSourceWeb();
       await store.salvarPontoLocal(RegistroPontoModel(
         idLocal: 'w1',

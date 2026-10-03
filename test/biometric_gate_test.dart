@@ -139,7 +139,8 @@ class _FakePonto extends PontoProvider {
   Future<void> carregarDados() async {}
 
   @override
-  void iniciarMonitoramento({Duration interval = const Duration(seconds: 30)}) {}
+  void iniciarMonitoramento(
+      {Duration interval = const Duration(seconds: 30)}) {}
 }
 
 /// Repositório com refresh em memória (rede nunca é tocada no teste).
@@ -182,7 +183,8 @@ void main() {
   }
 
   group('BiometricGateScreen (login por biometria na abertura)', () {
-    testWidgets('sem biometria disponível libera a sessão sozinho', (tester) async {
+    testWidgets('sem biometria disponível libera a sessão sozinho',
+        (tester) async {
       final auth = _AuthFake()..definirSessao(_usuario());
       final hw = _HardwareFake(disponivel: false);
 
@@ -193,7 +195,8 @@ void main() {
           reason: 'sem o que confirmar, não dispara o prompt');
     });
 
-    testWidgets('com biometria confirma automaticamente na abertura', (tester) async {
+    testWidgets('com biometria confirma automaticamente na abertura',
+        (tester) async {
       final auth = _AuthFake()..definirSessao(_usuario());
       final hw = _HardwareFake(disponivel: true, autentica: true);
 
@@ -203,7 +206,8 @@ void main() {
       expect(auth.bloqueada, isFalse);
     });
 
-    testWidgets('cancelou: mostra recusa e permite tentar de novo', (tester) async {
+    testWidgets('cancelou: mostra recusa e permite tentar de novo',
+        (tester) async {
       final auth = _AuthFake()..definirSessao(_usuario());
       final hw = _HardwareFake(disponivel: true, autentica: false);
 
@@ -262,7 +266,8 @@ void main() {
     /// Tela de celular; monta o painel com os providers que a home exige.
     /// Sem pumpAndSettle aqui: o gate usa spinner indeterminado enquanto a
     /// sessão está bloqueada.
-    Future<void> pumpApp(WidgetTester tester, {String rota = '/painel/home'}) async {
+    Future<void> pumpApp(WidgetTester tester,
+        {String rota = '/painel/home'}) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -313,6 +318,31 @@ void main() {
       expect(find.byType(MainShell), findsOneWidget);
       expect(find.byType(HomeScreen), findsOneWidget);
     });
+
+    testWidgets(
+        'deep link durante o bloqueio não se perde: após a biometria o '
+        'gate restaura o destino (?aba=espelho)', (tester) async {
+      await pumpApp(tester, rota: '/painel/ponto?aba=espelho');
+
+      expect(find.byType(BiometricGateScreen), findsOneWidget,
+          reason: 'sessão trancada leva ao gate em vez do conteúdo');
+      expect(router.state.uri.toString(), '/biometria');
+      expect(auth.rotaPendenteGate, '/painel/ponto?aba=espelho',
+          reason: 'o destino tentado fica guardado durante o bloqueio');
+
+      auth.liberar();
+      // HomePontoScreen tem relógio com timer de 1s: pumps manuais em vez
+      // de pumpAndSettle (nunca estabiliza com o ticker).
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(BiometricGateScreen), findsNothing);
+      expect(router.state.uri.toString(), '/painel/ponto?aba=espelho',
+          reason: 'o gate deve devolver o usuário ao destino interrompido');
+      expect(auth.rotaPendenteGate, isNull,
+          reason: 'pendência consumida — não reaproveita destino antigo');
+    });
   });
 
   group('AuthProvider — restauração de sessão exige biometria', () {
@@ -325,7 +355,8 @@ void main() {
       });
     });
 
-    test('tryRestoreSession deixa a sessão BLOQUEADA até a biometria', () async {
+    test('tryRestoreSession deixa a sessão BLOQUEADA até a biometria',
+        () async {
       final repo = _RepoRefreshFake();
       final auth = AuthProvider(repo);
 
