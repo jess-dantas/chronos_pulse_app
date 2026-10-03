@@ -35,7 +35,8 @@ void main() {
             id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 9, 12, 12, 0)),
         _registro(
             id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 9, 12, 13, 0)),
-        _registro(id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
+        _registro(
+            id: 'b4', tipo: 'SAIDA', quando: DateTime(2026, 9, 12, 18, 0)),
         _registro(
             id: 'a1',
             tipo: 'ENTRADA',
@@ -57,7 +58,7 @@ void main() {
         'RETORNO#0',
         'SAIDA#0',
         'ENTRADA#1',
-        'INTERVALO#1',
+        'SAIDA#1',
       ]);
       expect(opcoes.map((o) => o.rotulo).toList(), [
         'Entrada 08:00',
@@ -65,7 +66,7 @@ void main() {
         'Retorno 13:00',
         'Saída 18:00',
         'Entrada (HE) 19:00',
-        'Intervalo — próxima batida',
+        'Saída — próxima batida',
       ]);
       expect(opcoes.last.hora, const TimeOfDay(hour: 9, minute: 30),
           reason: 'próxima batida pré-preenche a hora "agora"');
@@ -120,11 +121,11 @@ void main() {
     await tester.tap(find.text('Abrir diálogo'));
     await tester.pumpAndSettle();
 
-    // Padrão ao abrir: "próxima batida" com a hora atual. O último do dia é a
-    // Entrada (HE) 19:00, então a próxima é Intervalo (regra do backend).
-    expect(find.text('Intervalo — próxima batida'), findsOneWidget);
+    // Padrão ao abrir: "próxima batida" com a hora atual. O dia tem 5
+    // batidas na mesma jornada → a 6ª posição é Saída (HE).
+    expect(find.text('Saída — próxima batida'), findsOneWidget);
 
-    await tester.tap(find.text('Intervalo — próxima batida'));
+    await tester.tap(find.text('Saída — próxima batida'));
     await tester.pumpAndSettle();
 
     // Todos os slots do dia estão disponíveis, incluindo a HE.

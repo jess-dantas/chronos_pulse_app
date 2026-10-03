@@ -27,6 +27,7 @@ class PontoProvider extends ChangeNotifier {
   int _anoSelecionado = DateTime.now().year;
 
   List<RegistroPontoModel> _historico = [];
+  List<RegistroPontoModel> _recentes = [];
   List<RegistroPontoModel> _espelho = [];
   EspelhoRelatorioModel? _relatorioEspelho;
   Timer? _heartbeatTimer;
@@ -51,33 +52,32 @@ class PontoProvider extends ChangeNotifier {
   /// "salva localmente".
   String? get ultimaFalhaLocal => _repository.ultimaFalhaLocal;
 
-  /// Próximo tipo da sequência pela regra do backend: último tipo do dia + 1,
-  /// considerando também os ajustes manuais aprovados no dia. O histórico da
-  /// home filtra ajustes (apresentação), então o dia é complementado com o
-  /// espelho — única fonte que os traz. Sem espelho carregado (offline),
-  /// cai no histórico local, o que equivale à regra antiga.
+  /// Próximo tipo pela MESMA regra posicional do backend (6 slots + gap de
+  /// 10h entre batidas da mesma jornada). Três fontes entram na cadeia,
+  /// deduplicadas por instante:
+  ///
+  /// - [_historico]: batidas de hoje (local primeiro, servidor vence);
+  /// - [_recentes]: últimas 72h do banco local, inclusive ajustes — é o que
+  ///   segura a sequência de madrugada quando o turno de ontem terminou
+  ///   tarde e o aparelho está offline (o histórico de hoje ainda está vazio);
+  /// - [_espelho]: batidas e ajustes aprovados do servidor nas últimas 72h.
   String proximoTipoBatida() {
     final agora = DateTime.now();
+    final inicioJanela = agora.subtract(const Duration(hours: 72));
     final porInstante = <String, RegistroPontoModel>{
       for (final r in _historico) r.dataHoraDispositivo.toIso8601String(): r,
     };
-
-    final espelhoDoMesAtual = _mesSelecionado == agora.month &&
-        _anoSelecionado == agora.year;
-    if (espelhoDoMesAtual) {
-      for (final r in _espelho) {
-        final d = r.dataHoraDispositivo.toLocal();
-        final mesmoDia = d.year == agora.year &&
-            d.month == agora.month &&
-            d.day == agora.day;
-        if (mesmoDia) {
-          porInstante.putIfAbsent(
-              r.dataHoraDispositivo.toIso8601String(), () => r);
-        }
+    for (final r in _recentes) {
+      porInstante.putIfAbsent(r.dataHoraDispositivo.toIso8601String(), () => r);
+    }
+    for (final r in _espelho) {
+      final instante = r.dataHoraDispositivo;
+      if (!instante.isBefore(inicioJanela)) {
+        porInstante.putIfAbsent(instante.toIso8601String(), () => r);
       }
     }
 
-    return SequenciaPonto.proximo(porInstante.values.toList());
+    return SequenciaPonto.proximo(porInstante.values.toList(), agora: agora);
   }
 
   PontoProvider(this._repository, {TelemetryService? telemetria})
@@ -103,7 +103,8 @@ class PontoProvider extends ChangeNotifier {
   void iniciarMonitoramento({Duration interval = const Duration(seconds: 30)}) {
     _heartbeatTimer?.cancel();
     checarConexao(autoSync: true);
-    _heartbeatTimer = Timer.periodic(interval, (_) => checarConexao(autoSync: true));
+    _heartbeatTimer =
+        Timer.periodic(interval, (_) => checarConexao(autoSync: true));
   }
 
   /// Evita leituras concorrentes do construtor×initState×definirColaborador:
@@ -146,28 +147,50 @@ class PontoProvider extends ChangeNotifier {
       _historico =
           await _repository.obterHistoricoLocal(colaboradorId: _colaboradorId);
     } catch (e) {
-      debugPrint('[PontoProvider] histórico local falhou (colab=$_colaboradorId): $e');
+      debugPrint(
+          '[PontoProvider] histórico local falhou (colab=$_colaboradorId): $e');
       _historico = [];
     }
     try {
-      _pendentesCount =
-          await _repository.obterQuantidadePendentes(colaboradorId: _colaboradorId);
+      _pendentesCount = await _repository.obterQuantidadePendentes(
+          colaboradorId: _colaboradorId);
     } catch (e) {
-      debugPrint('[PontoProvider] pendentes locais falharam (colab=$_colaboradorId): $e');
+      debugPrint(
+          '[PontoProvider] pendentes locais falharam (colab=$_colaboradorId): $e');
       _pendentesCount = 0;
     }
     if (!_isDisposed) notifyListeners();
+
+    // Janela de 72h (ajustes + jornada de ontem) em segundo plano: é só
+    // insumo da prévia da sequência, então não pode segurar o retry do
+    // botão (que precisa concluir no mesmo ritmo da leitura do construtor).
+    unawaited(_carregarRecentes());
 
     // 2) Enriquecimento remoto (limitado): só vale a pena quando o servidor
     // responde. Em modo offline a UI já está consistente com o passo 1.
     if (_isOnline) {
       try {
-        _historico = await _repository.obterHistorico(colaboradorId: _colaboradorId);
+        _historico =
+            await _repository.obterHistorico(colaboradorId: _colaboradorId);
       } catch (_) {
         // mantém o histórico local, que já foi notificado
       }
       await carregarEspelho();
       if (!_isDisposed) notifyListeners();
+    }
+  }
+
+  Future<void> _carregarRecentes() async {
+    try {
+      final recentes =
+          await _repository.obterBatidasRecentes(colaboradorId: _colaboradorId);
+      if (_isDisposed) return;
+      _recentes = recentes;
+      if (!_isDisposed) notifyListeners();
+    } catch (e) {
+      debugPrint(
+          '[PontoProvider] batidas recentes falharam (colab=$_colaboradorId): $e');
+      _recentes = [];
     }
   }
 
@@ -275,7 +298,8 @@ class PontoProvider extends ChangeNotifier {
   }
 
   /// RH rejeita ajuste
-  Future<RegistroPontoModel?> rejeitarAjuste(String registroId, String motivo) async {
+  Future<RegistroPontoModel?> rejeitarAjuste(
+      String registroId, String motivo) async {
     final resultado = await _repository.rejeitarAjuste(registroId, motivo);
     if (resultado != null) {
       await carregarDados();
@@ -348,7 +372,8 @@ class PontoProvider extends ChangeNotifier {
       }
       return qtdSincronizada;
     } catch (e) {
-      debugPrint('[PontoProvider] sincronizar() falhou (colab=$_colaboradorId): $e');
+      debugPrint(
+          '[PontoProvider] sincronizar() falhou (colab=$_colaboradorId): $e');
       return 0;
     } finally {
       _isSincronizando = false;

@@ -625,7 +625,46 @@ void main() {
       expect(
         provider.proximoTipoBatida(),
         equals('SAIDA'),
-        reason: 'último do dia é o ajuste RETORNO → backend derivaria SAIDA',
+        reason: '3 batidas na mesma jornada → 4ª posição = SAIDA',
+      );
+    });
+
+    test(
+        'proximoTipoBatida entra com as batidas locais das últimas 72h '
+        '(offline, dia virou e a jornada de ontem continua)', () async {
+      remoteDataSource.online = false;
+      final agora = DateTime.now();
+      final local = _LocalComMesAno()
+        ..registros.addAll([
+          batida(
+              id: 'r1',
+              tipo: 'ENTRADA',
+              quando: agora.subtract(const Duration(hours: 8))),
+          batida(
+              id: 'r2',
+              tipo: 'INTERVALO',
+              quando: agora.subtract(const Duration(hours: 6))),
+          batida(
+              id: 'r3',
+              tipo: 'RETORNO',
+              quando: agora.subtract(const Duration(hours: 4))),
+        ]);
+      final noite = PontoProvider(PontoRepository(
+        localDataSource: local,
+        remoteDataSource: remoteDataSource,
+      ));
+      addTearDown(noite.dispose);
+
+      await noite.carregarDados();
+      // _carregarRecentes roda em segundo plano: espera ele assentar.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(noite.historico, isEmpty,
+          reason: 'dia virou: o histórico de hoje ainda está vazio');
+      expect(
+        noite.proximoTipoBatida(),
+        equals('SAIDA'),
+        reason: 'a jornada de ontem segue na cadeia: 4ª posição = SAIDA',
       );
     });
 
@@ -1392,7 +1431,8 @@ void main() {
     });
   });
 
-  group('SequenciaPonto (regra do backend: último tipo do dia + 1)', () {
+  group('SequenciaPonto (regra do backend: posição na jornada + gap de 10h)',
+      () {
     test('Batidas de botão seguem Entrada→Intervalo→Retorno→Saída', () {
       expect(SequenciaPonto.proximo([]), equals('ENTRADA'));
       expect(
@@ -1442,12 +1482,11 @@ void main() {
         equals('ENTRADA'),
       );
     });
-
     test(
-        'Ajuste no meio do dia não pula a sequência: vale o último cronológico',
+        'Ajuste no meio do dia não pula a sequência: vale a posição na jornada',
         () {
-      // Ajustes E/I/R às 11:00-16:30 + batida de botão às 19:51 (última):
-      // a próxima é INTERVALO — mesma resposta do backend.
+      // Ajustes E/I/R às 11:00-16:30 + batida de botão às 19:51: são 4
+      // batidas na mesma jornada → a 5ª posição é ENTRADA (entrada HE).
       final registros = [
         batida(
             id: 'a1',
@@ -1468,12 +1507,12 @@ void main() {
             id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 19, 51)),
       ];
 
-      expect(SequenciaPonto.proximo(registros), equals('INTERVALO'));
+      expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
     });
 
-    test('Ajuste de Saída não atrasa o ciclo após a 4ª batida de botão', () {
-      // E/I/R/S pelo botão + ajuste de Intervalo no meio: o último do dia é
-      // a Saída às 18:00 → próxima = Entrada (igual ao backend).
+    test('Ajuste de Saída não muda a posição: a 6ª batida é Saída (HE)', () {
+      // E/I/R/S pelo botão + ajuste de Intervalo no meio: 5 batidas na
+      // mesma jornada → a 6ª posição é SAIDA (saída de hora extra).
       final registros = [
         batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
         batida(
@@ -1487,15 +1526,11 @@ void main() {
             ajuste: true),
       ];
 
-      expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
+      expect(SequenciaPonto.proximo(registros), equals('SAIDA'));
     });
-
-    test('Último do dia é um ajuste: próxima continua o ciclo a partir dele',
-        () {
-      // Cenário que a regra antiga (contagem só de batidas de botão) errava:
-      // E/I pelo botão + RETORNO aprovado às 13:00 como última marcação.
-      // O backend deriva SAIDA a partir do último tipo — o botão precisa
-      // anunciar o mesmo (senão etiqueta e registro gravado divergiam).
+    test('Último do dia é um ajuste: a posição da jornada segue contando', () {
+      // E/I pelo botão + RETORNO aprovado às 13:00: 3 batidas na mesma
+      // jornada → 4ª posição = SAIDA (ajustes entram na cadeia do backend).
       final registros = [
         batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 9, 12, 8, 0)),
         batida(
@@ -1510,7 +1545,9 @@ void main() {
       expect(SequenciaPonto.proximo(registros), equals('SAIDA'));
     });
 
-    test('Tipo legado/desconhecido cai em ENTRADA (fallback igual ao BE)', () {
+    test('Tipo legado/desconhecido não zera a contagem (regra é posicional)',
+        () {
+      // O tipo das batidas anteriores é ignorado: só a posição importa.
       final registros = [
         batida(
             id: 'x1',
@@ -1518,7 +1555,91 @@ void main() {
             quando: DateTime(2026, 9, 12, 8, 0)),
       ];
 
-      expect(SequenciaPonto.proximo(registros), equals('ENTRADA'));
+      expect(SequenciaPonto.proximo(registros), equals('INTERVALO'));
+    });
+
+    // TC001 — jornada de 8h com almoço: 08h, 12h, 13h → 17h = SAIDA.
+    test('TC001: jornada de 8h fecha com Saída', () {
+      final registros = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 10, 6, 8, 0)),
+        batida(
+            id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 10, 6, 12, 0)),
+        batida(id: 'b3', tipo: 'RETORNO', quando: DateTime(2026, 10, 6, 13, 0)),
+      ];
+
+      expect(
+        SequenciaPonto.proximo(registros, agora: DateTime(2026, 10, 6, 17, 0)),
+        equals('SAIDA'),
+      );
+    });
+
+    // TC002 — a 6ª batida é SAIDA (HE) e a 7ª reinicia em ENTRADA.
+    test('TC002: 6ª batida é Saída (HE) e a 7ª reinicia em Entrada', () {
+      List<RegistroPontoModel> batidas(int quantidade) => [
+            for (int i = 0; i < quantidade; i++)
+              batida(
+                id: 'b$i',
+                tipo: 'ENTRADA',
+                quando: DateTime(2026, 10, 6, 8 + i * 2),
+              ),
+          ];
+
+      expect(
+        SequenciaPonto.proximo(batidas(5), agora: DateTime(2026, 10, 6, 20, 0)),
+        equals('SAIDA'),
+        reason: 'a 6ª posição da jornada é a saída de hora extra',
+      );
+      expect(
+        SequenciaPonto.proximo(batidas(6), agora: DateTime(2026, 10, 6, 22, 0)),
+        equals('ENTRADA'),
+        reason: 'a jornada fecha nas 6 batidas; a 7ª começa jornada nova',
+      );
+    });
+
+    // TC003 — turno noturno: 22h → 02h → 04h → 06h = 4ª batida = SAIDA.
+    test('TC003: turno noturno atravessa a virada na mesma jornada', () {
+      final registros = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 10, 5, 22, 0)),
+        batida(id: 'b2', tipo: 'ENTRADA', quando: DateTime(2026, 10, 6, 2, 0)),
+        batida(id: 'b3', tipo: 'ENTRADA', quando: DateTime(2026, 10, 6, 4, 0)),
+      ];
+
+      expect(
+        SequenciaPonto.proximo(registros, agora: DateTime(2026, 10, 6, 6, 0)),
+        equals('SAIDA'),
+      );
+    });
+
+    // TC004 — gap >10h abre jornada nova: ontem 17h → hoje 08h = ENTRADA.
+    test('TC004: intervalo maior que 10h abre jornada nova em Entrada', () {
+      final registros = [
+        batida(id: 'b1', tipo: 'SAIDA', quando: DateTime(2026, 10, 5, 17, 0)),
+      ];
+
+      expect(
+        SequenciaPonto.proximo(registros, agora: DateTime(2026, 10, 6, 8, 0)),
+        equals('ENTRADA'),
+        reason: '15h sem batida: a última Saída de ontem não vale mais',
+      );
+    });
+
+    test('Gap até agora menor ou igual a 10h continua a jornada', () {
+      final registros = [
+        batida(id: 'b1', tipo: 'ENTRADA', quando: DateTime(2026, 10, 6, 8, 0)),
+        batida(
+            id: 'b2', tipo: 'INTERVALO', quando: DateTime(2026, 10, 6, 12, 0)),
+      ];
+
+      expect(
+        SequenciaPonto.proximo(registros, agora: DateTime(2026, 10, 6, 21, 0)),
+        equals('RETORNO'),
+        reason: '9h desde a última batida segue a mesma jornada',
+      );
+      expect(
+        SequenciaPonto.proximo(registros, agora: DateTime(2026, 10, 6, 23, 0)),
+        equals('ENTRADA'),
+        reason: '11h desde a última batida abre jornada nova',
+      );
     });
   });
 

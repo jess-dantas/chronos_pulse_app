@@ -160,6 +160,42 @@ class PontoRepository {
     }
   }
 
+  /// Batidas locais (inclusive ajustes) das últimas 72h, em ordem cronológica.
+  ///
+  /// Alimenta a prévia da sequência quando o aparelho está offline: o
+  /// histórico de "hoje" ainda está vazio logo depois da meia-noite, mas a
+  /// jornada anterior (turno noturno) continua valendo para a próxima
+  /// batida. Cobre o mês atual e o anterior (a janela pode cruzar a virada
+  /// do mês). Falha de leitura vira lista vazia — a sequência decai para o
+  /// histórico de hoje sem derrubar a tela.
+  Future<List<RegistroPontoModel>> obterBatidasRecentes({
+    String? colaboradorId,
+  }) async {
+    final agora = DateTime.now();
+    final inicio = agora.subtract(const Duration(hours: 72));
+    final meses = <(int, int)>{
+      (agora.month, agora.year),
+      (inicio.month, inicio.year)
+    };
+
+    final resultado = <RegistroPontoModel>[];
+    for (final (mes, ano) in meses) {
+      try {
+        final lista = await localDataSource
+            .obterPorMesAno(colaboradorId: colaboradorId, mes: mes, ano: ano)
+            .timeout(const Duration(seconds: 3));
+        resultado.addAll(
+            lista.where((r) => !r.dataHoraDispositivo.isBefore(inicio)));
+      } catch (e) {
+        debugPrint('[PontoRepository] falha ao ler batidas recentes '
+            '(mês=$mes/$ano, colab=$colaboradorId): $e');
+      }
+    }
+    resultado
+        .sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
+    return resultado;
+  }
+
   /// Histórico do dia: mescla os registros locais com o espelho do servidor.
   ///
   /// Quando o banco local está indisponível (ex.: SQLite Web), o histórico
