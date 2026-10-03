@@ -62,13 +62,20 @@ class AdminAuthProvider extends ChangeNotifier {
 
   /// Login admin. [senha] opcional (2FA-first): sem senha o backend exige
   /// 2FA habilitado e devolve `requiresTwoFactor` + `tempToken` direto.
-  Future<bool> login(String username, {String? senha}) async {
+  /// [deviceToken] opcional (biometria-first): dispositivo confiável — só o
+  /// login por biometria envia; senha e código nunca levam deviceToken.
+  Future<bool> login(
+    String username, {
+    String? senha,
+    String? deviceToken,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final resultado = await _repository.login(username, senha: senha);
+      final resultado =
+          await _repository.login(username, senha: senha, deviceToken: deviceToken);
 
       final requiresTwoFactor = resultado['requiresTwoFactor'] == true;
       if (requiresTwoFactor) {
@@ -93,6 +100,52 @@ class AdminAuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// POST /admin/auth/dispositivo — vincula este aparelho como dispositivo
+  /// confiável (biometria-first). Devolve `{ deviceToken, expiraEm }` em
+  /// sucesso; `null` em falha (mensagem em [errorMessage]). A persistência
+  /// local da credencial é responsabilidade da tela (usa o store injetado).
+  Future<Map<String, dynamic>?> vincularDispositivo() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final resultado = await _repository.dispositivoVincular();
+      final token = resultado['deviceToken'] as String?;
+      if (token == null || token.isEmpty) {
+        throw Exception('Resposta inesperada do vínculo de dispositivo');
+      }
+      _isLoading = false;
+      notifyListeners();
+      return resultado;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// DELETE /admin/auth/dispositivo — revoga TODOS os vínculos de
+  /// dispositivo confiável do admin autenticado.
+  Future<bool> revogarDispositivo() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _repository.dispositivoRevogar();
+      _isLoading = false;
+      notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;

@@ -17,9 +17,11 @@ Constant base: `lib/core/constants/api_constants.dart`. Todas as rotas são sob 
 
 | Método | Rota | Uso | Acesso |
 |---|---|---|---|
-| `POST` | `/admin/auth/login` | `AdminAuthScreen` — "Login Administrator": username/senha → `accessToken`, ou `requiresTwoFactor` + `tempToken`, ou `setupRequired` + `tempToken` (2FA obrigatório desligado) | público |
+| `POST` | `/admin/auth/login` | `AdminAuthScreen` — "Login Administrator": username/senha → `accessToken`, ou `requiresTwoFactor` + `tempToken`, ou `setupRequired` + `tempToken` (2FA obrigatório desligado); com `deviceToken` válido (dispositivo confiável, biometria-first) autentica direto pulando senha e 2FA | público |
 | `GET` | `/admin/auth/bootstrap/status` | Link "Criar primeiro Administrator" quando `bootstrapAvailable: true` | público |
 | `POST` | `/admin/auth/bootstrap` | `AdminBootstrapScreen` — cria a 1ª conta e retorna `setupRequired` + `tempToken` | público |
+| `POST` | `/admin/auth/dispositivo` | `PerfilSegurancaScreen` ("Confiar neste dispositivo") — vincula o aparelho como dispositivo confiável → `{ deviceToken, expiraEm }` (30 dias, valor cru uma única vez) | `ADMIN_PLATAFORMA` |
+| `DELETE` | `/admin/auth/dispositivo` | Revoga todos os vínculos de dispositivo confiável (perda/troca de aparelho) | `ADMIN_PLATAFORMA` |
 | `POST` | `/admin/auth/2fa/verify` | Troca `tempToken` pelos tokens finais (código 6 dígitos) | público |
 | `POST` | `/admin/auth/2fa/recover` | `AdminRecoverScreen` — `{ username, senha, recoveryCode }` → tokens + 8 novos códigos | público |
 | `POST` | `/admin/auth/logout` | Logout do Administrator (best-effort) | público |

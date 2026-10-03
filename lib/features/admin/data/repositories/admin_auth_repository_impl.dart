@@ -7,8 +7,13 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
   AdminAuthRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<Map<String, dynamic>> login(String username, {String? senha}) async {
-    return _remoteDataSource.login(username, senha: senha);
+  Future<Map<String, dynamic>> login(
+    String username, {
+    String? senha,
+    String? deviceToken,
+  }) async {
+    return _remoteDataSource.login(username,
+        senha: senha, deviceToken: deviceToken);
   }
 
   @override
@@ -107,6 +112,16 @@ class AdminAuthRepositoryImpl implements AdminAuthRepository {
       recoveryCode: recoveryCode,
       novaSenha: novaSenha,
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> dispositivoVincular({String? deviceName}) {
+    return _remoteDataSource.dispositivoVincular(deviceName: deviceName);
+  }
+
+  @override
+  Future<void> dispositivoRevogar() {
+    return _remoteDataSource.dispositivoRevogar();
   }
 
   @override

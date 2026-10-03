@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:chronos_pulse_app/core/network/dio_client.dart';
+import 'package:chronos_pulse_app/core/security/admin_device_token_store.dart';
 import 'package:chronos_pulse_app/core/security/biometria_preferences.dart';
 import 'package:chronos_pulse_app/features/admin/data/datasources/admin_auth_remote_datasource.dart';
+import 'package:chronos_pulse_app/features/admin/data/models/admin_models.dart';
 import 'package:chronos_pulse_app/features/admin/data/repositories/admin_auth_repository_impl.dart';
 import 'package:chronos_pulse_app/features/admin/presentation/providers/admin_auth_provider.dart';
 import 'package:chronos_pulse_app/features/perfil/presentation/screens/perfil_seguranca_screen.dart';
@@ -28,10 +30,68 @@ class _AdminFake extends AdminAuthProvider {
         );
 
   bool autenticado = false;
+  int vincularChamadas = 0;
+  int revogarChamadas = 0;
+  bool vincularOk = true;
 
   @override
   bool get isAuthenticated => autenticado;
+
+  @override
+  AdminPlataformaModel? get currentAdmin => autenticado
+      ? AdminPlataformaModel.fromJson({
+          'id': '1',
+          'username': 'root',
+          'nomeCompleto': 'Root',
+          'email': 'root@chronos.app',
+          'criadoEm': '2026-01-01T00:00:00Z',
+        })
+      : null;
+
+  @override
+  Future<Map<String, dynamic>?> vincularDispositivo() async {
+    vincularChamadas++;
+    if (!vincularOk) return null;
+    return {
+      'deviceToken': 'dt-novo-cru',
+      'expiraEm': DateTime.now()
+          .toUtc()
+          .add(const Duration(days: 30))
+          .toIso8601String(),
+    };
+  }
+
+  @override
+  Future<bool> revogarDispositivo() async {
+    revogarChamadas++;
+    return true;
+  }
 }
+
+/// Store em memória (sem Keystore/plugin de plataforma).
+AdminDeviceTokenStore _storeDevice([Map<String, String>? base]) {
+  final mapa = <String, String>{...?base};
+  return AdminDeviceTokenStore(
+    ler: (k) async => mapa[k],
+    gravar: (k, v) async {
+      mapa[k] = v;
+    },
+    remover: (k) async {
+      mapa.remove(k);
+    },
+  );
+}
+
+/// Store com credencial vigente pré-gravada.
+AdminDeviceTokenStore _storeDeviceAtivo() => _storeDevice({
+      AdminDeviceTokenStore.chaveToken: 'dt-ativo',
+      AdminDeviceTokenStore.chaveUsername: 'root',
+      AdminDeviceTokenStore.chaveExpiraEm: DateTime.now()
+          .toUtc()
+          .add(const Duration(days: 30))
+          .millisecondsSinceEpoch
+          .toString(),
+    });
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +101,7 @@ void main() {
   Future<void> pumpTela(
     WidgetTester tester, {
     AdminAuthProvider? adminAuth,
+    AdminDeviceTokenStore? deviceStore,
   }) async {
     prefs = await BiometriaPreferences.carregar();
     final router = GoRouter(
@@ -48,7 +109,9 @@ void main() {
       routes: [
         GoRoute(
           path: '/perfil/seguranca',
-          builder: (context, state) => const PerfilSegurancaScreen(),
+          builder: (context, state) => PerfilSegurancaScreen(
+            deviceStore: deviceStore ?? _storeDevice(),
+          ),
         ),
         GoRoute(
           path: '/perfil/2fa',
@@ -192,6 +255,111 @@ void main() {
         equals(600),
         reason: 'conteúdo centrado na tela de 1200px',
       );
+    });
+  });
+
+  group('PerfilSegurancaScreen — dispositivo confiável (admin root)', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    testWidgets('colaborador não vê o tile de dispositivo confiável',
+        (tester) async {
+      await pumpTela(tester);
+
+      expect(find.byKey(const Key('seguranca_dispositivo_tile')), findsNothing);
+    });
+
+    testWidgets('admin root: ativar confia no dispositivo e grava a '
+        'credencial', (tester) async {
+      final store = _storeDevice();
+      final admin = _AdminFake()..autenticado = true;
+      await pumpTela(tester, adminAuth: admin, deviceStore: store);
+
+      final tile = find.byKey(const Key('seguranca_dispositivo_tile'));
+      expect(tile, findsOneWidget);
+      expect(find.textContaining('Entre no próximo acesso'), findsOneWidget);
+
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+
+      expect(admin.vincularChamadas, 1);
+      expect(await store.possuiCredencial(), isTrue);
+      expect(find.textContaining('Ativo até'), findsOneWidget);
+
+      // Drena o timer do snackbar antes de encerrar o teste.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('falha ao vincular avisa e não grava credencial',
+        (tester) async {
+      final store = _storeDevice();
+      final admin = _AdminFake()
+        ..autenticado = true
+        ..vincularOk = false;
+      await pumpTela(tester, adminAuth: admin, deviceStore: store);
+
+      final tile = find.byKey(const Key('seguranca_dispositivo_tile'));
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+
+      expect(admin.vincularChamadas, 1);
+      expect(await store.possuiCredencial(), isFalse);
+      expect(find.textContaining('Entre no próximo acesso'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('admin root: revogar pede confirmação e limpa a credencial',
+        (tester) async {
+      final store = _storeDeviceAtivo();
+      final admin = _AdminFake()..autenticado = true;
+      await pumpTela(tester, adminAuth: admin, deviceStore: store);
+
+      expect(find.textContaining('Ativo até'), findsOneWidget);
+
+      final tile = find.byKey(const Key('seguranca_dispositivo_tile'));
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Revogar este dispositivo?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Revogar'));
+      await tester.pumpAndSettle();
+
+      expect(admin.revogarChamadas, 1);
+      expect(await store.possuiCredencial(), isFalse);
+      expect(find.textContaining('Entre no próximo acesso'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('cancelar a confirmação não revoga nem limpa a credencial',
+        (tester) async {
+      final store = _storeDeviceAtivo();
+      final admin = _AdminFake()..autenticado = true;
+      await pumpTela(tester, adminAuth: admin, deviceStore: store);
+
+      final tile = find.byKey(const Key('seguranca_dispositivo_tile'));
+      await tester.ensureVisible(tile);
+      await tester.pumpAndSettle();
+      await tester.tap(tile);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(admin.revogarChamadas, 0);
+      expect(await store.possuiCredencial(), isTrue);
+      expect(find.textContaining('Ativo até'), findsOneWidget);
     });
   });
 }

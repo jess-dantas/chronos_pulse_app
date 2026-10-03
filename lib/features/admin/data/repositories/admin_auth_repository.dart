@@ -1,5 +1,9 @@
 abstract class AdminAuthRepository {
-  Future<Map<String, dynamic>> login(String username, {String? senha});
+  Future<Map<String, dynamic>> login(
+    String username, {
+    String? senha,
+    String? deviceToken,
+  });
   Future<Map<String, dynamic>> verifyTwoFactor(String tempToken, String codigo);
   Future<void> sendEmailCode(String tempToken);
   Future<Map<String, dynamic>> verifyEmailCode(String tempToken, String codigo);
@@ -25,5 +29,7 @@ abstract class AdminAuthRepository {
     required String recoveryCode,
     String? novaSenha,
   });
+  Future<Map<String, dynamic>> dispositivoVincular({String? deviceName});
+  Future<void> dispositivoRevogar();
   Future<void> logout(String refreshToken);
 }

@@ -45,6 +45,7 @@ Map<String, dynamic> _sessao() => {
 class _RepoFake implements AdminAuthRepository {
   String? loginUsername;
   String? loginSenha;
+  String? loginDeviceToken;
   bool sessaoNoLogin = false;
   bool twoFactorNoLogin = true;
 
@@ -64,9 +65,14 @@ class _RepoFake implements AdminAuthRepository {
   Map<String, dynamic>? refreshResposta;
 
   @override
-  Future<Map<String, dynamic>> login(String username, {String? senha}) async {
+  Future<Map<String, dynamic>> login(
+    String username, {
+    String? senha,
+    String? deviceToken,
+  }) async {
     loginUsername = username;
     loginSenha = senha;
+    loginDeviceToken = deviceToken;
     if (sessaoNoLogin) return _sessao();
     if (senha == null || senha.isEmpty) {
       if (twoFactorNoLogin) {
