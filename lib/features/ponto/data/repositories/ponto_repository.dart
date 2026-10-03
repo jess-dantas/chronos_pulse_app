@@ -36,6 +36,11 @@ class PontoRepository {
   /// O banco local é limitado por timeout: se a escrita local não completar
   /// (ex.: SQLite Web com WASM/IndexedDB lento), a batida SEGUE apenas online
   /// em vez de travar o "Processando Registro..." por tempo indeterminado.
+  ///
+  /// Antes do POST, a fila offline é drenada junto: o backend deriva tipo e
+  /// nsr na ordem em que recebe as batidas, então uma batida nova chegando sozinha
+  /// faria a jornada pendente de ontem ser gravada DEPOIS dela (tipo errado e
+  /// nsr fora de ordem). O lote sai único, em ordem cronológica.
   Future<bool> registrarPonto({
     required RegistroPontoModel registro,
   }) async {
@@ -43,18 +48,22 @@ class PontoRepository {
     _ultimaFalhaLocal = null;
 
     // 1. Salva no banco local primeiro (com limite de tempo: nunca bloqueia a UI)
-    final localOk = await _salvarLocalComTimeout(registro);
+    await _salvarLocalComTimeout(registro);
 
-    // 2. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
+    // 2. Fila pendente + batida nova, deduplicadas e em ordem cronológica
+    final lote = await _montarLoteComPendentes(registro);
+
+    // 3. Tenta sincronizar com a API REST (com limite: nunca trava a batida)
     try {
       final idsSucesso = await remoteDataSource
-          .sincronizarPontos([registro]).timeout(const Duration(seconds: 8));
+          .sincronizarPontos(lote)
+          .timeout(const Duration(seconds: 8));
 
       if (idsSucesso.contains(registro.idLocal) || idsSucesso.isNotEmpty) {
-        if (localOk) {
+        for (final id in idsSucesso) {
           try {
             await localDataSource
-                .marcarComoSincronizado(registro.idLocal)
+                .marcarComoSincronizado(id)
                 .timeout(const Duration(seconds: 3));
           } catch (_) {
             // marcação local falhou: irrelevante para o resultado online
@@ -72,6 +81,29 @@ class PontoRepository {
       // Falha de rede ou servidor indisponível: ponto permanece salvo offline
       return false;
     }
+  }
+
+  /// Fila offline do aparelho + a batida nova num único lote em ordem
+  /// cronológica. A leitura da fila é limitada: se o banco local não
+  /// responder, segue só com a batida nova (comportamento antigo) em vez de
+  /// perder a marcação.
+  Future<List<RegistroPontoModel>> _montarLoteComPendentes(
+      RegistroPontoModel registro) async {
+    List<RegistroPontoModel> pendentes = [];
+    try {
+      pendentes = await localDataSource
+          .obterPontosNaoSincronizados(colaboradorId: registro.colaboradorId)
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('[PontoRepository] falha ao ler fila pendente para o lote: $e');
+    }
+
+    final porId = <String, RegistroPontoModel>{
+      for (final p in pendentes) p.idLocal: p,
+    };
+    porId[registro.idLocal] = registro;
+    return porId.values.toList()
+      ..sort((a, b) => a.dataHoraDispositivo.compareTo(b.dataHoraDispositivo));
   }
 
   Future<bool> _salvarLocalComTimeout(RegistroPontoModel registro) async {

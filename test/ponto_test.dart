@@ -542,6 +542,72 @@ void main() {
       );
     });
 
+    test('Batida nova drena a fila offline antes do POST (lote único em ordem)',
+        () async {
+      RegistroPontoModel ponto(String id, DateTime quando) => RegistroPontoModel(
+            idLocal: id,
+            dataHoraDispositivo: quando.toUtc(),
+            tipoRegistro: 'ENTRADA',
+            latitude: 0,
+            longitude: 0,
+            precisaoGps: 5,
+            fotoUrl: '',
+            hashLocal: 'hash-$id',
+            sincronizadoOffline: false,
+          );
+
+      final base = DateTime.now().subtract(const Duration(hours: 2));
+      remoteDataSource.online = false;
+      await provider.registrarPonto(ponto('old1', base));
+      await provider.registrarPonto(
+          ponto('old2', base.add(const Duration(hours: 1))));
+      expect(provider.pendentesCount, equals(2));
+
+      remoteDataSource.online = true;
+      final sincronizado =
+          await provider.registrarPonto(ponto('nova', DateTime.now()));
+
+      expect(sincronizado, isTrue);
+      expect(
+        remoteDataSource.ultimosSincronizados.map((r) => r.idLocal).toList(),
+        equals(['old1', 'old2', 'nova']),
+        reason: 'a jornada de ontem precisa chegar ANTES da batida nova — '
+            'o backend deriva tipo/nsr na ordem de chegada',
+      );
+      expect(provider.pendentesCount, equals(0),
+          reason: 'o lote inteiro foi confirmado e marcado como sincronizado');
+    });
+
+    test('Rejeição do servidor com fila cheia não marca nada como sincronizado',
+        () async {
+      RegistroPontoModel ponto(String id, DateTime quando) => RegistroPontoModel(
+            idLocal: id,
+            dataHoraDispositivo: quando.toUtc(),
+            tipoRegistro: 'ENTRADA',
+            latitude: 0,
+            longitude: 0,
+            precisaoGps: 5,
+            fotoUrl: '',
+            hashLocal: 'hash-$id',
+            sincronizadoOffline: false,
+          );
+
+      remoteDataSource.online = false;
+      await provider.registrarPonto(
+          ponto('antiga', DateTime.now().subtract(const Duration(hours: 1))));
+      expect(provider.pendentesCount, equals(1));
+
+      remoteDataSource.online = true;
+      remoteDataSource.rejeitar = true;
+      final sincronizado = await provider.registrarPonto(ponto('nova', DateTime.now()));
+
+      expect(sincronizado, isFalse);
+      expect(provider.pendentesCount, equals(2),
+          reason: 'recusa do servidor mantém fila inteira pendente');
+      expect(repository.ultimaFalhaServidor, isNotNull,
+          reason: 'a UI precisa mostrar a recusa, não "offline"');
+    });
+
     test('Heartbeat espera o POST da batida em voo (nunca dois lotes juntos)',
         () async {
       final controle = _RemoteComControle();
